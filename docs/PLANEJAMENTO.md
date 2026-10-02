@@ -193,6 +193,17 @@ Lições já aprendidas lá e que valem aqui:
 
 *Atualizado em 02/10/2026, ao fim da Fase 0.*
 
+**Decisão pendente — NOME DO PROJETO (decidir ANTES da tarefa 1.1):**
+ideia do Thiago: **`debkit`**, um kit de módulos para servidores Debian, em
+que o Gerenciador Samba seria o módulo `samba` e, no futuro, viriam outros
+(`wireguard`...). A base da Fase 0 (configuração segura, mensagens,
+detecção/preparação do ambiente, proteção SSH, firewall, testes) serve de
+núcleo comum. A decidir: nome final (checar disponibilidade no GitHub; não
+existe pacote "debkit" no Debian), nome dos módulos e estrutura (um
+programa com módulos ou um por módulo com núcleo compartilhado). Renomear
+agora é barato (nada publicado/instalado); depois da Fase 1, fica caro
+(`/etc/gsb`, grupo `gsb_usuarios`, prefixo `gsb_`, funções, repositório).
+
 **Fase 0 (fundação) concluída** — commits na branch `dev`:
 
 | Tarefa | Commit |
