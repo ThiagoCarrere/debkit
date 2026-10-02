@@ -7,8 +7,10 @@ caixa_de_areia
 
 # verif [código bash a rodar antes] -> imprime as linhas da verificação,
 # "BLOQ=<n>", "PAC=<pacotes>" e "RC=<código>"
+# A detecção é SOMENTE LEITURA, então aqui é seguro usar o caminho padrão do
+# arquivo SSH do gsb (para testar se o sshd_config real o inclui).
 verif() {
-    bash -c "source '$GSB'; gsb_conf_carregar \"\$GSB_CONF_ARQUIVO\"; ${1:-}
+    bash -c "source '$GSB'; gsb_conf_carregar \"\$GSB_CONF_ARQUIVO\"; GSB_SSH_DROPIN=/etc/ssh/sshd_config.d/gsb.conf; ${1:-}
         gsb_verificar_ambiente; rc=\$?
         printf '%s\n' \"\${GSB_VERIF[@]}\"
         echo \"BLOQ=\$GSB_BLOQUEIOS\"; echo \"PAC=\${GSB_PACOTES_FALTANDO[*]}\"; echo \"RC=\$rc\"

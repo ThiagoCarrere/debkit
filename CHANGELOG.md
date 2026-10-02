@@ -6,6 +6,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 ## [Não lançado]
 
 ### Adicionado
+- **Proteção SSH (tarefa 0.4):** item do plano de preparação que cria
+  `/etc/ssh/sshd_config.d/gsb.conf` com `DenyGroups gsb_usuarios` (com
+  marca de autoria; nunca sobrescreve arquivo alheio), valida com
+  `sshd -t` ANTES de recarregar, recarrega sem derrubar sessões e confirma
+  no `sshd -T` que a regra vale para todos. Recusa aplicar se quem roda o
+  gsb estiver no grupo. Detecta `Include` depois de bloco `Match` (que
+  deixaria a proteção ineficaz) e mostra o estado da proteção. Desfazer
+  mexe só no que a operação fez. Função de remoção (para a desinstalação).
+- Testes: trava em `tests/run.sh` que compara uma "impressão digital" do
+  sistema real antes e depois de cada arquivo de teste; prova com login
+  real em `tests/t04b_ssh_real.sh` (só com `GSB_TESTE_REAL=1`).
 - **Preparação do ambiente (tarefa 0.3):** `gsb --preparar`, menu
   "9) Ambiente: verificar e preparar" e assistente ao abrir o menu.
   Monta um plano só com o que falta (instalar pacotes via apt-get com

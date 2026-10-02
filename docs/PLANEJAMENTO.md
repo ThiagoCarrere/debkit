@@ -51,10 +51,19 @@ Todo usuário criado pelo gsb:
 - arquivo próprio `/etc/ssh/sshd_config.d/gsb.conf` com
   `DenyGroups gsb_usuarios`; o `sshd_config` principal não é tocado;
 - só aplica se o `sshd_config` inclui `sshd_config.d/*.conf` (padrão no
-  Debian 11+); senão, avisa e não faz nada;
-- valida com `sshd -t`, confere com `sshd -T` que a regra `denygroups` está
-  em vigor e recarrega sem derrubar sessões abertas; se algo falhar, desfaz.
-  (Nos testes, a recusa é provada com tentativa real de login.)
+  Debian 11+) **antes de qualquer bloco `Match`** — depois de um `Match` a
+  regra valeria só dentro dele (comprovado com `sshd -T`); senão, avisa e
+  não faz nada;
+- valida com `sshd -t` ANTES de recarregar (recarregar com configuração
+  inválida pode derrubar o serviço), recarrega sem derrubar sessões abertas
+  e confere com `sshd -T` que a regra `denygroups` está em vigor para
+  todos; se algo falhar, desfaz só o que fez;
+- nunca sobrescreve um arquivo que não tem a marca do gsb e recusa aplicar
+  se quem roda o gsb estiver no grupo (não tranca o administrador fora).
+- Provado com login real (`tests/t04b_ssh_real.sh`): antes, um usuário com
+  `nologin` autenticava e abria **túnel SSH**; depois, é recusado (inclusive
+  o túnel), quem está fora do grupo continua entrando e as sessões já
+  abertas não caem.
 
 ## 4. O gsb só gerencia o que ele cria
 
@@ -145,7 +154,7 @@ Estrutura do repositório:
 
 | Fase | Conteúdo |
 |---|---|
-| 0. Fundação | 0.1 esqueleto (configuração, catálogo de mensagens, utilitários, trava, log, menu) ✔ · 0.2 detecção do ambiente ✔ · 0.3 preparação do ambiente, assistente de abertura (verifica a cada execução e oferece consertar) e backups ✔ · 0.4 proteção SSH · 0.5 firewall (ufw/firewalld: avisar e oferecer liberar a porta 445) |
+| 0. Fundação | 0.1 esqueleto (configuração, catálogo de mensagens, utilitários, trava, log, menu) ✔ · 0.2 detecção do ambiente ✔ · 0.3 preparação do ambiente, assistente de abertura (verifica a cada execução e oferece consertar) e backups ✔ · 0.4 proteção SSH ✔ · 0.5 firewall (ufw/firewalld: avisar e oferecer liberar a porta 445) |
 | 1. Usuários | **criar** (item 1 do menu), listar, trocar senha (Linux + Samba), grupos, desativar/reativar, remover |
 | 2. Compartilhamentos | criar, listar, permissões de pasta, remover; avaliar acesso somente leitura por grupo |
 | 3. Diagnóstico | falhas de login, sessões ativas, saúde do Samba, consulta à auditoria, inventário somente leitura |

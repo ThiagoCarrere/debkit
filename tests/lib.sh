@@ -62,6 +62,9 @@ caixa_de_areia() {
         echo "SMB_CONF=$AREIA/smb.conf"
         echo "SHARES_CONF=$AREIA/gsb-shares.conf"
         echo "GRUPO_USUARIOS=$GRUPO_TESTE"
+        # Fora do Include do sshd_config real: a proteção SSH nunca é
+        # aplicada no SSH de verdade pelos testes comuns
+        echo "SSH_DROPIN=$AREIA/sshd_gsb.conf"
     } > "$AREIA/gsb.conf"
     chmod 644 "$AREIA/gsb.conf"
     export GSB_CONF_ARQUIVO="$AREIA/gsb.conf"

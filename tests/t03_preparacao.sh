@@ -21,6 +21,7 @@ prep_env() {
 CFG="GSB_CONF_ARQUIVO='$AREIA/etc/gsb/gsb.conf'; gsb_conf_padroes;
      GSB_LOG='$AREIA/gsb.log'; GSB_BACKUP_DIR='$AREIA/backups'; GSB_SMB_CONF='$AREIA/smb.conf';
      GSB_SHARES_CONF='$AREIA/gsb-shares.conf'; GSB_GRUPO_USUARIOS='$GRUPO_T'; GSB_TRAVA='$AREIA/gsb.lock';
+     GSB_SSH_DROPIN='$AREIA/sshd_gsb.conf';
      gsb_samba_recarregar() { echo reload >> '$AREIA/reloads'; };"
 g() { bash -c "source '$GSB'; $CFG $1" 2>&1; }
 
@@ -206,6 +207,7 @@ BACKUP_DIR=$AREIA/backups
 SMB_CONF=$AREIA/smb.conf
 SHARES_CONF=$AREIA/gsb-shares.conf
 GRUPO_USUARIOS=$GRUPO_T
+SSH_DROPIN=$AREIA/sshd_gsb.conf
 EOF
 }
 caso "--preparar respondendo n: nada muda, auditoria registra a recusa"

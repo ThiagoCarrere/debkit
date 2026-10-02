@@ -215,6 +215,9 @@ declare -A MSG_pt_BR=(
     [amb.dropin_ok]="%s inclui %s (o gsb pode usar arquivo próprio)"
     [amb.dropin_falta]="%s não inclui %s: a proteção SSH automática não poderá ser aplicada"
     [amb.ssh_senha]="Login por senha ligado no SSH: a proteção dos usuários do gsb é importante"
+    [amb.dropin_apos_match]="%s inclui %s só DEPOIS de um bloco Match: a proteção não valeria para todos (mova o Include para antes do primeiro Match)"
+    [amb.ssh_protecao_ativa]="Proteção SSH do gsb ativa (grupo %s recusado no SSH)"
+    [amb.ssh_protecao_inativa]="Proteção SSH do gsb ainda não aplicada"
     [amb.dev_ok]="%s instalado"
     [amb.dev_falta]="%s não instalado (só para desenvolvimento/testes)"
     [amb.resumo_ok]="Ambiente pronto para o gsb."
@@ -252,6 +255,12 @@ declare -A MSG_pt_BR=(
     [prep.recarregar_falhou]="Não foi possível recarregar o Samba."
     [prep.backup_sem_arquivo]="Backup impossível: %s não existe."
     [prep.backup_falhou]="Não foi possível fazer o backup de %s."
+    [prep.d_ssh_protecao]="Bloquear o SSH para os usuários do gsb (%s com \"DenyGroups %s\"), validar e recarregar o SSH sem derrubar ninguém"
+    [prep.ssh_admin_no_grupo]="Você (%s) é membro de %s: aplicar a proteção trancaria você fora do SSH. Nada foi feito."
+    [prep.ssh_arquivo_alheio]="%s já existe e não foi criado pelo gsb: o gsb não vai sobrescrevê-lo."
+    [prep.ssh_invalido]="A configuração do SSH ficou inválida (sshd -t); o SSH NÃO foi recarregado:"
+    [prep.ssh_recarregar]="Não foi possível recarregar o SSH (%s)."
+    [prep.ssh_nao_confirmada]="A regra não apareceu na configuração em vigor do SSH (sshd -T)."
     [ajuda.texto]="Uso: gsb [opção]
 
   (sem opção)    abre o menu interativo (precisa ser root)
@@ -310,6 +319,9 @@ declare -A MSG_en=(
     [amb.dropin_ok]="%s includes %s (gsb can use its own file)"
     [amb.dropin_falta]="%s does not include %s: automatic SSH protection cannot be applied"
     [amb.ssh_senha]="SSH password login is enabled: protecting gsb users matters"
+    [amb.dropin_apos_match]="%s includes %s only AFTER a Match block: the protection would not apply to everyone (move the Include before the first Match)"
+    [amb.ssh_protecao_ativa]="gsb SSH protection active (group %s denied on SSH)"
+    [amb.ssh_protecao_inativa]="gsb SSH protection not applied yet"
     [amb.dev_ok]="%s installed"
     [amb.dev_falta]="%s not installed (development/testing only)"
     [amb.resumo_ok]="Environment ready for gsb."
@@ -347,6 +359,12 @@ declare -A MSG_en=(
     [prep.recarregar_falhou]="Could not reload Samba."
     [prep.backup_sem_arquivo]="Backup impossible: %s does not exist."
     [prep.backup_falhou]="Could not back up %s."
+    [prep.d_ssh_protecao]="Block SSH for gsb users (%s with \"DenyGroups %s\"), validate and reload SSH without dropping anyone"
+    [prep.ssh_admin_no_grupo]="You (%s) are a member of %s: applying the protection would lock you out of SSH. Nothing was done."
+    [prep.ssh_arquivo_alheio]="%s already exists and was not created by gsb: gsb will not overwrite it."
+    [prep.ssh_invalido]="The SSH configuration became invalid (sshd -t); SSH was NOT reloaded:"
+    [prep.ssh_recarregar]="Could not reload SSH (%s)."
+    [prep.ssh_nao_confirmada]="The rule did not show up in the effective SSH configuration (sshd -T)."
     [ajuda.texto]="Usage: gsb [option]
 
   (no option)    opens the interactive menu (requires root)
@@ -588,20 +606,37 @@ gsb_descobrir_servico() {
 # O sshd_config inclui o arquivo próprio do gsb (GSB_SSH_DROPIN)?
 # Lê as linhas "Include" (palavra sem diferenciar maiúsculas; caminhos
 # relativos são relativos a /etc/ssh) e testa se algum padrão cobre o arquivo.
+# Retorna: 0 = inclui; 1 = não inclui; 2 = inclui só DEPOIS de um bloco
+# "Match" (aí a regra do gsb valeria só dentro do Match, não para todos -
+# comprovado com sshd -T).
 gsb_ssh_aceita_dropin() {
-    local linha padrao
+    local linha padrao depois_de_match=0
     local -a padroes
     [ -r "$GSB_ARQ_SSHD_CONFIG" ] || return 1
     while IFS= read -r linha || [ -n "$linha" ]; do
+        if [[ "$linha" =~ ^[[:space:]]*[Mm][Aa][Tt][Cc][Hh][[:space:]] ]]; then
+            depois_de_match=1
+            continue
+        fi
         [[ "$linha" =~ ^[[:space:]]*[Ii][Nn][Cc][Ll][Uu][Dd][Ee][[:space:]]+(.+)$ ]] || continue
         read -ra padroes <<< "${BASH_REMATCH[1]}"
         for padrao in "${padroes[@]}"; do
             [[ "$padrao" == /* ]] || padrao="/etc/ssh/$padrao"
             # shellcheck disable=SC2053  # comparação com padrão (glob) proposital
-            [[ "$GSB_SSH_DROPIN" == $padrao ]] && return 0
+            if [[ "$GSB_SSH_DROPIN" == $padrao ]]; then
+                [ "$depois_de_match" -eq 1 ] && return 2
+                return 0
+            fi
         done
     done < "$GSB_ARQ_SSHD_CONFIG"
     return 1
+}
+
+# A proteção está EFETIVA? Consulta a configuração geral em vigor (sshd -T),
+# não só se o arquivo existe: o grupo precisa estar em "denygroups".
+gsb_ssh_protecao_ativa() {
+    sshd -T 2>/dev/null | awk -v g="$GSB_GRUPO_USUARIOS" \
+        '$1 == "denygroups" { for (i = 2; i <= NF; i++) if ($i == g) achou = 1 } END { exit !achou }'
 }
 
 # Lê um parâmetro do Samba já interpretado pelo testparm (ex: "server role")
@@ -648,13 +683,15 @@ gsb_pacote_add() {
 #   GSB_SVC_SAMBA / GSB_SVC_SSH  nome do serviço (vazio se não encontrado)
 #   GSB_TEM_SSH                  1 se o servidor SSH está instalado
 #   GSB_SSH_DROPIN_OK            1 se o sshd_config inclui o arquivo do gsb
+#                                (e não só depois de um bloco Match)
+#   GSB_SSH_PROTEGIDO            1 se a proteção SSH está efetiva (sshd -T)
 #   GSB_BLOQ_MANUAL              bloqueios que exigem o administrador
 #                                (os demais se resolvem instalando pacotes)
 # shellcheck disable=SC2034  # variáveis de saída, usadas pelas próximas tarefas
 gsb_verificar_ambiente() {
     local dep cmd tipo pacote presentes=0 total=0 papel backend senha_ssh
     GSB_VERIF=(); GSB_PACOTES_FALTANDO=(); GSB_BLOQUEIOS=0; GSB_BLOQ_MANUAL=0
-    GSB_SVC_SAMBA=""; GSB_SVC_SSH=""; GSB_TEM_SSH=0; GSB_SSH_DROPIN_OK=0
+    GSB_SVC_SAMBA=""; GSB_SVC_SSH=""; GSB_TEM_SSH=0; GSB_SSH_DROPIN_OK=0; GSB_SSH_PROTEGIDO=0
 
     # ── Sistema ──
     if gsb_ler_os_release; then
@@ -743,11 +780,18 @@ gsb_verificar_ambiente() {
                 gsb_verif_add ssh info "$(t amb.servico_parado "$GSB_SVC_SSH")"
             fi
         fi
-        if gsb_ssh_aceita_dropin; then
-            GSB_SSH_DROPIN_OK=1
-            gsb_verif_add ssh ok "$(t amb.dropin_ok "$GSB_ARQ_SSHD_CONFIG" "$GSB_SSH_DROPIN")"
-        else
-            gsb_verif_add ssh aviso "$(t amb.dropin_falta "$GSB_ARQ_SSHD_CONFIG" "$GSB_SSH_DROPIN")"
+        gsb_ssh_aceita_dropin
+        case $? in
+            0) GSB_SSH_DROPIN_OK=1
+               gsb_verif_add ssh ok "$(t amb.dropin_ok "$GSB_ARQ_SSHD_CONFIG" "$GSB_SSH_DROPIN")" ;;
+            2) gsb_verif_add ssh aviso "$(t amb.dropin_apos_match "$GSB_ARQ_SSHD_CONFIG" "$GSB_SSH_DROPIN")" ;;
+            *) gsb_verif_add ssh aviso "$(t amb.dropin_falta "$GSB_ARQ_SSHD_CONFIG" "$GSB_SSH_DROPIN")" ;;
+        esac
+        if gsb_ssh_protecao_ativa; then
+            GSB_SSH_PROTEGIDO=1
+            gsb_verif_add ssh ok "$(t amb.ssh_protecao_ativa "$GSB_GRUPO_USUARIOS")"
+        elif [ "$GSB_SSH_DROPIN_OK" -eq 1 ]; then
+            gsb_verif_add ssh info "$(t amb.ssh_protecao_inativa)"
         fi
         senha_ssh=$(sshd -T 2>/dev/null | awk '$1 == "passwordauthentication" {print $2}')
         [ "$senha_ssh" == "yes" ] && gsb_verif_add ssh info "$(t amb.ssh_senha)"
@@ -881,6 +925,11 @@ gsb_montar_plano() {
     getent group "$GSB_GRUPO_USUARIOS" >/dev/null 2>&1 || GSB_PLANO+=(grupo)
     [ -f "$GSB_SHARES_CONF" ]     || GSB_PLANO+=(shares_conf)
     gsb_include_presente          || GSB_PLANO+=(include)
+    # Proteção SSH: só se há servidor SSH, o sshd_config aceita o arquivo do
+    # gsb e a proteção ainda não está efetiva
+    if [ "$GSB_TEM_SSH" -eq 1 ] && [ "$GSB_SSH_DROPIN_OK" -eq 1 ] && [ "$GSB_SSH_PROTEGIDO" -eq 0 ]; then
+        GSB_PLANO+=(ssh_protecao)
+    fi
     return 0
 }
 
@@ -896,6 +945,7 @@ gsb_descrever_acao() {
         grupo)         t prep.d_grupo "$GSB_GRUPO_USUARIOS" ;;
         shares_conf)   t prep.d_shares_conf "$GSB_SHARES_CONF" ;;
         include)       t prep.d_include "$GSB_SMB_CONF" "$GSB_SHARES_CONF" ;;
+        ssh_protecao)  t prep.d_ssh_protecao "$GSB_SSH_DROPIN" "$GSB_GRUPO_USUARIOS" ;;
     esac
 }
 
@@ -1010,6 +1060,95 @@ gsb_acao_include() {
     fi
 }
 
+# ── Proteção SSH ────────────────────────────────────────────────────────────
+GSB_SSH_MARCA="# gsb - Gerenciador Samba: bloqueio SSH dos usuários do servidor de arquivos"
+
+# Recarrega o SSH, só se o serviço estiver ativo. Com ativação por socket
+# (ou serviço parado) não é preciso: cada nova conexão/início lê a config.
+gsb_ssh_recarregar() {
+    [ -n "$GSB_SVC_SSH" ] || GSB_SVC_SSH=$(gsb_descobrir_servico ssh sshd) || return 0
+    gsb_servico_ativo "$GSB_SVC_SSH" || return 0
+    systemctl reload "$GSB_SVC_SSH.service"
+}
+
+# Cria o arquivo próprio do gsb com "DenyGroups <grupo>", valida a
+# configuração ANTES de recarregar (recarregar o SSH com config inválida pode
+# derrubar o serviço), recarrega e confere no sshd -T que vale para todos.
+gsb_acao_ssh_protecao() {
+    local quem erros
+    # O desfazer só mexe no que esta operação realmente fez
+    GSB_BACKUP_SSHDROPIN=""; GSB_SSH_ESCRITO=0; GSB_SSH_RECARREGADO=0
+
+    # Nunca trancar fora quem está rodando o gsb (via sudo ou root direto)
+    quem="${SUDO_USER:-root}"
+    if id -nG "$quem" 2>/dev/null | tr ' ' '\n' | grep -qxF "$GSB_GRUPO_USUARIOS"; then
+        msg_erro "$(t prep.ssh_admin_no_grupo "$quem" "$GSB_GRUPO_USUARIOS")"
+        return 1
+    fi
+    # Não sobrescreve arquivo que não é do gsb
+    if [ -f "$GSB_SSH_DROPIN" ]; then
+        if ! grep -qxF "$GSB_SSH_MARCA" "$GSB_SSH_DROPIN"; then
+            msg_erro "$(t prep.ssh_arquivo_alheio "$GSB_SSH_DROPIN")"
+            return 1
+        fi
+        GSB_BACKUP_SSHDROPIN=$(gsb_backup "$GSB_SSH_DROPIN") || return 1
+    fi
+
+    {
+        echo "$GSB_SSH_MARCA"
+        echo "# Gerado pelo gsb em $(date '+%Y-%m-%d %H:%M'). NÃO edite à mão: use o gsb."
+        echo "DenyGroups $GSB_GRUPO_USUARIOS"
+    } > "$GSB_SSH_DROPIN"
+    GSB_SSH_ESCRITO=1
+    chmod 644 -- "$GSB_SSH_DROPIN" || return 1
+
+    if ! erros=$(sshd -t 2>&1); then
+        msg_erro "$(t prep.ssh_invalido)"
+        printf '%s\n' "$erros" | head -5 | sed 's/^/     /' >&2
+        return 1
+    fi
+    GSB_SSH_RECARREGADO=1
+    if ! gsb_ssh_recarregar; then
+        msg_erro "$(t prep.ssh_recarregar "$GSB_SVC_SSH")"
+        return 1
+    fi
+    if ! gsb_ssh_protecao_ativa; then
+        msg_erro "$(t prep.ssh_nao_confirmada)"
+        return 1
+    fi
+}
+
+# Desfaz SÓ o que a operação fez: se escreveu o arquivo, volta o anterior
+# (backup) ou o remove; se recarregou o SSH, recarrega de novo - e só com a
+# configuração válida. Falha antes de escrever = nada a desfazer.
+gsb_ssh_desfazer() {
+    [ "${GSB_SSH_ESCRITO:-0}" -eq 1 ] || return 0
+    if [ -n "${GSB_BACKUP_SSHDROPIN:-}" ]; then
+        cp -p -- "$GSB_BACKUP_SSHDROPIN" "$GSB_SSH_DROPIN"
+    elif [ -f "$GSB_SSH_DROPIN" ] && grep -qxF "$GSB_SSH_MARCA" "$GSB_SSH_DROPIN"; then
+        rm -f -- "$GSB_SSH_DROPIN"
+    fi
+    if [ "${GSB_SSH_RECARREGADO:-0}" -eq 1 ] && sshd -t >/dev/null 2>&1; then
+        gsb_ssh_recarregar
+    fi
+}
+
+# Remove a proteção (usada pela desinstalação). Retorna 0 se ao final o
+# grupo não está mais em denygroups.
+gsb_ssh_remover_protecao() {
+    GSB_BACKUP_SSHDROPIN=""
+    [ -f "$GSB_SSH_DROPIN" ] || return 0
+    if ! grep -qxF "$GSB_SSH_MARCA" "$GSB_SSH_DROPIN"; then
+        msg_erro "$(t prep.ssh_arquivo_alheio "$GSB_SSH_DROPIN")"
+        return 1
+    fi
+    gsb_backup "$GSB_SSH_DROPIN" >/dev/null || return 1
+    # Remover = desfazer um arquivo "escrito e em vigor"
+    GSB_SSH_ESCRITO=1; GSB_SSH_RECARREGADO=1
+    gsb_ssh_desfazer
+    ! gsb_ssh_protecao_ativa
+}
+
 # ── Desfazer (só o que é do gsb) ────────────────────────────────────────────
 gsb_desfazer() {
     case "$1" in
@@ -1022,6 +1161,7 @@ gsb_desfazer() {
         include)     if [ -n "${GSB_BACKUP_SMBCONF:-}" ]; then
                          cp -p -- "$GSB_BACKUP_SMBCONF" "$GSB_SMB_CONF" && gsb_samba_recarregar
                      fi ;;
+        ssh_protecao) gsb_ssh_desfazer ;;
         *)           return 0 ;;   # pacotes, serviço e log não são desfeitos
     esac
 }
