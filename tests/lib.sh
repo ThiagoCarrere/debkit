@@ -34,25 +34,44 @@ nao_contem() {
     if [[ "$2" != *"$1"* ]]; then _passou "${3:-}"; else _falhou "${3:-}" "não deveria conter: [$1]"$'\n'"saída: $2"; fi
 }
 
-# verdadeiro <descrição> <comando...>
+# verdadeiro <descrição> <comando...>  (a saída do comando é descartada)
 verdadeiro() {
     local d="$1"; shift
-    if "$@"; then _passou "$d"; else _falhou "$d" "comando falhou: $*"; fi
+    if "$@" >/dev/null 2>&1; then _passou "$d"; else _falhou "$d" "comando falhou: $*"; fi
 }
 
-# Pasta temporária com configuração própria (log, trava e backups dentro dela)
+# Grupo de teste (nunca o gsb_usuarios real)
+GRUPO_TESTE="gsbt_usuarios"
+
+# Pasta temporária com configuração própria. TUDO que o gsb pode alterar
+# aponta para dentro dela: log, trava, backups, uma CÓPIA do smb.conf, o
+# arquivo de compartilhamentos e um grupo de teste. Assim nenhum teste
+# consegue mexer no Samba real, nem respondendo "s" ao assistente.
 caixa_de_areia() {
     AREIA=$(mktemp -d /tmp/gsb-teste.XXXXXX)
     chmod 755 "$AREIA"
-    cat > "$AREIA/gsb.conf" <<EOF
-LOG=$AREIA/gsb.log
-TRAVA=$AREIA/gsb.lock
-BACKUP_DIR=$AREIA/backups
-EOF
+    if [ -f /etc/samba/smb.conf ]; then
+        cp -p /etc/samba/smb.conf "$AREIA/smb.conf"
+    else
+        printf '[global]\n   server role = standalone server\n' > "$AREIA/smb.conf"
+    fi
+    {
+        echo "LOG=$AREIA/gsb.log"
+        echo "TRAVA=$AREIA/gsb.lock"
+        echo "BACKUP_DIR=$AREIA/backups"
+        echo "SMB_CONF=$AREIA/smb.conf"
+        echo "SHARES_CONF=$AREIA/gsb-shares.conf"
+        echo "GRUPO_USUARIOS=$GRUPO_TESTE"
+    } > "$AREIA/gsb.conf"
     chmod 644 "$AREIA/gsb.conf"
     export GSB_CONF_ARQUIVO="$AREIA/gsb.conf"
     export NO_COLOR=1
-    trap 'rm -rf -- "$AREIA"' EXIT
+    trap 'rm -rf -- "${AREIA:?}"; getent group "$GRUPO_TESTE" >/dev/null && groupdel "$GRUPO_TESTE"' EXIT
+}
+
+# Prepara o ambiente DA AREIA (para testar o menu sem cair no assistente)
+preparar_areia() {
+    printf 's\n' | bash "$GSB" --preparar >/dev/null 2>&1
 }
 
 # Tira cores e \r de uma saída

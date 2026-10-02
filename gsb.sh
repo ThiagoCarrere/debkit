@@ -14,6 +14,7 @@
 #   gsb --ajuda        mostra a ajuda
 #   gsb --versao       mostra a versão
 #   gsb --verificar    verifica o ambiente (somente leitura; precisa ser root)
+#   gsb --preparar     verifica e prepara o ambiente (pede confirmação)
 #   source gsb.sh      carrega as funções sem executar nada (para testes)
 #
 # Códigos de saída:
@@ -27,9 +28,10 @@
 #   4. Cores e saída
 #   5. Utilitários
 #   6. Ambiente (detecção)
-#   7. Funções
-#   8. Menus
-#   9. Linha de comando e início
+#   7. Preparação do ambiente
+#   8. Funções
+#   9. Menus
+#  10. Linha de comando e início
 
 # ════════════════════════════════════════════════════════════════════════════
 # 1. VERSÃO E VERIFICAÇÃO DO BASH
@@ -183,7 +185,7 @@ declare -A MSG_pt_BR=(
     [aviso.conf]="Avisos da configuração %s:"
     [erro.trava]="O gsb já está em uso por outra sessão (PID %s). Tente novamente quando ela terminar."
     [erro.trava_abrir]="Não foi possível criar o arquivo de trava %s."
-    [menu.ambiente]="Ambiente: verificar"
+    [menu.ambiente]="Ambiente: verificar e preparar"
     [amb.titulo]="Ambiente do servidor"
     [amb.grupo_sistema]="Sistema"
     [amb.grupo_deps]="Dependências essenciais"
@@ -218,11 +220,43 @@ declare -A MSG_pt_BR=(
     [amb.resumo_ok]="Ambiente pronto para o gsb."
     [amb.resumo_falta]="%d item(ns) essencial(is) impedem o gsb de funcionar."
     [amb.pacotes]="Pacotes necessários: %s"
-    [amb.em_breve]="(a preparação automática do ambiente chega na próxima etapa)"
+    [prep.titulo_assistente]="Preparação do servidor para o gsb"
+    [prep.intro]="O gsb verificou este servidor e precisa preparar algumas coisas antes do primeiro uso."
+    [prep.titulo_plano]="O gsb vai:"
+    [prep.d_pacotes]="Instalar os pacotes: %s"
+    [prep.d_samba_servico]="Deixar o serviço do Samba ativo e iniciando junto com o sistema"
+    [prep.d_dir_conf]="Criar a pasta de configuração %s"
+    [prep.d_conf]="Criar a configuração %s (com os valores padrão)"
+    [prep.d_dir_backup]="Criar a pasta de backups %s (acesso só do root)"
+    [prep.d_log]="Criar o log de auditoria %s"
+    [prep.d_grupo]="Criar o grupo de sistema %s (usuários do gsb)"
+    [prep.d_shares_conf]="Criar o arquivo de compartilhamentos do gsb %s"
+    [prep.d_include]="Incluir no %s a linha \"include = %s\" (com backup e validação)"
+    [prep.pergunta]="Preparar agora?"
+    [prep.recusado]="Nada foi alterado. O gsb vai funcionar de forma limitada até o ambiente ser preparado (menu 9)."
+    [prep.nada_a_fazer]="O ambiente já está preparado. Nada a fazer."
+    [prep.concluido]="Ambiente preparado com sucesso."
+    [prep.falhou]="Falhou: %s"
+    [prep.desfazendo]="Desfazendo o que o gsb já tinha feito..."
+    [prep.mantidos_pacotes]="Os pacotes instalados foram mantidos: %s"
+    [prep.mantido_servico]="O serviço do Samba foi mantido ligado."
+    [prep.impossivel_manual]="Há itens que o gsb não pode resolver sozinho (marcados com ✘). Corrija-os e execute o gsb novamente."
+    [prep.impossivel_pacotes]="Instalação automática indisponível neste sistema. Instale manualmente: %s"
+    [prep.apt_atualizando]="Atualizando a lista de pacotes (apt-get update)..."
+    [prep.apt_update_falhou]="Não foi possível atualizar a lista de pacotes; tentando instalar mesmo assim."
+    [prep.apt_instalando]="Instalando: %s (pode levar alguns minutos)..."
+    [prep.apt_falhou]="A instalação falhou (sem internet? repositórios com erro?). Últimas linhas:"
+    [prep.apt_conferencia]="Depois da instalação, o comando %s ainda não existe (pacote %s)."
+    [prep.servico_falhou]="Não foi possível ativar o serviço %s (veja: systemctl status %s)."
+    [prep.include_testparm]="O smb.conf ficou inválido com a linha do gsb (testparm)."
+    [prep.recarregar_falhou]="Não foi possível recarregar o Samba."
+    [prep.backup_sem_arquivo]="Backup impossível: %s não existe."
+    [prep.backup_falhou]="Não foi possível fazer o backup de %s."
     [ajuda.texto]="Uso: gsb [opção]
 
   (sem opção)    abre o menu interativo (precisa ser root)
   --verificar    verifica o ambiente, sem alterar nada (precisa ser root)
+  --preparar     verifica e prepara o ambiente (pede confirmação)
   -h, --ajuda    mostra esta ajuda
   -v, --versao   mostra a versão
 
@@ -246,7 +280,7 @@ declare -A MSG_en=(
     [aviso.conf]="Configuration warnings in %s:"
     [erro.trava]="gsb is already in use by another session (PID %s). Try again when it finishes."
     [erro.trava_abrir]="Could not create the lock file %s."
-    [menu.ambiente]="Environment: check"
+    [menu.ambiente]="Environment: check and set up"
     [amb.titulo]="Server environment"
     [amb.grupo_sistema]="System"
     [amb.grupo_deps]="Essential dependencies"
@@ -281,11 +315,43 @@ declare -A MSG_en=(
     [amb.resumo_ok]="Environment ready for gsb."
     [amb.resumo_falta]="%d essential item(s) prevent gsb from working."
     [amb.pacotes]="Required packages: %s"
-    [amb.em_breve]="(automatic environment setup comes in the next step)"
+    [prep.titulo_assistente]="Preparing the server for gsb"
+    [prep.intro]="gsb checked this server and needs to prepare a few things before first use."
+    [prep.titulo_plano]="gsb will:"
+    [prep.d_pacotes]="Install the packages: %s"
+    [prep.d_samba_servico]="Make the Samba service active and start at boot"
+    [prep.d_dir_conf]="Create the configuration folder %s"
+    [prep.d_conf]="Create the configuration %s (default values)"
+    [prep.d_dir_backup]="Create the backup folder %s (root only)"
+    [prep.d_log]="Create the audit log %s"
+    [prep.d_grupo]="Create the system group %s (gsb users)"
+    [prep.d_shares_conf]="Create the gsb shares file %s"
+    [prep.d_include]="Add to %s the line \"include = %s\" (with backup and validation)"
+    [prep.pergunta]="Set up now?"
+    [prep.recusado]="Nothing was changed. gsb will work in a limited way until the environment is set up (menu 9)."
+    [prep.nada_a_fazer]="The environment is already set up. Nothing to do."
+    [prep.concluido]="Environment set up successfully."
+    [prep.falhou]="Failed: %s"
+    [prep.desfazendo]="Undoing what gsb had already done..."
+    [prep.mantidos_pacotes]="The installed packages were kept: %s"
+    [prep.mantido_servico]="The Samba service was kept running."
+    [prep.impossivel_manual]="Some items cannot be fixed by gsb (marked with ✘). Fix them and run gsb again."
+    [prep.impossivel_pacotes]="Automatic installation is not available on this system. Install manually: %s"
+    [prep.apt_atualizando]="Updating the package list (apt-get update)..."
+    [prep.apt_update_falhou]="Could not update the package list; trying to install anyway."
+    [prep.apt_instalando]="Installing: %s (this may take a few minutes)..."
+    [prep.apt_falhou]="Installation failed (no internet? broken repositories?). Last lines:"
+    [prep.apt_conferencia]="After installation, the command %s still does not exist (package %s)."
+    [prep.servico_falhou]="Could not activate the service %s (see: systemctl status %s)."
+    [prep.include_testparm]="smb.conf became invalid with the gsb line (testparm)."
+    [prep.recarregar_falhou]="Could not reload Samba."
+    [prep.backup_sem_arquivo]="Backup impossible: %s does not exist."
+    [prep.backup_falhou]="Could not back up %s."
     [ajuda.texto]="Usage: gsb [option]
 
   (no option)    opens the interactive menu (requires root)
   --check        checks the environment without changing anything (requires root)
+  --setup        checks and sets up the environment (asks for confirmation)
   -h, --help     shows this help
   -v, --version  shows the version
 
@@ -566,6 +632,9 @@ gsb_samba_papel_efetivo() {
 # GSB_BLOQUEIOS: quantos itens impedem o gsb de funcionar
 gsb_verif_add() { GSB_VERIF+=("$1"$'\t'"$2"$'\t'"$3"); [ "$2" == "falta" ] && GSB_BLOQUEIOS=$((GSB_BLOQUEIOS + 1)); return 0; }
 
+# Bloqueio que o gsb NÃO consegue resolver sozinho (exige o administrador)
+gsb_verif_manual() { gsb_verif_add "$1" falta "$2"; GSB_BLOQ_MANUAL=$((GSB_BLOQ_MANUAL + 1)); }
+
 gsb_pacote_add() {
     local p
     [ -z "$1" ] && return 0
@@ -579,10 +648,12 @@ gsb_pacote_add() {
 #   GSB_SVC_SAMBA / GSB_SVC_SSH  nome do serviço (vazio se não encontrado)
 #   GSB_TEM_SSH                  1 se o servidor SSH está instalado
 #   GSB_SSH_DROPIN_OK            1 se o sshd_config inclui o arquivo do gsb
+#   GSB_BLOQ_MANUAL              bloqueios que exigem o administrador
+#                                (os demais se resolvem instalando pacotes)
 # shellcheck disable=SC2034  # variáveis de saída, usadas pelas próximas tarefas
 gsb_verificar_ambiente() {
     local dep cmd tipo pacote presentes=0 total=0 papel backend senha_ssh
-    GSB_VERIF=(); GSB_PACOTES_FALTANDO=(); GSB_BLOQUEIOS=0
+    GSB_VERIF=(); GSB_PACOTES_FALTANDO=(); GSB_BLOQUEIOS=0; GSB_BLOQ_MANUAL=0
     GSB_SVC_SAMBA=""; GSB_SVC_SSH=""; GSB_TEM_SSH=0; GSB_SSH_DROPIN_OK=0
 
     # ── Sistema ──
@@ -596,7 +667,7 @@ gsb_verificar_ambiente() {
     if [ -d "$GSB_DIR_SYSTEMD" ]; then
         gsb_verif_add sistema ok "$(t amb.systemd_ok)"
     else
-        gsb_verif_add sistema falta "$(t amb.systemd_falta)"
+        gsb_verif_manual sistema "$(t amb.systemd_falta)"
     fi
 
     # ── Dependências ──
@@ -638,24 +709,24 @@ gsb_verificar_ambiente() {
         fi
 
         if [ ! -f "$GSB_SMB_CONF" ]; then
-            gsb_verif_add samba falta "$(t amb.smbconf_ausente "$GSB_SMB_CONF")"
+            gsb_verif_manual samba "$(t amb.smbconf_ausente "$GSB_SMB_CONF")"
         elif ! gsb_tem_comando testparm; then
             :   # já listado como dependência faltando
         elif ! testparm -s "$GSB_SMB_CONF" >/dev/null 2>&1; then
-            gsb_verif_add samba falta "$(t amb.smbconf_invalido "$GSB_SMB_CONF")"
+            gsb_verif_manual samba "$(t amb.smbconf_invalido "$GSB_SMB_CONF")"
         else
             gsb_verif_add samba ok "$(t amb.smbconf_ok "$GSB_SMB_CONF")"
             papel=$(gsb_samba_papel_efetivo)
             case "$papel" in
                 "standalone server") gsb_verif_add samba ok "$(t amb.papel_ok)" ;;
-                *"domain controller"*) gsb_verif_add samba falta "$(t amb.papel_dc "$papel")" ;;
+                *"domain controller"*) gsb_verif_manual samba "$(t amb.papel_dc "$papel")" ;;
                 *) gsb_verif_add samba aviso "$(t amb.papel_outro "$papel")" ;;
             esac
             backend=$(gsb_samba_param "passdb backend")
             if [ "$backend" == "tdbsam" ]; then
                 gsb_verif_add samba ok "$(t amb.backend_ok "$backend")"
             else
-                gsb_verif_add samba falta "$(t amb.backend_outro "$backend")"
+                gsb_verif_manual samba "$(t amb.backend_outro "$backend")"
             fi
         fi
     fi
@@ -712,25 +783,353 @@ gsb_mostrar_ambiente() {
         if [ ${#GSB_PACOTES_FALTANDO[@]} -gt 0 ]; then
             msg_info "$(t amb.pacotes "${GSB_PACOTES_FALTANDO[*]}")"
         fi
-        msg_info "$(t amb.em_breve)"
     fi
 }
 
 # ════════════════════════════════════════════════════════════════════════════
-# 7. FUNÇÕES
+# 7. PREPARAÇÃO DO AMBIENTE
+# ════════════════════════════════════════════════════════════════════════════
+# Resolve o que a detecção encontrou: instala pacotes (Debian), liga o
+# Samba, cria a estrutura do gsb e o "include" no smb.conf. Sempre com
+# plano mostrado antes e UMA confirmação. Se um passo falhar, desfaz o que
+# é do gsb (arquivos, pastas, grupo, smb.conf); pacotes instalados e o
+# serviço do Samba ligado NÃO são desfeitos (desinstalar no meio de uma
+# falha arriscaria quebrar mais do que consertar) - e isso é informado.
+
+GSB_APT="${GSB_APT:-apt-get}"    # variável para os testes poderem simular
+
+# Ordem das chaves no gsb.conf gerado
+GSB_CONF_ORDEM=(IDIOMA SENHA_MIN GRUPO_USUARIOS PREFIXO_GRUPO SMB_CONF SHARES_CONF SSH_DROPIN LOG BACKUP_DIR BACKUP_MANTER TRAVA)
+
+# ── Backups ─────────────────────────────────────────────────────────────────
+# Copia o arquivo para GSB_BACKUP_DIR (pasta 700, cópia 600) com data/hora
+# e mantém só as GSB_BACKUP_MANTER cópias mais recentes daquele arquivo.
+# Imprime o caminho do backup.
+gsb_backup() {
+    local arquivo="$1" nome destino
+    if [ ! -f "$arquivo" ]; then
+        msg_erro "$(t prep.backup_sem_arquivo "$arquivo")"
+        return 1
+    fi
+    if ! ( umask 077; mkdir -p -- "$GSB_BACKUP_DIR" ) || ! chmod 700 -- "$GSB_BACKUP_DIR"; then
+        msg_erro "$(t prep.backup_falhou "$arquivo")"
+        return 1
+    fi
+    nome=$(basename -- "$arquivo")
+    destino="$GSB_BACKUP_DIR/$nome.$(date +%Y%m%d-%H%M%S-%N)"
+    if ! cp -p -- "$arquivo" "$destino" || ! chmod 600 -- "$destino"; then
+        rm -f -- "$destino"
+        msg_erro "$(t prep.backup_falhou "$arquivo")"
+        return 1
+    fi
+    gsb_backup_limpar "$nome"
+    echo "$destino"
+}
+
+# Apaga as cópias mais antigas de <nome>, mantendo GSB_BACKUP_MANTER
+gsb_backup_limpar() {
+    local nome="$1"
+    find "$GSB_BACKUP_DIR" -maxdepth 1 -type f -name "$nome.[0-9]*" -printf '%f\n' 2>/dev/null \
+        | sort | head -n -"$GSB_BACKUP_MANTER" \
+        | while IFS= read -r velho; do rm -f -- "$GSB_BACKUP_DIR/$velho"; done
+}
+
+# ── Peças da estrutura do gsb ───────────────────────────────────────────────
+gsb_dir_conf() { dirname -- "$GSB_CONF_ARQUIVO"; }
+
+# A linha "include = <SHARES_CONF>" já está no smb.conf?
+gsb_include_presente() {
+    local caminho_er="${GSB_SHARES_CONF//./\\.}"
+    [ -f "$GSB_SMB_CONF" ] && grep -qiE "^[[:space:]]*include[[:space:]]*=[[:space:]]*${caminho_er}[[:space:]]*$" "$GSB_SMB_CONF"
+}
+
+# Recarrega o Samba (só se o serviço estiver ativo)
+gsb_samba_recarregar() {
+    [ -n "$GSB_SVC_SAMBA" ] || GSB_SVC_SAMBA=$(gsb_descobrir_servico smbd smb) || return 0
+    gsb_servico_ativo "$GSB_SVC_SAMBA" || return 0
+    systemctl reload "$GSB_SVC_SAMBA.service"
+}
+
+# ── Plano ───────────────────────────────────────────────────────────────────
+# GSB_PLANO: ids das ações, na ordem de execução.
+# GSB_PLANO_IMPOSSIVEL: motivo, se algo não pode ser resolvido pelo gsb.
+# Usar depois de gsb_verificar_ambiente.
+gsb_montar_plano() {
+    GSB_PLANO=(); GSB_PLANO_IMPOSSIVEL=""
+
+    if [ "$GSB_BLOQ_MANUAL" -gt 0 ]; then
+        GSB_PLANO_IMPOSSIVEL="$(t prep.impossivel_manual)"
+        return 0
+    fi
+    if [ ${#GSB_PACOTES_FALTANDO[@]} -gt 0 ]; then
+        if gsb_familia_debian && gsb_tem_comando "$GSB_APT"; then
+            GSB_PLANO+=(pacotes)
+        else
+            GSB_PLANO_IMPOSSIVEL="$(t prep.impossivel_pacotes "${GSB_PACOTES_FALTANDO[*]}")"
+            return 0
+        fi
+    fi
+    # Serviço: se o Samba vai ser instalado agora, o estado só se sabe depois
+    if [[ " ${GSB_PLANO[*]} " == *" pacotes "* ]] || [ -z "$GSB_SVC_SAMBA" ] \
+       || ! gsb_servico_ativo "$GSB_SVC_SAMBA" || ! gsb_servico_habilitado "$GSB_SVC_SAMBA"; then
+        GSB_PLANO+=(samba_servico)
+    fi
+    [ -d "$(gsb_dir_conf)" ]      || GSB_PLANO+=(dir_conf)
+    [ -f "$GSB_CONF_ARQUIVO" ]    || GSB_PLANO+=(conf)
+    [ -d "$GSB_BACKUP_DIR" ]      || GSB_PLANO+=(dir_backup)
+    [ -f "$GSB_LOG" ]             || GSB_PLANO+=(log)
+    getent group "$GSB_GRUPO_USUARIOS" >/dev/null 2>&1 || GSB_PLANO+=(grupo)
+    [ -f "$GSB_SHARES_CONF" ]     || GSB_PLANO+=(shares_conf)
+    gsb_include_presente          || GSB_PLANO+=(include)
+    return 0
+}
+
+# Descrição de uma ação do plano (para mostrar antes de confirmar)
+gsb_descrever_acao() {
+    case "$1" in
+        pacotes)       t prep.d_pacotes "${GSB_PACOTES_FALTANDO[*]}" ;;
+        samba_servico) t prep.d_samba_servico ;;
+        dir_conf)      t prep.d_dir_conf "$(gsb_dir_conf)" ;;
+        conf)          t prep.d_conf "$GSB_CONF_ARQUIVO" ;;
+        dir_backup)    t prep.d_dir_backup "$GSB_BACKUP_DIR" ;;
+        log)           t prep.d_log "$GSB_LOG" ;;
+        grupo)         t prep.d_grupo "$GSB_GRUPO_USUARIOS" ;;
+        shares_conf)   t prep.d_shares_conf "$GSB_SHARES_CONF" ;;
+        include)       t prep.d_include "$GSB_SMB_CONF" "$GSB_SHARES_CONF" ;;
+    esac
+}
+
+gsb_mostrar_plano() {
+    local acao
+    echo ""
+    printf '  %s%s%s\n' "$C_NEGRITO" "$(t prep.titulo_plano)" "$C_RESET"
+    for acao in "${GSB_PLANO[@]}"; do
+        printf '    • %s\n' "$(gsb_descrever_acao "$acao")"
+    done
+    echo ""
+}
+
+# ── Ações (cada uma retorna 0 se deu certo, conferindo o resultado) ─────────
+gsb_acao_pacotes() {
+    local registro cmd dep tipo pacote
+    registro=$(gsb_temp) || return 1
+    msg_info "$(t prep.apt_atualizando)"
+    if ! DEBIAN_FRONTEND=noninteractive "$GSB_APT" -o DPkg::Lock::Timeout=120 update >"$registro" 2>&1; then
+        msg_aviso "$(t prep.apt_update_falhou)"
+    fi
+    msg_info "$(t prep.apt_instalando "${GSB_PACOTES_FALTANDO[*]}")"
+    # confdef/confold: se existir configuração antiga (ex: smb.conf de uma
+    # instalação anterior), mantém a existente em vez de parar perguntando
+    if ! DEBIAN_FRONTEND=noninteractive "$GSB_APT" -o DPkg::Lock::Timeout=120 \
+            -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold \
+            install -y "${GSB_PACOTES_FALTANDO[@]}" >>"$registro" 2>&1; then
+        msg_erro "$(t prep.apt_falhou)"
+        tail -n 8 "$registro" | sed 's/^/     /' >&2
+        return 1
+    fi
+    # Confere: todos os comandos essenciais agora existem?
+    for dep in "${GSB_DEPENDENCIAS[@]}"; do
+        IFS='|' read -r cmd tipo pacote <<< "$dep"
+        [ "$tipo" == "essencial" ] || continue
+        if ! gsb_tem_comando "$cmd"; then
+            msg_erro "$(t prep.apt_conferencia "$cmd" "$pacote")"
+            return 1
+        fi
+    done
+    GSB_PACOTES_INSTALADOS="${GSB_PACOTES_FALTANDO[*]}"
+}
+
+gsb_acao_samba_servico() {
+    if ! GSB_SVC_SAMBA=$(gsb_descobrir_servico smbd smb); then
+        msg_erro "$(t amb.servico_nao_encontrado "smbd/smb")"
+        return 1
+    fi
+    if ! gsb_servico_habilitado "$GSB_SVC_SAMBA"; then
+        systemctl enable "$GSB_SVC_SAMBA.service" >/dev/null 2>&1 || true
+    fi
+    if ! gsb_servico_ativo "$GSB_SVC_SAMBA"; then
+        systemctl start "$GSB_SVC_SAMBA.service" >/dev/null 2>&1 || true
+    fi
+    gsb_servico_ativo "$GSB_SVC_SAMBA" && gsb_servico_habilitado "$GSB_SVC_SAMBA" && return 0
+    msg_erro "$(t prep.servico_falhou "$GSB_SVC_SAMBA")"
+    return 1
+}
+
+gsb_acao_dir_conf()   { ( umask 022; mkdir -p -- "$(gsb_dir_conf)" ) && chmod 755 -- "$(gsb_dir_conf)"; }
+gsb_acao_dir_backup() { ( umask 077; mkdir -p -- "$GSB_BACKUP_DIR" ) && chmod 700 -- "$GSB_BACKUP_DIR"; }
+gsb_acao_log()        { ( umask 027; : >> "$GSB_LOG" ) && chmod 640 -- "$GSB_LOG"; }
+gsb_acao_grupo()      { groupadd --system -- "$GSB_GRUPO_USUARIOS" && getent group "$GSB_GRUPO_USUARIOS" >/dev/null; }
+
+gsb_acao_conf() {
+    local chave var
+    {
+        echo "# /etc/gsb/gsb.conf - gerado pelo gsb $GSB_VERSAO em $(date '+%Y-%m-%d %H:%M')"
+        echo "# Descrição de cada opção: gsb.conf.exemplo (no repositório do gsb)."
+        echo "# Formato CHAVE=valor; o arquivo é lido, nunca executado."
+        echo ""
+        for chave in "${GSB_CONF_ORDEM[@]}"; do
+            var="GSB_$chave"
+            printf '%s=%s\n' "$chave" "${!var}"
+        done
+    } > "$GSB_CONF_ARQUIVO" && chmod 644 -- "$GSB_CONF_ARQUIVO" && chown 0:0 -- "$GSB_CONF_ARQUIVO" \
+        && gsb_conf_carregar "$GSB_CONF_ARQUIVO"
+}
+
+gsb_acao_shares_conf() {
+    {
+        echo "# Compartilhamentos gerenciados pelo gsb (Gerenciador Samba)."
+        echo "# NÃO edite à mão: use o gsb. Este arquivo é incluído pelo"
+        echo "# $GSB_SMB_CONF (linha \"include = $GSB_SHARES_CONF\")."
+    } > "$GSB_SHARES_CONF" && chmod 644 -- "$GSB_SHARES_CONF"
+}
+
+gsb_acao_include() {
+    local backup quebra=""
+    if [ ! -f "$GSB_SMB_CONF" ]; then
+        msg_erro "$(t amb.smbconf_ausente "$GSB_SMB_CONF")"
+        return 1
+    fi
+    backup=$(gsb_backup "$GSB_SMB_CONF") || return 1
+    GSB_BACKUP_SMBCONF="$backup"
+    # Se o arquivo não termina com quebra de linha, acrescenta uma antes
+    [ -n "$(tail -c 1 -- "$GSB_SMB_CONF")" ] && quebra=$'\n'
+    {
+        printf '%s' "$quebra"
+        echo ""
+        echo "# gsb - Gerenciador Samba: compartilhamentos do gsb (não remova esta linha)"
+        echo "include = $GSB_SHARES_CONF"
+    } >> "$GSB_SMB_CONF" || return 1
+    if ! testparm -s "$GSB_SMB_CONF" >/dev/null 2>&1; then
+        msg_erro "$(t prep.include_testparm)"
+        return 1
+    fi
+    gsb_include_presente || return 1
+    if ! gsb_samba_recarregar; then
+        msg_erro "$(t prep.recarregar_falhou)"
+        return 1
+    fi
+}
+
+# ── Desfazer (só o que é do gsb) ────────────────────────────────────────────
+gsb_desfazer() {
+    case "$1" in
+        dir_conf)    rmdir -- "$(gsb_dir_conf)" 2>/dev/null ;;
+        conf)        rm -f -- "$GSB_CONF_ARQUIVO" ;;
+        dir_backup)  rmdir -- "$GSB_BACKUP_DIR" 2>/dev/null ;;   # só se vazia
+        grupo)       getent group "$GSB_GRUPO_USUARIOS" | awk -F: '$4 != "" {exit 1}' \
+                         && groupdel -- "$GSB_GRUPO_USUARIOS" ;;
+        shares_conf) [ "$(grep -cv '^#' "$GSB_SHARES_CONF" 2>/dev/null)" == "0" ] && rm -f -- "$GSB_SHARES_CONF" ;;
+        include)     if [ -n "${GSB_BACKUP_SMBCONF:-}" ]; then
+                         cp -p -- "$GSB_BACKUP_SMBCONF" "$GSB_SMB_CONF" && gsb_samba_recarregar
+                     fi ;;
+        *)           return 0 ;;   # pacotes, serviço e log não são desfeitos
+    esac
+}
+
+# ── Execução do plano ───────────────────────────────────────────────────────
+# Executa GSB_PLANO na ordem. Se uma ação falhar, desfaz as anteriores (só o
+# que é do gsb), na ordem inversa, e informa o que ficou.
+gsb_executar_plano() {
+    local acao i feito
+    local -a feitos=()
+    GSB_PACOTES_INSTALADOS=""; GSB_BACKUP_SMBCONF=""
+    for acao in "${GSB_PLANO[@]}"; do
+        if "gsb_acao_$acao"; then
+            feitos+=("$acao")
+            msg_ok "$(gsb_descrever_acao "$acao")"
+            gsb_auditar preparar "acao=$acao resultado=ok"
+        else
+            msg_erro "$(t prep.falhou "$(gsb_descrever_acao "$acao")")"
+            gsb_auditar preparar "acao=$acao resultado=falha"
+            # A própria ação pode ter alterado algo antes de falhar (ex: o
+            # include grava a linha e só depois valida): desfaz ela também
+            gsb_desfazer "$acao"
+            if [ ${#feitos[@]} -gt 0 ]; then
+                msg_info "$(t prep.desfazendo)"
+                for (( i=${#feitos[@]}-1; i>=0; i-- )); do
+                    feito="${feitos[$i]}"
+                    gsb_desfazer "$feito"
+                    gsb_auditar preparar "acao=$feito resultado=desfeito"
+                done
+                [ -n "$GSB_PACOTES_INSTALADOS" ] && msg_aviso "$(t prep.mantidos_pacotes "$GSB_PACOTES_INSTALADOS")"
+                [[ " ${feitos[*]} " == *" samba_servico "* ]] && msg_aviso "$(t prep.mantido_servico)"
+            fi
+            return 1
+        fi
+    done
+    return 0
+}
+
+# Fluxo completo: verifica, mostra, oferece e prepara.
+# Retorna 0 se ao final o ambiente está pronto.
+gsb_preparar() {
+    local plano_txt
+    gsb_verificar_ambiente
+    gsb_montar_plano
+    if [ -n "$GSB_PLANO_IMPOSSIVEL" ]; then
+        gsb_mostrar_ambiente
+        msg_erro "$GSB_PLANO_IMPOSSIVEL"
+        return 1
+    fi
+    if [ ${#GSB_PLANO[@]} -eq 0 ]; then
+        msg_ok "$(t prep.nada_a_fazer)"
+        return 0
+    fi
+    plano_txt=$(IFS=,; echo "${GSB_PLANO[*]}")
+    gsb_mostrar_plano
+    if ! confirmar "$(t prep.pergunta)"; then
+        gsb_auditar preparar "plano=$plano_txt resposta=nao"
+        msg_aviso "$(t prep.recusado)"
+        return 1
+    fi
+    gsb_auditar preparar "plano=$plano_txt resposta=sim"
+    if gsb_executar_plano; then
+        echo ""
+        msg_ok "$(t prep.concluido)"
+        return 0
+    fi
+    return 1
+}
+
+# ════════════════════════════════════════════════════════════════════════════
+# 8. FUNÇÕES
 # ════════════════════════════════════════════════════════════════════════════
 # (adicionadas nas próximas etapas)
 
 # ════════════════════════════════════════════════════════════════════════════
-# 8. MENUS
+# 9. MENUS
 # ════════════════════════════════════════════════════════════════════════════
 
-# Tela "Ambiente": verificação completa (somente leitura)
+# Tela "Ambiente": relatório completo e, se houver o que preparar, oferece
 menu_ambiente() {
     titulo "$(t amb.titulo)"
     gsb_verificar_ambiente
     gsb_mostrar_ambiente
+    gsb_montar_plano
+    if [ -z "$GSB_PLANO_IMPOSSIVEL" ] && [ ${#GSB_PLANO[@]} -gt 0 ]; then
+        gsb_preparar
+    fi
     pausar
+}
+
+# Assistente da primeira execução (e de quando algo "quebrou"): ao abrir o
+# menu, se houver o que preparar, mostra o plano e pergunta. Retorna 1 se
+# o gsb não puder funcionar (o menu não deve abrir).
+gsb_assistente() {
+    gsb_verificar_ambiente
+    gsb_montar_plano
+    if [ -n "$GSB_PLANO_IMPOSSIVEL" ]; then
+        titulo "$(t amb.titulo)"
+        gsb_mostrar_ambiente
+        msg_erro "$GSB_PLANO_IMPOSSIVEL"
+        return 1
+    fi
+    [ ${#GSB_PLANO[@]} -eq 0 ] && return 0
+    titulo "$(t prep.titulo_assistente)"
+    msg_info "$(t prep.intro)"
+    gsb_preparar
+    pausar
+    return 0
 }
 
 menu_principal() {
@@ -753,7 +1152,7 @@ menu_principal() {
 }
 
 # ════════════════════════════════════════════════════════════════════════════
-# 9. LINHA DE COMANDO E INÍCIO
+# 10. LINHA DE COMANDO E INÍCIO
 # ════════════════════════════════════════════════════════════════════════════
 
 # Carrega a configuração mostrando avisos/erros. Retorna 1 se inválida.
@@ -794,7 +1193,7 @@ main() {
     fi
 
     case "${1:-}" in
-        ""|--verificar|--check) ;;
+        ""|--verificar|--check|--preparar|--setup) ;;
         *) msg_erro "$(t erro.uso "$1")"; exit 2 ;;
     esac
 
@@ -804,7 +1203,7 @@ main() {
     fi
 
     # Verificação do ambiente (somente leitura: sem trava nem auditoria)
-    if [ -n "${1:-}" ]; then
+    if [ "${1:-}" == "--verificar" ] || [ "${1:-}" == "--check" ]; then
         gsb_verificar_ambiente; local rc=$?
         gsb_mostrar_ambiente
         exit "$rc"
@@ -814,8 +1213,16 @@ main() {
     trap 'echo; msg_aviso "$(t geral.interrompido)"; GSB_MOTIVO_SAIDA="interrompida"; exit 130' INT TERM
 
     gsb_travar || exit 1
-    gsb_auditar sessao_inicio "v$GSB_VERSAO"
+    gsb_auditar sessao_inicio "v$GSB_VERSAO${1:+ $1}"
     GSB_SESSAO_ATIVA=1
+
+    # Preparação pela linha de comando
+    if [ -n "${1:-}" ]; then
+        gsb_preparar
+        exit $?
+    fi
+
+    gsb_assistente || exit 1
     menu_principal
 }
 

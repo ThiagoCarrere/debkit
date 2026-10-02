@@ -145,7 +145,7 @@ Estrutura do repositório:
 
 | Fase | Conteúdo |
 |---|---|
-| 0. Fundação | 0.1 esqueleto (configuração, catálogo de mensagens, utilitários, trava, log, menu) · 0.2 detecção do ambiente · 0.3 preparação do ambiente e assistente de primeira execução (inclui backups) · 0.4 proteção SSH · 0.5 checagem rápida na abertura e opção "Verificar e preparar o ambiente" |
+| 0. Fundação | 0.1 esqueleto (configuração, catálogo de mensagens, utilitários, trava, log, menu) ✔ · 0.2 detecção do ambiente ✔ · 0.3 preparação do ambiente, assistente de abertura (verifica a cada execução e oferece consertar) e backups ✔ · 0.4 proteção SSH · 0.5 firewall (ufw/firewalld: avisar e oferecer liberar a porta 445) |
 | 1. Usuários | **criar** (item 1 do menu), listar, trocar senha (Linux + Samba), grupos, desativar/reativar, remover |
 | 2. Compartilhamentos | criar, listar, permissões de pasta, remover; avaliar acesso somente leitura por grupo |
 | 3. Diagnóstico | falhas de login, sessões ativas, saúde do Samba, consulta à auditoria, inventário somente leitura |

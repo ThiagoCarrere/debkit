@@ -123,7 +123,9 @@ caso "smb.conf ausente"
 sed -i '/^SMB_CONF=/d' "$AREIA/gsb.conf"; echo "SMB_CONF=$AREIA/nao_existe.conf" >> "$AREIA/gsb.conf"
 saida=$(verif)
 contem "nao_existe.conf não existe" "$saida"; contem "RC=1" "$saida"
-sed -i '/^SMB_CONF=/d' "$AREIA/gsb.conf"
+# volta a apontar para a cópia do smb.conf real dentro da areia
+sed -i '/^SMB_CONF=/d' "$AREIA/gsb.conf"; echo "SMB_CONF=$AREIA/smb.conf" >> "$AREIA/gsb.conf"
+cp -p /etc/samba/smb.conf "$AREIA/smb.conf"
 
 # ── Serviços (simulado) ──────────────────────────────────────────────────────
 caso "Samba parado e desabilitado"
@@ -134,6 +136,7 @@ caso "serviço do Samba não encontrado no systemd"
 contem "Serviço do Samba (smbd/smb) não encontrado" "$(verif 'gsb_servico_existe() { return 1; };')"
 
 # ── Menu ─────────────────────────────────────────────────────────────────────
+preparar_areia
 caso "menu: opção 9 mostra o ambiente e volta"
 saida=$(pty 0.8 "bash $GSB" 9 "" 0)
 contem "9) Ambiente: verificar" "$saida"; contem "Ambiente do servidor" "$saida"

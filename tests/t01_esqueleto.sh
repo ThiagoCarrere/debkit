@@ -109,6 +109,7 @@ igual "chave.que.nao.existe" "$(bash -c "source '$GSB'; t chave.que.nao.existe")
 igual "Opção inválida: '100%s %d'" "$(bash -c "source '$GSB'; t geral.opcao_invalida '100%s %d'")"
 
 # ── Menu ─────────────────────────────────────────────────────────────────────
+preparar_areia
 caso "menu: abrir, opção inválida, Enter vazio e sair"
 saida=$(pty 0.6 "bash $GSB" "" 7 "" 0)
 contem "gsb - Gerenciador Samba" "$saida"; contem "Opção inválida: '7'" "$saida"

@@ -6,6 +6,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 ## [Não lançado]
 
 ### Adicionado
+- **Preparação do ambiente (tarefa 0.3):** `gsb --preparar`, menu
+  "9) Ambiente: verificar e preparar" e assistente ao abrir o menu.
+  Monta um plano só com o que falta (instalar pacotes via apt-get com
+  espera pelo apt e mantendo configurações existentes; ligar o Samba;
+  criar `/etc/gsb/gsb.conf`, backups 700, log 640, grupo de sistema
+  `gsb_usuarios`, `gsb-shares.conf` e a linha `include` no `smb.conf`),
+  pede UMA confirmação, confere cada passo e, se algo falhar, desfaz o que
+  é do gsb (pacotes e serviço são mantidos e isso é informado). Bloqueios
+  que o gsb não resolve sozinho são explicados. Rotina de backups com
+  limpeza das cópias antigas. Auditoria do plano e de cada ação.
 - **Detecção do ambiente (tarefa 0.2):** `gsb --verificar` e menu
   "9) Ambiente", somente leitura. Verifica sistema (os-release lido sem
   executar), systemd, 22 dependências essenciais (tabela única por
