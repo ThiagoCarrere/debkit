@@ -188,3 +188,60 @@ Lições já aprendidas lá e que valem aqui:
   `/var/www`;
 - conferir o resultado real de cada operação (não confiar só no código de
   saída), e testar com login de verdade.
+
+## 10. Situação atual e próximos passos
+
+*Atualizado em 02/10/2026, ao fim da Fase 0.*
+
+**Fase 0 (fundação) concluída** — commits na branch `dev`:
+
+| Tarefa | Commit |
+|---|---|
+| 0.1 Esqueleto | `17cd607` |
+| 0.2 Detecção do ambiente | `a7748d0` |
+| 0.3 Preparação do ambiente | `95abea3` |
+| 0.4 Proteção SSH | `345f64d` |
+| 0.5 Firewall | `9d68faa` |
+
+O que já funciona: `gsb --verificar`, `gsb --preparar`, o assistente ao
+abrir o menu e a tela "9) Ambiente". Ainda não há funções de usuários e
+compartilhamentos no menu.
+
+**Próximo passo: Fase 1, tarefa 1.1 — Criar usuário** (item 1 do menu):
+
+- nome validado e ainda inexistente;
+- usuário Linux sem pasta pessoal, shell `nologin`;
+- a MESMA senha no Linux (`chpasswd`) e no Samba (`smbpasswd -s -a`),
+  mínimo `SENHA_MIN` (padrão 4), lida sem eco e passada sempre pela entrada
+  padrão (nunca na linha de comando);
+- entra no grupo `GRUPO_USUARIOS` (`gsb_usuarios`) — já nasce bloqueado no
+  SSH;
+- escolha de grupos de compartilhamento do gsb (prefixo `PREFIXO_GRUPO`);
+  como os compartilhamentos só chegam na Fase 2, a lista pode estar vazia;
+- resumo, UMA confirmação e desfazer completo se algo falhar no meio;
+- só funciona com o ambiente preparado (senão orienta o menu 9);
+- prova real: login no Samba funciona e login por SSH é recusado.
+
+**Como rodar os testes:**
+
+```
+tests/run.sh                                   # suíte normal (caixa de areia)
+GSB_TESTE_REAL=1 tests/run.sh t04b_ssh_real.sh # prova com o SSH real
+GSB_TESTE_REAL=1 tests/run.sh t05b_ufw_real.sh # prova com o ufw real (instalado e INATIVO)
+```
+
+O `tests/run.sh` compara uma "impressão digital" do sistema real antes e
+depois de cada arquivo de teste e falha se algo mudar. Situação ao fim da
+Fase 0: 320 verificações na suíte normal + 27 nas provas reais, todas
+passando; `shellcheck` sem avisos no `gsb.sh`.
+
+**Cuidados aprendidos na Fase 0** (valem para as próximas tarefas):
+
+- a caixa de areia dos testes precisa isolar TUDO que o gsb pode alterar
+  (smb.conf, shares, grupo, `SSH_DROPIN`...): numa tarefa um teste chegou a
+  criar o arquivo SSH real; daí nasceu a trava do `run.sh`;
+- testar o comportamento real das ferramentas antes de codificar
+  (ex.: `server role = auto`; `Include` depois de `Match` no SSH; o próprio
+  `ufw allow` com o ufw inativo cria tabelas nft vazias);
+- em operações sobre serviços sensíveis (SSH), validar antes de recarregar
+  e desfazer só o que a operação realmente fez.

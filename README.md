@@ -5,6 +5,8 @@ segurança: usuários, grupos, compartilhamentos e permissões por um menu
 interativo (e, em breve, por comandos diretos).
 
 > **Status:** em desenvolvimento — ainda não usar em produção.
+> Fundação (Fase 0) concluída: verificação e preparação do ambiente, proteção
+> SSH e firewall. Próximo: gerenciamento de usuários (Fase 1).
 > O planejamento está em [`docs/PLANEJAMENTO.md`](docs/PLANEJAMENTO.md).
 
 ## Destaques planejados
