@@ -192,6 +192,7 @@ declare -A MSG_pt_BR=(
     [amb.grupo_samba]="Samba"
     [amb.grupo_ssh]="SSH"
     [amb.grupo_dev]="Desenvolvimento (opcional)"
+    [amb.grupo_firewall]="Firewall"
     [amb.so_desconhecido]="Sistema não identificado (%s ausente ou ilegível)"
     [amb.so_nao_debian]="Distribuição fora da família Debian: não testada; instalação automática indisponível"
     [amb.systemd_ok]="systemd em execução"
@@ -218,6 +219,10 @@ declare -A MSG_pt_BR=(
     [amb.dropin_apos_match]="%s inclui %s só DEPOIS de um bloco Match: a proteção não valeria para todos (mova o Include para antes do primeiro Match)"
     [amb.ssh_protecao_ativa]="Proteção SSH do gsb ativa (grupo %s recusado no SSH)"
     [amb.ssh_protecao_inativa]="Proteção SSH do gsb ainda não aplicada"
+    [amb.fw_nenhum]="Nenhum firewall ativo (ufw/firewalld): nada bloqueia o Samba"
+    [amb.fw_libera]="%s ativo e libera o Samba (porta %s)"
+    [amb.fw_bloqueia]="%s ativo e NÃO libera o Samba (porta %s): os computadores não conseguirão acessar"
+    [amb.fw_cru]="Regras próprias de nftables/iptables detectadas: confira se a porta %s/tcp está liberada para a rede local"
     [amb.dev_ok]="%s instalado"
     [amb.dev_falta]="%s não instalado (só para desenvolvimento/testes)"
     [amb.resumo_ok]="Ambiente pronto para o gsb."
@@ -261,6 +266,10 @@ declare -A MSG_pt_BR=(
     [prep.ssh_invalido]="A configuração do SSH ficou inválida (sshd -t); o SSH NÃO foi recarregado:"
     [prep.ssh_recarregar]="Não foi possível recarregar o SSH (%s)."
     [prep.ssh_nao_confirmada]="A regra não apareceu na configuração em vigor do SSH (sshd -T)."
+    [prep.d_firewall]="Liberar o Samba (porta %s/tcp) no %s só para as redes locais: %s"
+    [prep.fw_sem_redes]="Nenhuma rede local encontrada para liberar o Samba no firewall."
+    [prep.fw_falhou]="Não foi possível criar a regra no %s (%s)."
+    [prep.fw_nao_confirmada]="A liberação do Samba não foi confirmada no firewall."
     [ajuda.texto]="Uso: gsb [opção]
 
   (sem opção)    abre o menu interativo (precisa ser root)
@@ -296,6 +305,7 @@ declare -A MSG_en=(
     [amb.grupo_samba]="Samba"
     [amb.grupo_ssh]="SSH"
     [amb.grupo_dev]="Development (optional)"
+    [amb.grupo_firewall]="Firewall"
     [amb.so_desconhecido]="Unknown system (%s missing or unreadable)"
     [amb.so_nao_debian]="Distribution outside the Debian family: untested; automatic installation unavailable"
     [amb.systemd_ok]="systemd running"
@@ -322,6 +332,10 @@ declare -A MSG_en=(
     [amb.dropin_apos_match]="%s includes %s only AFTER a Match block: the protection would not apply to everyone (move the Include before the first Match)"
     [amb.ssh_protecao_ativa]="gsb SSH protection active (group %s denied on SSH)"
     [amb.ssh_protecao_inativa]="gsb SSH protection not applied yet"
+    [amb.fw_nenhum]="No active firewall (ufw/firewalld): nothing blocks Samba"
+    [amb.fw_libera]="%s active and allows Samba (port %s)"
+    [amb.fw_bloqueia]="%s active and does NOT allow Samba (port %s): computers will not be able to connect"
+    [amb.fw_cru]="Custom nftables/iptables rules detected: check that port %s/tcp is open to the local network"
     [amb.dev_ok]="%s installed"
     [amb.dev_falta]="%s not installed (development/testing only)"
     [amb.resumo_ok]="Environment ready for gsb."
@@ -365,6 +379,10 @@ declare -A MSG_en=(
     [prep.ssh_invalido]="The SSH configuration became invalid (sshd -t); SSH was NOT reloaded:"
     [prep.ssh_recarregar]="Could not reload SSH (%s)."
     [prep.ssh_nao_confirmada]="The rule did not show up in the effective SSH configuration (sshd -T)."
+    [prep.d_firewall]="Allow Samba (port %s/tcp) on %s only for the local networks: %s"
+    [prep.fw_sem_redes]="No local network found to allow Samba in the firewall."
+    [prep.fw_falhou]="Could not create the rule on %s (%s)."
+    [prep.fw_nao_confirmada]="The Samba rule could not be confirmed in the firewall."
     [ajuda.texto]="Usage: gsb [option]
 
   (no option)    opens the interactive menu (requires root)
@@ -660,6 +678,64 @@ gsb_samba_papel_efetivo() {
     echo "$papel"
 }
 
+# ── Firewall ────────────────────────────────────────────────────────────────
+# O gsb só libera a porta 445/tcp (SMB moderno; NetBIOS 137-139 fica fechado)
+# e só para as redes locais do servidor - nunca para qualquer origem.
+GSB_FW_PORTA=445
+GSB_FW_COMENTARIO="gsb: Samba"
+
+# Redes IPv4 ligadas diretamente às interfaces (rotas "scope link"), sem
+# loopback, bridges de container/VM e link-local. Uma por linha.
+# (Não filtra por "proto kernel": rede vinda do DHCP também conta.)
+gsb_redes_locais() {
+    ip -4 -o route show scope link 2>/dev/null | awk '
+        { rede = $1; dev = ""
+          for (i = 2; i <= NF; i++) if ($i == "dev") dev = $(i + 1)
+          if (rede !~ /\//) next                                  # rota de host
+          if (rede ~ /^169\.254\./) next                          # link-local
+          if (dev ~ /^(lo|docker|br-|veth|virbr|lxc|cni|flannel)/) next
+          print rede }' | sort -u
+}
+
+# ufw sempre em inglês (a saída é interpretada)
+gsb_ufw() { LC_ALL=C ufw "$@"; }
+
+gsb_fw_ufw_ativo() { gsb_tem_comando ufw && gsb_ufw status 2>/dev/null | grep -q '^Status: active'; }
+
+# O ufw libera o Samba? Política padrão de entrada "allow" (só aparece com o
+# ufw ativo) ou alguma regra ALLOW para a porta 445 / perfil Samba (lida do
+# "ufw show added", que funciona com o ufw ativo ou não).
+gsb_fw_ufw_libera() {
+    gsb_ufw status verbose 2>/dev/null | grep -qE '^Default: allow \(incoming\)' && return 0
+    # 445 sozinha, em lista (22,445/tcp) ou como "port 445"; nunca 4450/1445
+    gsb_ufw show added 2>/dev/null | grep -E '^ufw allow' \
+        | grep -qE "(port |^ufw allow |,)$GSB_FW_PORTA(,[0-9,]*)?(/tcp)?( |$)|[ ,]$GSB_FW_PORTA(/tcp)?( |$)|Samba"
+}
+
+gsb_fw_firewalld_ativo() { gsb_tem_comando firewall-cmd && firewall-cmd --state >/dev/null 2>&1; }
+
+gsb_fw_firewalld_zona() { firewall-cmd --get-default-zone 2>/dev/null; }
+
+# O firewalld (zona padrão) libera o Samba? Serviço samba, porta 445/tcp,
+# regra rich para a porta 445 ou zona que aceita tudo.
+gsb_fw_firewalld_libera() {
+    local zona
+    zona=$(gsb_fw_firewalld_zona) || return 1
+    firewall-cmd --zone="$zona" --query-service=samba >/dev/null 2>&1 && return 0
+    firewall-cmd --zone="$zona" --query-port="$GSB_FW_PORTA/tcp" >/dev/null 2>&1 && return 0
+    firewall-cmd --zone="$zona" --list-rich-rules 2>/dev/null | grep -q "port=\"$GSB_FW_PORTA\"" && return 0
+    [ "$(firewall-cmd --permanent --zone="$zona" --get-target 2>/dev/null)" == "ACCEPT" ]
+}
+
+# Regras nftables/iptables próprias que podem bloquear entrada (só quando não
+# há ufw/firewalld: as regras desses dois também aparecem no nft/iptables)
+gsb_fw_regras_cruas() {
+    if gsb_tem_comando nft && nft list ruleset 2>/dev/null | grep -qE 'hook input.*policy drop|^[[:space:]]*(drop|reject)|[[:space:]](drop|reject)$'; then
+        return 0
+    fi
+    gsb_tem_comando iptables && iptables -S INPUT 2>/dev/null | grep -qE '^-P INPUT DROP|-j (DROP|REJECT)'
+}
+
 # ── Resultado da verificação ────────────────────────────────────────────────
 # GSB_VERIF: linhas "grupo<TAB>estado<TAB>texto"
 #   estados: ok | falta (impede o uso) | aviso | info | na (não se aplica)
@@ -685,6 +761,8 @@ gsb_pacote_add() {
 #   GSB_SSH_DROPIN_OK            1 se o sshd_config inclui o arquivo do gsb
 #                                (e não só depois de um bloco Match)
 #   GSB_SSH_PROTEGIDO            1 se a proteção SSH está efetiva (sshd -T)
+#   GSB_FW_TIPO                  ufw | firewalld | "" (nenhum gerenciável ativo)
+#   GSB_FW_LIBERA                1 se esse firewall já libera o Samba
 #   GSB_BLOQ_MANUAL              bloqueios que exigem o administrador
 #                                (os demais se resolvem instalando pacotes)
 # shellcheck disable=SC2034  # variáveis de saída, usadas pelas próximas tarefas
@@ -692,6 +770,7 @@ gsb_verificar_ambiente() {
     local dep cmd tipo pacote presentes=0 total=0 papel backend senha_ssh
     GSB_VERIF=(); GSB_PACOTES_FALTANDO=(); GSB_BLOQUEIOS=0; GSB_BLOQ_MANUAL=0
     GSB_SVC_SAMBA=""; GSB_SVC_SSH=""; GSB_TEM_SSH=0; GSB_SSH_DROPIN_OK=0; GSB_SSH_PROTEGIDO=0
+    GSB_FW_TIPO=""; GSB_FW_LIBERA=0
 
     # ── Sistema ──
     if gsb_ler_os_release; then
@@ -797,13 +876,35 @@ gsb_verificar_ambiente() {
         [ "$senha_ssh" == "yes" ] && gsb_verif_add ssh info "$(t amb.ssh_senha)"
     fi
 
+    # ── Firewall ──
+    if gsb_fw_ufw_ativo; then
+        GSB_FW_TIPO="ufw"
+    elif gsb_fw_firewalld_ativo; then
+        GSB_FW_TIPO="firewalld"
+    fi
+    case "$GSB_FW_TIPO" in
+        ufw|firewalld)
+            if "gsb_fw_${GSB_FW_TIPO}_libera"; then
+                GSB_FW_LIBERA=1
+                gsb_verif_add firewall ok "$(t amb.fw_libera "$GSB_FW_TIPO" "$GSB_FW_PORTA")"
+            else
+                gsb_verif_add firewall aviso "$(t amb.fw_bloqueia "$GSB_FW_TIPO" "$GSB_FW_PORTA")"
+            fi ;;
+        *)
+            if gsb_fw_regras_cruas; then
+                gsb_verif_add firewall aviso "$(t amb.fw_cru "$GSB_FW_PORTA")"
+            else
+                gsb_verif_add firewall ok "$(t amb.fw_nenhum)"
+            fi ;;
+    esac
+
     [ "$GSB_BLOQUEIOS" -eq 0 ]
 }
 
 # Mostra o resultado da última verificação, por grupo
 gsb_mostrar_ambiente() {
     local grupo item g estado texto icone cor
-    for grupo in sistema deps samba ssh dev; do
+    for grupo in sistema deps samba ssh firewall dev; do
         echo ""
         printf '  %s%s%s\n' "$C_NEGRITO" "$(t "amb.grupo_$grupo")" "$C_RESET"
         for item in "${GSB_VERIF[@]}"; do
@@ -930,6 +1031,10 @@ gsb_montar_plano() {
     if [ "$GSB_TEM_SSH" -eq 1 ] && [ "$GSB_SSH_DROPIN_OK" -eq 1 ] && [ "$GSB_SSH_PROTEGIDO" -eq 0 ]; then
         GSB_PLANO+=(ssh_protecao)
     fi
+    # Firewall: ufw/firewalld ativo que ainda não libera o Samba
+    if [ -n "$GSB_FW_TIPO" ] && [ "$GSB_FW_LIBERA" -eq 0 ]; then
+        GSB_PLANO+=(firewall)
+    fi
     return 0
 }
 
@@ -946,6 +1051,7 @@ gsb_descrever_acao() {
         shares_conf)   t prep.d_shares_conf "$GSB_SHARES_CONF" ;;
         include)       t prep.d_include "$GSB_SMB_CONF" "$GSB_SHARES_CONF" ;;
         ssh_protecao)  t prep.d_ssh_protecao "$GSB_SSH_DROPIN" "$GSB_GRUPO_USUARIOS" ;;
+        firewall)      t prep.d_firewall "$GSB_FW_PORTA" "$GSB_FW_TIPO" "$(gsb_redes_locais | paste -sd, - | sed 's/,/, /g')" ;;
     esac
 }
 
@@ -1149,6 +1255,71 @@ gsb_ssh_remover_protecao() {
     ! gsb_ssh_protecao_ativa
 }
 
+# ── Firewall ────────────────────────────────────────────────────────────────
+# Libera a porta 445/tcp no firewall ativo (GSB_FW_TIPO), uma regra por rede
+# local, com comentário "gsb: Samba". Guarda as redes liberadas em
+# GSB_FW_CRIADAS para o desfazer remover exatamente essas regras.
+gsb_acao_firewall() {
+    local rede zona
+    local -a redes=()
+    GSB_FW_CRIADAS=()
+    mapfile -t redes < <(gsb_redes_locais)
+    if [ ${#redes[@]} -eq 0 ]; then
+        msg_erro "$(t prep.fw_sem_redes)"
+        return 1
+    fi
+    case "$GSB_FW_TIPO" in
+        ufw)
+            for rede in "${redes[@]}"; do
+                if ! gsb_ufw allow from "$rede" to any port "$GSB_FW_PORTA" proto tcp comment "$GSB_FW_COMENTARIO" >/dev/null 2>&1; then
+                    msg_erro "$(t prep.fw_falhou "ufw" "$rede")"
+                    return 1
+                fi
+                GSB_FW_CRIADAS+=("$rede")
+            done ;;
+        firewalld)
+            zona=$(gsb_fw_firewalld_zona) || { msg_erro "$(t prep.fw_falhou "firewalld" "?")"; return 1; }
+            for rede in "${redes[@]}"; do
+                if ! firewall-cmd --permanent --zone="$zona" --add-rich-rule="$(gsb_fw_regra_rich "$rede")" >/dev/null 2>&1; then
+                    msg_erro "$(t prep.fw_falhou "firewalld" "$rede")"
+                    return 1
+                fi
+                GSB_FW_CRIADAS+=("$rede")
+            done
+            firewall-cmd --reload >/dev/null 2>&1 || { msg_erro "$(t prep.fw_falhou "firewalld" "reload")"; return 1; } ;;
+        *)
+            return 1 ;;
+    esac
+    if ! "gsb_fw_${GSB_FW_TIPO}_libera"; then
+        msg_erro "$(t prep.fw_nao_confirmada)"
+        return 1
+    fi
+}
+
+# Regra "rich" do firewalld para uma rede
+gsb_fw_regra_rich() {
+    printf 'rule family="ipv4" source address="%s" port port="%s" protocol="tcp" accept' "$1" "$GSB_FW_PORTA"
+}
+
+# Remove só as regras que a ação criou
+gsb_fw_desfazer() {
+    local rede zona
+    case "$GSB_FW_TIPO" in
+        ufw)
+            for rede in "${GSB_FW_CRIADAS[@]}"; do
+                gsb_ufw delete allow from "$rede" to any port "$GSB_FW_PORTA" proto tcp >/dev/null 2>&1
+            done ;;
+        firewalld)
+            zona=$(gsb_fw_firewalld_zona) || return 0
+            for rede in "${GSB_FW_CRIADAS[@]}"; do
+                firewall-cmd --permanent --zone="$zona" --remove-rich-rule="$(gsb_fw_regra_rich "$rede")" >/dev/null 2>&1
+            done
+            [ ${#GSB_FW_CRIADAS[@]} -gt 0 ] && firewall-cmd --reload >/dev/null 2>&1 ;;
+    esac
+    GSB_FW_CRIADAS=()
+    return 0
+}
+
 # ── Desfazer (só o que é do gsb) ────────────────────────────────────────────
 gsb_desfazer() {
     case "$1" in
@@ -1162,6 +1333,7 @@ gsb_desfazer() {
                          cp -p -- "$GSB_BACKUP_SMBCONF" "$GSB_SMB_CONF" && gsb_samba_recarregar
                      fi ;;
         ssh_protecao) gsb_ssh_desfazer ;;
+        firewall)    gsb_fw_desfazer ;;
         *)           return 0 ;;   # pacotes, serviço e log não são desfeitos
     esac
 }

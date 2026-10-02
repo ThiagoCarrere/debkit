@@ -112,7 +112,10 @@ aberturas seguintes faz uma checagem rápida e oferece consertar o que tiver
 - registra tudo no log de auditoria;
 - não mexe no que é do administrador além dos dois "ganchos" mínimos (a
   linha `include` e o arquivo próprio do SSH);
-- firewall ativo bloqueando o Samba (porta 445): avisa e oferece liberar;
+- firewall ativo (ufw/firewalld) bloqueando o Samba: oferece liberar só a porta
+  445/tcp (SMB moderno; NetBIOS 137-139 fica fechado) e só para as redes
+  locais do servidor, nunca para qualquer origem; regras próprias de
+  nftables/iptables: só avisa (não dá para interpretar regras escritas à mão);
 - fora do Debian / sem `apt`: não arrisca — lista os pacotes e explica.
 
 **Desinstalação:** opção que remove tudo o que o gsb colocou no sistema
@@ -154,7 +157,7 @@ Estrutura do repositório:
 
 | Fase | Conteúdo |
 |---|---|
-| 0. Fundação | 0.1 esqueleto (configuração, catálogo de mensagens, utilitários, trava, log, menu) ✔ · 0.2 detecção do ambiente ✔ · 0.3 preparação do ambiente, assistente de abertura (verifica a cada execução e oferece consertar) e backups ✔ · 0.4 proteção SSH ✔ · 0.5 firewall (ufw/firewalld: avisar e oferecer liberar a porta 445) |
+| 0. Fundação | 0.1 esqueleto (configuração, catálogo de mensagens, utilitários, trava, log, menu) ✔ · 0.2 detecção do ambiente ✔ · 0.3 preparação do ambiente, assistente de abertura (verifica a cada execução e oferece consertar) e backups ✔ · 0.4 proteção SSH ✔ · 0.5 firewall (ufw/firewalld: liberar só 445/tcp e só para as redes locais) ✔ |
 | 1. Usuários | **criar** (item 1 do menu), listar, trocar senha (Linux + Samba), grupos, desativar/reativar, remover |
 | 2. Compartilhamentos | criar, listar, permissões de pasta, remover; avaliar acesso somente leitura por grupo |
 | 3. Diagnóstico | falhas de login, sessões ativas, saúde do Samba, consulta à auditoria, inventário somente leitura |

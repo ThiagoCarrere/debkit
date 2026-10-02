@@ -6,6 +6,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 ## [Não lançado]
 
 ### Adicionado
+- **Firewall (tarefa 0.5):** grupo "Firewall" na verificação. Com ufw ou
+  firewalld ativo que não libera o Samba, o plano de preparação oferece
+  liberar só a porta 445/tcp (NetBIOS 137-139 fica fechado) e só para as
+  redes locais do servidor (rotas "scope link", inclusive vindas do DHCP;
+  sem docker/bridges/link-local), uma regra por rede com o comentário
+  "gsb: Samba", conferindo depois e desfazendo exatamente as regras criadas
+  se algo falhar. Reconhece liberações já existentes (política allow, 445
+  sozinha/em lista, perfil Samba, serviço samba do firewalld). Regras
+  próprias de nftables/iptables: só aviso.
 - **Proteção SSH (tarefa 0.4):** item do plano de preparação que cria
   `/etc/ssh/sshd_config.d/gsb.conf` com `DenyGroups gsb_usuarios` (com
   marca de autoria; nunca sobrescreve arquivo alheio), valida com
