@@ -110,15 +110,15 @@ igual "Opção inválida: '100%s %d'" "$(bash -c "source '$GSB'; t geral.opcao_i
 
 # ── Menu ─────────────────────────────────────────────────────────────────────
 caso "menu: abrir, opção inválida, Enter vazio e sair"
-saida=$(pty 0.6 "bash $GSB" "" 9 "" 0)
-contem "gsb - Gerenciador Samba" "$saida"; contem "Opção inválida: '9'" "$saida"
+saida=$(pty 0.6 "bash $GSB" "" 7 "" 0)
+contem "gsb - Gerenciador Samba" "$saida"; contem "Opção inválida: '7'" "$saida"
 nao_contem "Opção inválida: ''" "$saida" "Enter vazio não é erro"
 caso "menu em inglês"
 contem "gsb - Samba Manager" "$(pty 0.6 "env GSB_IDIOMA=en bash $GSB" 0)"
 
 caso "fim da entrada (Ctrl+D) encerra sem travar"
 printf '' | timeout 10 bash "$GSB" >/dev/null 2>&1; igual 0 "$?" "código 0"
-printf '9\n' | timeout 10 bash "$GSB" >/dev/null 2>&1; igual 0 "$?" "após opção inválida"
+printf '7\n' | timeout 10 bash "$GSB" >/dev/null 2>&1; igual 0 "$?" "após opção inválida"
 
 # ── Auditoria ────────────────────────────────────────────────────────────────
 caso "auditoria registra início e fim (saída normal, Ctrl+D e Ctrl+C)"

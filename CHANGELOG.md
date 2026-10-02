@@ -6,6 +6,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 ## [Não lançado]
 
 ### Adicionado
+- **Detecção do ambiente (tarefa 0.2):** `gsb --verificar` e menu
+  "9) Ambiente", somente leitura. Verifica sistema (os-release lido sem
+  executar), systemd, 22 dependências essenciais (tabela única por
+  distribuição, com o pacote Debian de cada uma), Samba (serviço,
+  `smb.conf` válido, modo efetivo - recusa controlador de domínio - e base
+  `tdbsam`), SSH (serviço, se o `sshd_config` inclui o arquivo do gsb,
+  login por senha) e ferramentas de desenvolvimento. Calcula os pacotes que
+  faltam, sem repetição.
 - **Esqueleto do gsb.sh (tarefa 0.1):** configuração em `/etc/gsb/gsb.conf`
   lida com segurança (não executada, chaves e valores validados, recusa
   arquivo com permissão insegura), catálogo de mensagens pt_BR/en, menu,

@@ -13,10 +13,12 @@
 #   gsb                abre o menu (precisa ser root)
 #   gsb --ajuda        mostra a ajuda
 #   gsb --versao       mostra a versão
+#   gsb --verificar    verifica o ambiente (somente leitura; precisa ser root)
 #   source gsb.sh      carrega as funções sem executar nada (para testes)
 #
 # Códigos de saída:
-#   0 sucesso | 1 erro | 2 uso incorreto | 130 interrompido (Ctrl+C)
+#   0 sucesso | 1 erro (no --verificar: falta algo essencial)
+#   2 uso incorreto | 130 interrompido (Ctrl+C)
 #
 # Seções do arquivo:
 #   1. Versão e verificação do bash
@@ -24,9 +26,10 @@
 #   3. Mensagens (catálogo pt_BR / en)
 #   4. Cores e saída
 #   5. Utilitários
-#   6. Funções
-#   7. Menus
-#   8. Linha de comando e início
+#   6. Ambiente (detecção)
+#   7. Funções
+#   8. Menus
+#   9. Linha de comando e início
 
 # ════════════════════════════════════════════════════════════════════════════
 # 1. VERSÃO E VERIFICAÇÃO DO BASH
@@ -180,9 +183,46 @@ declare -A MSG_pt_BR=(
     [aviso.conf]="Avisos da configuração %s:"
     [erro.trava]="O gsb já está em uso por outra sessão (PID %s). Tente novamente quando ela terminar."
     [erro.trava_abrir]="Não foi possível criar o arquivo de trava %s."
+    [menu.ambiente]="Ambiente: verificar"
+    [amb.titulo]="Ambiente do servidor"
+    [amb.grupo_sistema]="Sistema"
+    [amb.grupo_deps]="Dependências essenciais"
+    [amb.grupo_samba]="Samba"
+    [amb.grupo_ssh]="SSH"
+    [amb.grupo_dev]="Desenvolvimento (opcional)"
+    [amb.so_desconhecido]="Sistema não identificado (%s ausente ou ilegível)"
+    [amb.so_nao_debian]="Distribuição fora da família Debian: não testada; instalação automática indisponível"
+    [amb.systemd_ok]="systemd em execução"
+    [amb.systemd_falta]="systemd não está em execução (ex: container): o gsb precisa dele para gerenciar serviços"
+    [amb.deps_ok]="Todas as %d dependências essenciais presentes"
+    [amb.dep_falta]="Falta o comando %s (pacote %s)"
+    [amb.samba_ausente]="Samba não instalado"
+    [amb.servico_ativo]="Serviço %s ativo"
+    [amb.servico_parado]="Serviço %s parado"
+    [amb.servico_desabilitado]="Serviço %s não inicia junto com o sistema"
+    [amb.servico_nao_encontrado]="Serviço do Samba (%s) não encontrado no systemd"
+    [amb.smbconf_ausente]="%s não existe"
+    [amb.smbconf_invalido]="%s com erro (veja: testparm)"
+    [amb.smbconf_ok]="%s válido"
+    [amb.papel_ok]="Modo: servidor de arquivos independente (standalone)"
+    [amb.papel_dc]="Modo: %s - controlador de domínio NÃO é suportado pelo gsb"
+    [amb.papel_outro]="Modo: %s (não testado com o gsb)"
+    [amb.backend_ok]="Base de senhas: %s"
+    [amb.backend_outro]="Base de senhas: %s - não suportada (o gsb usa tdbsam)"
+    [amb.ssh_ausente]="Servidor SSH não instalado: proteção SSH não necessária"
+    [amb.dropin_ok]="%s inclui %s (o gsb pode usar arquivo próprio)"
+    [amb.dropin_falta]="%s não inclui %s: a proteção SSH automática não poderá ser aplicada"
+    [amb.ssh_senha]="Login por senha ligado no SSH: a proteção dos usuários do gsb é importante"
+    [amb.dev_ok]="%s instalado"
+    [amb.dev_falta]="%s não instalado (só para desenvolvimento/testes)"
+    [amb.resumo_ok]="Ambiente pronto para o gsb."
+    [amb.resumo_falta]="%d item(ns) essencial(is) impedem o gsb de funcionar."
+    [amb.pacotes]="Pacotes necessários: %s"
+    [amb.em_breve]="(a preparação automática do ambiente chega na próxima etapa)"
     [ajuda.texto]="Uso: gsb [opção]
 
   (sem opção)    abre o menu interativo (precisa ser root)
+  --verificar    verifica o ambiente, sem alterar nada (precisa ser root)
   -h, --ajuda    mostra esta ajuda
   -v, --versao   mostra a versão
 
@@ -206,9 +246,46 @@ declare -A MSG_en=(
     [aviso.conf]="Configuration warnings in %s:"
     [erro.trava]="gsb is already in use by another session (PID %s). Try again when it finishes."
     [erro.trava_abrir]="Could not create the lock file %s."
+    [menu.ambiente]="Environment: check"
+    [amb.titulo]="Server environment"
+    [amb.grupo_sistema]="System"
+    [amb.grupo_deps]="Essential dependencies"
+    [amb.grupo_samba]="Samba"
+    [amb.grupo_ssh]="SSH"
+    [amb.grupo_dev]="Development (optional)"
+    [amb.so_desconhecido]="Unknown system (%s missing or unreadable)"
+    [amb.so_nao_debian]="Distribution outside the Debian family: untested; automatic installation unavailable"
+    [amb.systemd_ok]="systemd running"
+    [amb.systemd_falta]="systemd is not running (e.g. container): gsb needs it to manage services"
+    [amb.deps_ok]="All %d essential dependencies present"
+    [amb.dep_falta]="Missing command %s (package %s)"
+    [amb.samba_ausente]="Samba is not installed"
+    [amb.servico_ativo]="Service %s active"
+    [amb.servico_parado]="Service %s stopped"
+    [amb.servico_desabilitado]="Service %s does not start at boot"
+    [amb.servico_nao_encontrado]="Samba service (%s) not found in systemd"
+    [amb.smbconf_ausente]="%s does not exist"
+    [amb.smbconf_invalido]="%s has errors (see: testparm)"
+    [amb.smbconf_ok]="%s is valid"
+    [amb.papel_ok]="Role: standalone file server"
+    [amb.papel_dc]="Role: %s - domain controllers are NOT supported by gsb"
+    [amb.papel_outro]="Role: %s (not tested with gsb)"
+    [amb.backend_ok]="Password backend: %s"
+    [amb.backend_outro]="Password backend: %s - not supported (gsb uses tdbsam)"
+    [amb.ssh_ausente]="SSH server not installed: SSH protection not needed"
+    [amb.dropin_ok]="%s includes %s (gsb can use its own file)"
+    [amb.dropin_falta]="%s does not include %s: automatic SSH protection cannot be applied"
+    [amb.ssh_senha]="SSH password login is enabled: protecting gsb users matters"
+    [amb.dev_ok]="%s installed"
+    [amb.dev_falta]="%s not installed (development/testing only)"
+    [amb.resumo_ok]="Environment ready for gsb."
+    [amb.resumo_falta]="%d essential item(s) prevent gsb from working."
+    [amb.pacotes]="Required packages: %s"
+    [amb.em_breve]="(automatic environment setup comes in the next step)"
     [ajuda.texto]="Usage: gsb [option]
 
   (no option)    opens the interactive menu (requires root)
+  --check        checks the environment without changing anything (requires root)
   -h, --help     shows this help
   -v, --version  shows the version
 
@@ -354,24 +431,321 @@ gsb_auditar() {
 }
 
 # ════════════════════════════════════════════════════════════════════════════
-# 6. FUNÇÕES
+# 6. AMBIENTE (detecção - somente leitura)
+# ════════════════════════════════════════════════════════════════════════════
+# Descobre o que existe na máquina: sistema, systemd, dependências, Samba e
+# SSH. Nada aqui altera o sistema. O resultado alimenta o relatório
+# (gsb --verificar / menu Ambiente) e, na tarefa 0.3, a preparação.
+
+# Arquivos do sistema consultados (variáveis para os testes poderem simular)
+GSB_ARQ_OS_RELEASE="${GSB_ARQ_OS_RELEASE:-/etc/os-release}"
+GSB_ARQ_SSHD_CONFIG="${GSB_ARQ_SSHD_CONFIG:-/etc/ssh/sshd_config}"
+GSB_DIR_SYSTEMD="${GSB_DIR_SYSTEMD:-/run/systemd/system}"
+
+# Tabela de dependências - ÚNICO ponto específico da distribuição.
+# comando | tipo | pacote no Debian
+#   essencial      : sem ele o gsb não funciona (a 0.3 oferece instalar)
+#   condicional    : só necessário se existir (ex: SSH -> proteção)
+#   desenvolvimento: só para quem desenvolve/testa o gsb; nunca instalado
+GSB_DEPENDENCIAS=(
+    "smbd|essencial|samba"
+    "pdbedit|essencial|samba"
+    "smbstatus|essencial|samba"
+    "testparm|essencial|samba-common-bin"
+    "smbpasswd|essencial|samba-common-bin"
+    "smbcontrol|essencial|samba-common-bin"
+    "useradd|essencial|passwd"
+    "usermod|essencial|passwd"
+    "userdel|essencial|passwd"
+    "groupadd|essencial|passwd"
+    "groupdel|essencial|passwd"
+    "gpasswd|essencial|passwd"
+    "chpasswd|essencial|passwd"
+    "flock|essencial|util-linux"
+    "getent|essencial|libc-bin"
+    "awk|essencial|mawk"
+    "sed|essencial|sed"
+    "grep|essencial|grep"
+    "stat|essencial|coreutils"
+    "mktemp|essencial|coreutils"
+    "realpath|essencial|coreutils"
+    "systemctl|essencial|systemd"
+    "sshd|condicional|openssh-server"
+    "shellcheck|desenvolvimento|shellcheck"
+    "smbclient|desenvolvimento|smbclient"
+)
+
+# Verifica se um comando existe (função separada para os testes simularem)
+gsb_tem_comando() { command -v "$1" >/dev/null 2>&1; }
+
+# Lê o /etc/os-release SEM executá-lo (só ID, ID_LIKE, VERSION_ID, PRETTY_NAME)
+gsb_ler_os_release() {
+    local linha chave valor
+    GSB_SO_ID=""; GSB_SO_ID_LIKE=""; GSB_SO_VERSAO=""; GSB_SO_NOME=""
+    [ -r "$GSB_ARQ_OS_RELEASE" ] || return 1
+    while IFS= read -r linha || [ -n "$linha" ]; do
+        [[ "$linha" =~ ^([A-Z_]+)=(.*)$ ]] || continue
+        chave="${BASH_REMATCH[1]}"
+        valor="${BASH_REMATCH[2]}"
+        if [[ "$valor" =~ ^\"(.*)\"$ || "$valor" =~ ^\'(.*)\'$ ]]; then
+            valor="${BASH_REMATCH[1]}"
+        fi
+        case "$chave" in
+            ID)          GSB_SO_ID="$valor" ;;
+            ID_LIKE)     GSB_SO_ID_LIKE="$valor" ;;
+            VERSION_ID)  GSB_SO_VERSAO="$valor" ;;
+            PRETTY_NAME) GSB_SO_NOME="$valor" ;;
+        esac
+    done < "$GSB_ARQ_OS_RELEASE"
+    return 0
+}
+
+# Debian ou derivado (Ubuntu, Mint...)? Usar depois de gsb_ler_os_release.
+gsb_familia_debian() {
+    [ "$GSB_SO_ID" == "debian" ] || [[ " $GSB_SO_ID_LIKE " == *" debian "* ]]
+}
+
+# Serviços (systemd)
+gsb_servico_existe()    { systemctl list-unit-files --no-legend "$1.service" 2>/dev/null | grep -q .; }
+gsb_servico_ativo()     { systemctl is-active --quiet "$1.service" 2>/dev/null; }
+gsb_servico_habilitado() { systemctl is-enabled --quiet "$1.service" 2>/dev/null; }
+
+# Primeiro nome de serviço existente da lista (smbd no Debian, smb no RHEL...)
+gsb_descobrir_servico() {
+    local nome
+    for nome in "$@"; do
+        gsb_servico_existe "$nome" && { echo "$nome"; return 0; }
+    done
+    return 1
+}
+
+# O sshd_config inclui o arquivo próprio do gsb (GSB_SSH_DROPIN)?
+# Lê as linhas "Include" (palavra sem diferenciar maiúsculas; caminhos
+# relativos são relativos a /etc/ssh) e testa se algum padrão cobre o arquivo.
+gsb_ssh_aceita_dropin() {
+    local linha padrao
+    local -a padroes
+    [ -r "$GSB_ARQ_SSHD_CONFIG" ] || return 1
+    while IFS= read -r linha || [ -n "$linha" ]; do
+        [[ "$linha" =~ ^[[:space:]]*[Ii][Nn][Cc][Ll][Uu][Dd][Ee][[:space:]]+(.+)$ ]] || continue
+        read -ra padroes <<< "${BASH_REMATCH[1]}"
+        for padrao in "${padroes[@]}"; do
+            [[ "$padrao" == /* ]] || padrao="/etc/ssh/$padrao"
+            # shellcheck disable=SC2053  # comparação com padrão (glob) proposital
+            [[ "$GSB_SSH_DROPIN" == $padrao ]] && return 0
+        done
+    done < "$GSB_ARQ_SSHD_CONFIG"
+    return 1
+}
+
+# Lê um parâmetro do Samba já interpretado pelo testparm (ex: "server role")
+gsb_samba_param() {
+    testparm -s --parameter-name="$1" "$GSB_SMB_CONF" 2>/dev/null
+}
+
+# Modo efetivo do Samba. Com "server role = auto" (padrão quando a linha não
+# existe) o modo real vem do "security": AUTO/USER = servidor independente,
+# ADS/DOMAIN = membro de domínio.
+gsb_samba_papel_efetivo() {
+    local papel seguranca
+    papel=$(gsb_samba_param "server role")
+    if [ "$papel" == "auto" ]; then
+        seguranca=$(gsb_samba_param "security")
+        case "${seguranca^^}" in
+            AUTO|USER)  papel="standalone server" ;;
+            ADS|DOMAIN) papel="member server" ;;
+        esac
+    fi
+    echo "$papel"
+}
+
+# ── Resultado da verificação ────────────────────────────────────────────────
+# GSB_VERIF: linhas "grupo<TAB>estado<TAB>texto"
+#   estados: ok | falta (impede o uso) | aviso | info | na (não se aplica)
+# GSB_PACOTES_FALTANDO: pacotes (Debian) dos itens essenciais que faltam
+# GSB_BLOQUEIOS: quantos itens impedem o gsb de funcionar
+gsb_verif_add() { GSB_VERIF+=("$1"$'\t'"$2"$'\t'"$3"); [ "$2" == "falta" ] && GSB_BLOQUEIOS=$((GSB_BLOQUEIOS + 1)); return 0; }
+
+gsb_pacote_add() {
+    local p
+    [ -z "$1" ] && return 0
+    for p in "${GSB_PACOTES_FALTANDO[@]}"; do [ "$p" == "$1" ] && return 0; done
+    GSB_PACOTES_FALTANDO+=("$1")
+}
+
+# Faz toda a verificação. Retorna 0 se nada impede o gsb de funcionar.
+# Além de GSB_VERIF / GSB_PACOTES_FALTANDO / GSB_BLOQUEIOS, deixa prontos
+# para a preparação (0.3) e a proteção SSH (0.4):
+#   GSB_SVC_SAMBA / GSB_SVC_SSH  nome do serviço (vazio se não encontrado)
+#   GSB_TEM_SSH                  1 se o servidor SSH está instalado
+#   GSB_SSH_DROPIN_OK            1 se o sshd_config inclui o arquivo do gsb
+# shellcheck disable=SC2034  # variáveis de saída, usadas pelas próximas tarefas
+gsb_verificar_ambiente() {
+    local dep cmd tipo pacote presentes=0 total=0 papel backend senha_ssh
+    GSB_VERIF=(); GSB_PACOTES_FALTANDO=(); GSB_BLOQUEIOS=0
+    GSB_SVC_SAMBA=""; GSB_SVC_SSH=""; GSB_TEM_SSH=0; GSB_SSH_DROPIN_OK=0
+
+    # ── Sistema ──
+    if gsb_ler_os_release; then
+        gsb_verif_add sistema ok "${GSB_SO_NOME:-$GSB_SO_ID $GSB_SO_VERSAO}"
+        gsb_familia_debian || gsb_verif_add sistema aviso "$(t amb.so_nao_debian)"
+    else
+        gsb_verif_add sistema aviso "$(t amb.so_desconhecido "$GSB_ARQ_OS_RELEASE")"
+    fi
+    gsb_verif_add sistema ok "bash $BASH_VERSION"
+    if [ -d "$GSB_DIR_SYSTEMD" ]; then
+        gsb_verif_add sistema ok "$(t amb.systemd_ok)"
+    else
+        gsb_verif_add sistema falta "$(t amb.systemd_falta)"
+    fi
+
+    # ── Dependências ──
+    for dep in "${GSB_DEPENDENCIAS[@]}"; do
+        IFS='|' read -r cmd tipo pacote <<< "$dep"
+        case "$tipo" in
+            essencial)
+                total=$((total + 1))
+                if gsb_tem_comando "$cmd"; then
+                    presentes=$((presentes + 1))
+                else
+                    gsb_verif_add deps falta "$(t amb.dep_falta "$cmd" "$pacote")"
+                    # systemd não se resolve instalando o pacote (ex: container)
+                    [ "$cmd" != "systemctl" ] && gsb_pacote_add "$pacote"
+                fi ;;
+            desenvolvimento)
+                if gsb_tem_comando "$cmd"; then
+                    gsb_verif_add dev ok "$(t amb.dev_ok "$cmd")"
+                else
+                    gsb_verif_add dev info "$(t amb.dev_falta "$cmd")"
+                fi ;;
+        esac
+    done
+    [ "$presentes" -eq "$total" ] && gsb_verif_add deps ok "$(t amb.deps_ok "$total")"
+
+    # ── Samba ──
+    if ! gsb_tem_comando smbd; then
+        gsb_verif_add samba falta "$(t amb.samba_ausente)"
+    else
+        if GSB_SVC_SAMBA=$(gsb_descobrir_servico smbd smb); then
+            if gsb_servico_ativo "$GSB_SVC_SAMBA"; then
+                gsb_verif_add samba ok "$(t amb.servico_ativo "$GSB_SVC_SAMBA")"
+            else
+                gsb_verif_add samba aviso "$(t amb.servico_parado "$GSB_SVC_SAMBA")"
+            fi
+            gsb_servico_habilitado "$GSB_SVC_SAMBA" || gsb_verif_add samba aviso "$(t amb.servico_desabilitado "$GSB_SVC_SAMBA")"
+        else
+            gsb_verif_add samba aviso "$(t amb.servico_nao_encontrado "smbd/smb")"
+        fi
+
+        if [ ! -f "$GSB_SMB_CONF" ]; then
+            gsb_verif_add samba falta "$(t amb.smbconf_ausente "$GSB_SMB_CONF")"
+        elif ! gsb_tem_comando testparm; then
+            :   # já listado como dependência faltando
+        elif ! testparm -s "$GSB_SMB_CONF" >/dev/null 2>&1; then
+            gsb_verif_add samba falta "$(t amb.smbconf_invalido "$GSB_SMB_CONF")"
+        else
+            gsb_verif_add samba ok "$(t amb.smbconf_ok "$GSB_SMB_CONF")"
+            papel=$(gsb_samba_papel_efetivo)
+            case "$papel" in
+                "standalone server") gsb_verif_add samba ok "$(t amb.papel_ok)" ;;
+                *"domain controller"*) gsb_verif_add samba falta "$(t amb.papel_dc "$papel")" ;;
+                *) gsb_verif_add samba aviso "$(t amb.papel_outro "$papel")" ;;
+            esac
+            backend=$(gsb_samba_param "passdb backend")
+            if [ "$backend" == "tdbsam" ]; then
+                gsb_verif_add samba ok "$(t amb.backend_ok "$backend")"
+            else
+                gsb_verif_add samba falta "$(t amb.backend_outro "$backend")"
+            fi
+        fi
+    fi
+
+    # ── SSH (condicional) ──
+    if ! gsb_tem_comando sshd; then
+        gsb_verif_add ssh na "$(t amb.ssh_ausente)"
+    else
+        GSB_TEM_SSH=1
+        if GSB_SVC_SSH=$(gsb_descobrir_servico ssh sshd); then
+            if gsb_servico_ativo "$GSB_SVC_SSH"; then
+                gsb_verif_add ssh ok "$(t amb.servico_ativo "$GSB_SVC_SSH")"
+            else
+                gsb_verif_add ssh info "$(t amb.servico_parado "$GSB_SVC_SSH")"
+            fi
+        fi
+        if gsb_ssh_aceita_dropin; then
+            GSB_SSH_DROPIN_OK=1
+            gsb_verif_add ssh ok "$(t amb.dropin_ok "$GSB_ARQ_SSHD_CONFIG" "$GSB_SSH_DROPIN")"
+        else
+            gsb_verif_add ssh aviso "$(t amb.dropin_falta "$GSB_ARQ_SSHD_CONFIG" "$GSB_SSH_DROPIN")"
+        fi
+        senha_ssh=$(sshd -T 2>/dev/null | awk '$1 == "passwordauthentication" {print $2}')
+        [ "$senha_ssh" == "yes" ] && gsb_verif_add ssh info "$(t amb.ssh_senha)"
+    fi
+
+    [ "$GSB_BLOQUEIOS" -eq 0 ]
+}
+
+# Mostra o resultado da última verificação, por grupo
+gsb_mostrar_ambiente() {
+    local grupo item g estado texto icone cor
+    for grupo in sistema deps samba ssh dev; do
+        echo ""
+        printf '  %s%s%s\n' "$C_NEGRITO" "$(t "amb.grupo_$grupo")" "$C_RESET"
+        for item in "${GSB_VERIF[@]}"; do
+            IFS=$'\t' read -r g estado texto <<< "$item"
+            [ "$g" == "$grupo" ] || continue
+            case "$estado" in
+                ok)    icone="✔"; cor="$C_VERDE" ;;
+                falta) icone="✘"; cor="$C_VERMELHO" ;;
+                aviso) icone="!"; cor="$C_AMARELO" ;;
+                info)  icone="·"; cor="$C_CIANO" ;;
+                *)     icone="–"; cor="$C_CINZA" ;;
+            esac
+            printf '    %s%s%s %s\n' "$cor" "$icone" "$C_RESET" "$texto"
+        done
+    done
+    echo ""
+    if [ "$GSB_BLOQUEIOS" -eq 0 ]; then
+        msg_ok "$(t amb.resumo_ok)"
+    else
+        msg_erro "$(t amb.resumo_falta "$GSB_BLOQUEIOS")"
+        if [ ${#GSB_PACOTES_FALTANDO[@]} -gt 0 ]; then
+            msg_info "$(t amb.pacotes "${GSB_PACOTES_FALTANDO[*]}")"
+        fi
+        msg_info "$(t amb.em_breve)"
+    fi
+}
+
+# ════════════════════════════════════════════════════════════════════════════
+# 7. FUNÇÕES
 # ════════════════════════════════════════════════════════════════════════════
 # (adicionadas nas próximas etapas)
 
 # ════════════════════════════════════════════════════════════════════════════
-# 7. MENUS
+# 8. MENUS
 # ════════════════════════════════════════════════════════════════════════════
+
+# Tela "Ambiente": verificação completa (somente leitura)
+menu_ambiente() {
+    titulo "$(t amb.titulo)"
+    gsb_verificar_ambiente
+    gsb_mostrar_ambiente
+    pausar
+}
+
 menu_principal() {
     local opcao
     while true; do
         titulo "$(t geral.titulo)  ${C_CINZA}v${GSB_VERSAO}${C_RESET}"
         echo "  $(t geral.em_construcao)"
         echo ""
+        echo "  9) $(t menu.ambiente)"
         echo "  0) $(t geral.sair)"
         echo ""
         ler_opcao opcao
         case "$opcao" in
             "") continue ;;
+            9) menu_ambiente ;;
             0) [ -t 1 ] && clear; return 0 ;;
             *) msg_erro "$(t geral.opcao_invalida "$opcao")"; pausar ;;
         esac
@@ -379,7 +753,7 @@ menu_principal() {
 }
 
 # ════════════════════════════════════════════════════════════════════════════
-# 8. LINHA DE COMANDO E INÍCIO
+# 9. LINHA DE COMANDO E INÍCIO
 # ════════════════════════════════════════════════════════════════════════════
 
 # Carrega a configuração mostrando avisos/erros. Retorna 1 se inválida.
@@ -419,14 +793,21 @@ main() {
         GSB_IDIOMA="$idioma_env"
     fi
 
-    if [ -n "${1:-}" ]; then
-        msg_erro "$(t erro.uso "$1")"
-        exit 2
-    fi
+    case "${1:-}" in
+        ""|--verificar|--check) ;;
+        *) msg_erro "$(t erro.uso "$1")"; exit 2 ;;
+    esac
 
     if [ "$EUID" -ne 0 ]; then
         msg_erro "$(t erro.root)"
         exit 1
+    fi
+
+    # Verificação do ambiente (somente leitura: sem trava nem auditoria)
+    if [ -n "${1:-}" ]; then
+        gsb_verificar_ambiente; local rc=$?
+        gsb_mostrar_ambiente
+        exit "$rc"
     fi
 
     trap gsb_ao_sair EXIT
