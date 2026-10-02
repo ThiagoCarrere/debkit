@@ -69,7 +69,53 @@ compartilhamentos que já existiam no servidor. Não existe função "adotar".
 
 O que não é do gsb aparece num **inventário somente leitura**.
 
-## 5. Arquitetura
+## 5. Preparação inteligente do ambiente
+
+"Robusto e inteligente" não é só detectar um problema e mandar o
+administrador resolver: o gsb **prepara o ambiente** para funcionar. Se
+falta algo, ele explica, pergunta e, com o consentimento, resolve sozinho,
+confere o resultado e segue (ou desfaz, se algo falhar).
+
+**Três tipos de dependência** (inteligente também é não instalar o que não
+precisa):
+
+| Tipo | Exemplos | Se faltar |
+|---|---|---|
+| Essencial | Samba (`smbd`, `pdbedit`, `testparm`...), `useradd`, `chpasswd`, `flock`, bash 4.4+ | oferece instalar (sem isso não funciona) |
+| Condicional | servidor SSH | **não instala**: sem SSH não há o que bloquear ("proteção SSH: não necessária"); se o SSH aparecer depois, oferece aplicar a proteção |
+| Desenvolvimento | `shellcheck` | **nunca** instala no servidor de quem usa |
+
+**Assistente de primeira execução:** verifica tudo e mostra um plano único
+(instalar pacotes, ativar o serviço do Samba, criar `/etc/gsb/gsb.conf`,
+backups e log, criar o grupo `gsb_usuarios`, incluir a linha `include` no
+`smb.conf`, aplicar a proteção SSH). Com "s", executa item por item,
+conferindo cada um; se algo falhar, desfaz o que fez e explica. Nas
+aberturas seguintes faz uma checagem rápida e oferece consertar o que tiver
+"quebrado" (serviço parado, `include` removido...). Há também a opção de menu
+**"Verificar e preparar o ambiente"**.
+
+**Regras para qualquer mudança automática:**
+
+- sempre pergunta antes e mostra exatamente o que vai fazer;
+- instala só pelo gerenciador oficial (`apt-get`, sem perguntas
+  interativas), espera se o apt estiver em uso por outro programa e, sem
+  internet, explica sem deixar nada pela metade;
+- registra tudo no log de auditoria;
+- não mexe no que é do administrador além dos dois "ganchos" mínimos (a
+  linha `include` e o arquivo próprio do SSH);
+- firewall ativo bloqueando o Samba (porta 445): avisa e oferece liberar;
+- fora do Debian / sem `apt`: não arrisca — lista os pacotes e explica.
+
+**Desinstalação:** opção que remove tudo o que o gsb colocou no sistema
+(linha `include`, arquivo do SSH, configuração), perguntando o que fazer com
+os usuários e compartilhamentos que ele criou.
+
+**Testes sem estragar o servidor de desenvolvimento:** `apt-get -s`
+(simulação), comandos "faltando" simulados em ambiente controlado e
+serviços parados com cuidado. Instalação do zero de verdade fica para uma
+máquina limpa (VM).
+
+## 6. Arquitetura
 
 - **Um arquivo só** (`gsb.sh`), fácil de instalar e auditar, em seções:
   configuração → detecção do sistema → mensagens → utilitários → funções →
@@ -95,17 +141,17 @@ Estrutura do repositório:
 ├── README.md  CHANGELOG.md  LICENSE (MIT)
 ```
 
-## 6. Fases
+## 7. Fases
 
 | Fase | Conteúdo |
 |---|---|
-| 0. Fundação | estrutura, configuração, detecção do sistema, catálogo de mensagens, log, trava, backups, menu, verificação de saúde; **proteção SSH** |
+| 0. Fundação | 0.1 esqueleto (configuração, catálogo de mensagens, utilitários, trava, log, menu) · 0.2 detecção do ambiente · 0.3 preparação do ambiente e assistente de primeira execução (inclui backups) · 0.4 proteção SSH · 0.5 checagem rápida na abertura e opção "Verificar e preparar o ambiente" |
 | 1. Usuários | **criar** (item 1 do menu), listar, trocar senha (Linux + Samba), grupos, desativar/reativar, remover |
 | 2. Compartilhamentos | criar, listar, permissões de pasta, remover; avaliar acesso somente leitura por grupo |
 | 3. Diagnóstico | falhas de login, sessões ativas, saúde do Samba, consulta à auditoria, inventário somente leitura |
-| 4. Publicação | comandos diretos completos, `install.sh`, README, mensagens em inglês, testes automáticos e CI |
+| 4. Publicação | comandos diretos completos, `install.sh`, **desinstalação**, README, mensagens em inglês, testes automáticos e CI |
 
-## 7. Forma de trabalho
+## 8. Forma de trabalho
 
 Uma função (ou tarefa) por vez:
 
@@ -117,7 +163,7 @@ Uma função (ou tarefa) por vez:
 
 Trabalho na branch `dev`; levar para a `main` é decisão do Thiago.
 
-## 8. Herança do projeto swg
+## 9. Herança do projeto swg
 
 O gsb nasce da experiência do `swg` (menu Samba + WireGuard de uso interno).
 Lições já aprendidas lá e que valem aqui:
