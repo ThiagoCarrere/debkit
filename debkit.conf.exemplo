@@ -1,4 +1,4 @@
-# /etc/gsb/gsb.conf - configuração do gsb (Gerenciador Samba)
+# /etc/debkit/debkit.conf - configuração do debkit (Gerenciador Samba)
 #
 # Formato: CHAVE=valor (uma por linha). Linhas com # são comentários.
 # O arquivo NÃO é executado: só as chaves abaixo são aceitas e cada valor é
@@ -11,28 +11,28 @@ IDIOMA=pt_BR
 # Mínimo de caracteres da senha (Linux e Samba), de 1 a 128
 SENHA_MIN=4
 
-# Grupo de todos os usuários criados pelo gsb (bloqueado no SSH)
-GRUPO_USUARIOS=gsb_usuarios
+# Grupo de todos os usuários criados pelo debkit (bloqueado no SSH)
+GRUPO_USUARIOS=debkit_usuarios
 
-# Prefixo dos grupos de compartilhamento criados pelo gsb
-PREFIXO_GRUPO=gsb_
+# Prefixo dos grupos de compartilhamento criados pelo debkit
+PREFIXO_GRUPO=debkit_
 
 # Configuração principal do Samba
 SMB_CONF=/etc/samba/smb.conf
 
-# Arquivo onde o gsb guarda os compartilhamentos que ele cria
+# Arquivo onde o debkit guarda os compartilhamentos que ele cria
 # (incluído no SMB_CONF por uma única linha "include =")
-SHARES_CONF=/etc/samba/gsb-shares.conf
+SHARES_CONF=/etc/samba/debkit-shares.conf
 
-# Arquivo do gsb para o bloqueio SSH (o sshd_config principal não é tocado)
-SSH_DROPIN=/etc/ssh/sshd_config.d/gsb.conf
+# Arquivo do debkit para o bloqueio SSH (o sshd_config principal não é tocado)
+SSH_DROPIN=/etc/ssh/sshd_config.d/debkit.conf
 
 # Log de auditoria (quem fez o quê e quando; nunca senhas)
-LOG=/var/log/gsb.log
+LOG=/var/log/debkit.log
 
 # Pasta dos backups automáticos e quantos manter
-BACKUP_DIR=/var/backups/gsb
+BACKUP_DIR=/var/backups/debkit
 BACKUP_MANTER=30
 
-# Arquivo de trava (uma execução do gsb por vez)
-TRAVA=/run/gsb.lock
+# Arquivo de trava (uma execução do debkit por vez)
+TRAVA=/run/debkit.lock

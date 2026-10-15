@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Prova com o ufw REAL (tarefa 0.5): os comandos que o gsb usa para criar,
+# Prova com o ufw REAL (tarefa 0.5): os comandos que o debkit usa para criar,
 # reconhecer e remover as regras funcionam de verdade.
 #
-# Só roda com GSB_TESTE_REAL=1 e com o ufw instalado e INATIVO: com o ufw
+# Só roda com DEBKIT_TESTE_REAL=1 e com o ufw instalado e INATIVO: com o ufw
 # inativo as regras ficam só na configuração e NÃO filtram nada (provado
 # abaixo comparando o "nft list ruleset" antes e depois). Nunca mexe num ufw
 # ativo. Ao final, a configuração do ufw volta a ser idêntica.
 source "$(dirname "$0")/lib.sh"
 
-if [ "${GSB_TESTE_REAL:-}" != "1" ]; then
-    echo "  (pulado: teste com o ufw real - rode com GSB_TESTE_REAL=1)"
+if [ "${DEBKIT_TESTE_REAL:-}" != "1" ]; then
+    echo "  (pulado: teste com o ufw real - rode com DEBKIT_TESTE_REAL=1)"
     exit 0
 fi
 if ! command -v ufw >/dev/null; then
@@ -27,7 +27,7 @@ REGRAS_ANTES=$(regras_ufw)
 TABELAS_ANTES=$(nft list tables 2>/dev/null)
 # Filtragem efetiva = chains/regras no kernel. (O próprio "ufw allow" com o
 # ufw INATIVO cria as tabelas "ip filter"/"ip6 filter" VAZIAS - sem chains,
-# não filtram nada; com o ufw ativo, que é o uso real do gsb, elas já existem.)
+# não filtram nada; com o ufw ativo, que é o uso real do debkit, elas já existem.)
 filtragem() { nft list ruleset 2>/dev/null | grep -cE '^[[:space:]]*(chain|type filter|policy|ip |tcp |udp |counter|drop|reject|accept)'; }
 FILTRAGEM_ANTES=$(filtragem)
 # Remove as tabelas vazias que o ufw criar, se não existiam antes
@@ -40,25 +40,25 @@ limpar_tabelas_vazias() {
     done
 }
 trap 'limpar_tabelas_vazias; rm -rf -- "${AREIA:?}"; getent group "$GRUPO_TESTE" >/dev/null && groupdel "$GRUPO_TESTE"' EXIT
-s() { bash -c "source '$GSB'; gsb_conf_carregar \"\$GSB_CONF_ARQUIVO\"; GSB_FW_TIPO=ufw; $1" 2>&1; }
+s() { bash -c "source '$DEBKIT'; debkit_conf_carregar \"\$DEBKIT_CONF_ARQUIVO\"; DEBKIT_FW_TIPO=ufw; $1" 2>&1; }
 
-caso "ufw inativo: o gsb não o considera um firewall ativo"
-contem "Nenhum firewall ativo" "$(s 'gsb_verificar_ambiente >/dev/null; printf "%s\n" "${GSB_VERIF[@]}"')"
+caso "ufw inativo: o debkit não o considera um firewall ativo"
+contem "Nenhum firewall ativo" "$(s 'debkit_verificar_ambiente >/dev/null; printf "%s\n" "${DEBKIT_VERIF[@]}"')"
 
 caso "criar as regras com o ufw real"
-saida=$(s 'gsb_acao_firewall; echo RC=$?; printf "CRIADAS=%s\n" "${GSB_FW_CRIADAS[*]}"')
+saida=$(s 'debkit_acao_firewall; echo RC=$?; printf "CRIADAS=%s\n" "${DEBKIT_FW_CRIADAS[*]}"')
 contem "RC=0" "$saida"
 regras=$(regras_ufw)
-for rede in $(bash -c "source '$GSB'; gsb_redes_locais"); do
-    contem "ufw allow from $rede to any port 445 proto tcp comment 'gsb: Samba'" "$regras" "regra para $rede"
+for rede in $(bash -c "source '$DEBKIT'; debkit_redes_locais"); do
+    contem "ufw allow from $rede to any port 445 proto tcp comment 'debkit: Samba'" "$regras" "regra para $rede"
 done
-caso "o reconhecimento do gsb vê as regras reais"
-igual 0 "$(s 'gsb_fw_ufw_libera; echo $?')"
+caso "o reconhecimento do debkit vê as regras reais"
+igual 0 "$(s 'debkit_fw_ufw_libera; echo $?')"
 
-caso "desfazer remove exatamente as regras do gsb"
-s "GSB_FW_CRIADAS=($(bash -c "source '$GSB'; gsb_redes_locais" | tr '\n' ' ')); gsb_fw_desfazer" >/dev/null
+caso "desfazer remove exatamente as regras do debkit"
+s "DEBKIT_FW_CRIADAS=($(bash -c "source '$DEBKIT'; debkit_redes_locais" | tr '\n' ' ')); debkit_fw_desfazer" >/dev/null
 igual "$REGRAS_ANTES" "$(regras_ufw)" "configuração do ufw idêntica à do início"
-igual 1 "$(s 'gsb_fw_ufw_libera; echo $?')" "não reconhece mais liberação"
+igual 1 "$(s 'debkit_fw_ufw_libera; echo $?')" "não reconhece mais liberação"
 
 caso "nada passou a ser filtrado"
 verdadeiro "ufw continua inativo" bash -c '! LC_ALL=C ufw status | grep -q "Status: active"'

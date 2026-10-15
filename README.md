@@ -1,8 +1,10 @@
-# gsb — Gerenciador Samba
+# debkit
 
-Gerenciador de **servidor de arquivos Samba** para Linux, com foco em
-segurança: usuários, grupos, compartilhamentos e permissões por um menu
-interativo (e, em breve, por comandos diretos).
+Kit de **módulos de administração para servidores Debian**, com foco em
+segurança, por menu interativo (e, em breve, por comandos diretos).
+
+Primeiro módulo, **samba**: usuários, grupos, compartilhamentos, permissões
+e pastas pessoais de um **servidor de arquivos Samba**.
 
 > **Status:** em desenvolvimento — ainda não usar em produção.
 > Fundação (Fase 0) concluída: verificação e preparação do ambiente, proteção
@@ -11,13 +13,14 @@ interativo (e, em breve, por comandos diretos).
 
 ## Destaques planejados
 
-- Usuários de servidor de arquivos com a **mesma senha no Linux e no
-  Samba**, sem acesso ao servidor (shell `nologin` + bloqueio SSH gerenciado
-  pelo próprio gsb).
-- **Só gerencia o que ele cria**: nunca altera usuários, grupos ou
-  compartilhamentos que já existiam no servidor.
+- Usuários de servidor de arquivos **sem acesso ao servidor**: senha só no
+  Samba, senha Linux bloqueada, shell `nologin` e bloqueio SSH gerenciado
+  pelo próprio debkit. Acesso ao servidor só quando um administrador libera.
+- Gerencia **todos** os usuários, grupos e compartilhamentos comuns, e
+  **nunca** os do sistema (que nem aparecem nas listas).
+- Pastas pessoais opcionais no disco de dados (backup junto com o resto).
 - Toda operação valida antes, pede uma confirmação e **desfaz** se algo
-  falhar; backups automáticos e log de auditoria.
+  falhar; backups automáticos com rotação e log de auditoria.
 
 ## Compatibilidade
 

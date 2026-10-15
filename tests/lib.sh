@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Biblioteca mínima de testes do gsb (sem dependências externas).
+# Biblioteca mínima de testes do debkit (sem dependências externas).
 #
 # Cada arquivo tests/t*.sh carrega esta biblioteca, chama "caixa_de_areia"
 # e usa as afirmações abaixo. Os testes NUNCA tocam no que já existe no
@@ -7,7 +7,7 @@
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck disable=SC2034  # usado pelos arquivos de teste que carregam esta biblioteca
-GSB="$REPO/gsb.sh"
+DEBKIT="$REPO/debkit.sh"
 
 _T_OK=0
 _T_FALHA=0
@@ -40,15 +40,15 @@ verdadeiro() {
     if "$@" >/dev/null 2>&1; then _passou "$d"; else _falhou "$d" "comando falhou: $*"; fi
 }
 
-# Grupo de teste (nunca o gsb_usuarios real)
-GRUPO_TESTE="gsbt_usuarios"
+# Grupo de teste (nunca o debkit_usuarios real)
+GRUPO_TESTE="dkt_usuarios"
 
-# Pasta temporária com configuração própria. TUDO que o gsb pode alterar
+# Pasta temporária com configuração própria. TUDO que o debkit pode alterar
 # aponta para dentro dela: log, trava, backups, uma CÓPIA do smb.conf, o
 # arquivo de compartilhamentos e um grupo de teste. Assim nenhum teste
 # consegue mexer no Samba real, nem respondendo "s" ao assistente.
 caixa_de_areia() {
-    AREIA=$(mktemp -d /tmp/gsb-teste.XXXXXX)
+    AREIA=$(mktemp -d /tmp/debkit-teste.XXXXXX)
     chmod 755 "$AREIA"
     if [ -f /etc/samba/smb.conf ]; then
         cp -p /etc/samba/smb.conf "$AREIA/smb.conf"
@@ -56,31 +56,31 @@ caixa_de_areia() {
         printf '[global]\n   server role = standalone server\n' > "$AREIA/smb.conf"
     fi
     {
-        echo "LOG=$AREIA/gsb.log"
-        echo "TRAVA=$AREIA/gsb.lock"
+        echo "LOG=$AREIA/debkit.log"
+        echo "TRAVA=$AREIA/debkit.lock"
         echo "BACKUP_DIR=$AREIA/backups"
         echo "SMB_CONF=$AREIA/smb.conf"
-        echo "SHARES_CONF=$AREIA/gsb-shares.conf"
+        echo "SHARES_CONF=$AREIA/debkit-shares.conf"
         echo "GRUPO_USUARIOS=$GRUPO_TESTE"
         # Fora do Include do sshd_config real: a proteção SSH nunca é
         # aplicada no SSH de verdade pelos testes comuns
-        echo "SSH_DROPIN=$AREIA/sshd_gsb.conf"
-    } > "$AREIA/gsb.conf"
-    chmod 644 "$AREIA/gsb.conf"
-    export GSB_CONF_ARQUIVO="$AREIA/gsb.conf"
+        echo "SSH_DROPIN=$AREIA/sshd_debkit.conf"
+    } > "$AREIA/debkit.conf"
+    chmod 644 "$AREIA/debkit.conf"
+    export DEBKIT_CONF_ARQUIVO="$AREIA/debkit.conf"
     export NO_COLOR=1
     trap 'rm -rf -- "${AREIA:?}"; getent group "$GRUPO_TESTE" >/dev/null && groupdel "$GRUPO_TESTE"' EXIT
 }
 
 # Prepara o ambiente DA AREIA (para testar o menu sem cair no assistente)
 preparar_areia() {
-    printf 's\n' | bash "$GSB" --preparar >/dev/null 2>&1
+    printf 's\n' | bash "$DEBKIT" --preparar >/dev/null 2>&1
 }
 
 # Tira cores e \r de uma saída
 limpa() { sed 's/\r//g; s/\x1b\[[0-9;]*[a-zA-Z]//g'; }
 
-# Roda o gsb num terminal simulado enviando as entradas com pausa
+# Roda o debkit num terminal simulado enviando as entradas com pausa
 # (como uma pessoa digitando). Uso: pty <atraso> <comando> [entradas...]
 pty() {
     local atraso="$1" cmd="$2" l

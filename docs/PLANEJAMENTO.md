@@ -1,19 +1,27 @@
-# gsb — Gerenciador Samba: planejamento
+# debkit — planejamento
 
 Documento vivo com as decisões do projeto e o porquê de cada uma.
-Iniciado em 02/10/2026 por Thiago Carrere e Claude (Anthropic).
+Iniciado em 02/10/2026 por Thiago Carrere e Claude (Anthropic) com o nome
+provisório "gsb" (Gerenciador Samba); renomeado para **debkit** em
+15/10/2026.
 
 ---
 
 ## 1. O que é (e o que não é)
 
-**É** um gerenciador de **servidor de arquivos Samba** (modo *standalone*,
-base de senhas `tdbsam`) para administradores Linux: usuários, grupos,
-compartilhamentos, permissões de pasta e diagnóstico, por menu interativo ou
-por comandos diretos.
+**debkit** é um kit de **módulos de administração para servidores Debian**,
+com menu interativo (e, depois, comandos diretos). Um núcleo comum
+(configuração, mensagens, detecção e preparação do ambiente, proteção SSH,
+firewall, log, backups, testes) atende todos os módulos.
+
+**Primeiro módulo: `samba`** (arquivo `samba.sh`) — gerenciamento de
+**usuários, grupos e servidor de arquivos Samba** (modo *standalone*, base de
+senhas `tdbsam`): usuários Linux + Samba, grupos, compartilhamentos,
+permissões de pasta, pastas pessoais e diagnóstico. Módulos futuros
+(ex.: `wireguard`) entram sem mexer nos existentes.
 
 **Não é** um controlador de domínio (Active Directory / Samba AD DC). Esse é
-outro tipo de servidor; misturar os dois deixaria o gsb frágil.
+outro tipo de servidor; misturar os dois deixaria o debkit frágil.
 
 ## 2. Princípios (valem para todas as funções)
 
@@ -24,32 +32,50 @@ outro tipo de servidor; misturar os dois deixaria o gsb frágil.
    pede UMA confirmação e, se algo falhar no meio, desfaz o que já fez.
 3. **Idempotente** — repetir uma operação não estraga nada (ex.: aplicar a
    proteção SSH já aplicada só informa que já está ativa).
-4. **Só mexe no que ele mesmo criou** — ver seção 4.
-5. **Nada fixo do servidor no código** — o que der é detectado; o resto fica
-   em `/etc/gsb/gsb.conf`, com padrões sensatos.
-6. **Rastreável** — log de auditoria em `/var/log/gsb.log` (quem, quando,
+4. **Gerencia tudo o que é comum, nada do que é do sistema** — ver seção 4.
+5. **Nada fixo do servidor no código** — o que der é detectado (faixas de
+   UID/GID do `/etc/login.defs`, pontos de montagem, serviços); o resto fica
+   em `/etc/debkit/debkit.conf`, com padrões sensatos no início do script.
+6. **Rastreável** — log de auditoria em `/var/log/debkit.log` (quem, quando,
    o quê; nunca senhas) e backup automático antes de qualquer alteração,
-   com limpeza dos antigos.
+   com rotação (ver seção 6).
 7. **Uma execução por vez** — trava (`flock`) contra dois administradores
    alterando ao mesmo tempo.
 8. **Sem dependências exóticas** — bash 4.4+, coreutils, ferramentas do
    Samba, shadow-utils (`useradd`, `chpasswd`), OpenSSH.
+9. **Nunca testar em produção** — desenvolvimento e testes só na VM de
+   desenvolvimento (ver seção 9).
 
-## 3. Segurança dos usuários do servidor de arquivos
+## 3. Contas de usuário
 
-Todo usuário criado pelo gsb:
+### 3.1 Tipos de conta (escolhidos na criação)
 
-- tem shell `nologin` e **não** tem pasta pessoal;
-- tem a **mesma senha no Linux e no Samba** (mínimo configurável, padrão 4
-  caracteres), e toda troca de senha é feita **nos dois juntos**;
-- entra no grupo de proteção (`gsb_usuarios`), recusado por completo pelo
-  SSH — inclusive túneis (`ssh -N -L`), que o `nologin` sozinho não impede
-  quando o login por senha está ligado.
+| | **Usuário de arquivos** (padrão) | **Usuário com acesso ao servidor** |
+|---|---|---|
+| Para quem | quase todos: só acessam pastas pelo Samba | casos liberados por um administrador |
+| Senha Samba | sim | sim |
+| Senha Linux | **bloqueada** (não existe senha Linux utilizável) | própria, definida na criação |
+| Shell | `/usr/sbin/nologin` | `/bin/bash` |
+| Grupo de proteção SSH (`debkit_usuarios`) | **sim** — SSH recusado, inclusive túneis | não |
 
-**Proteção SSH gerenciada pelo próprio gsb** (nada de editar o `sshd` à mão):
+- O tipo "acesso ao servidor" exige confirmação explícita, com aviso de que
+  a pessoa poderá entrar no servidor por SSH/console.
+- **Trocar senha:** usuário de arquivos → só a do Samba (a Linux continua
+  bloqueada); com acesso ao servidor → pergunta qual (Samba, Linux ou as
+  duas).
+- Senha com mínimo configurável (`SENHA_MIN`, padrão 4), lida sem eco,
+  repetida para conferir e passada sempre pela entrada padrão.
+- Nenhum usuário acessa o servidor a não ser pelo Samba, salvo os liberados
+  por um administrador (tipo acima) e os administradores (`sudo`).
+- *Em aberto:* oferecer ou não "dar `sudo`" no tipo com acesso ao servidor
+  (por ora, não: virar administrador continua sendo feito à mão).
 
-- arquivo próprio `/etc/ssh/sshd_config.d/gsb.conf` com
-  `DenyGroups gsb_usuarios`; o `sshd_config` principal não é tocado;
+### 3.2 Proteção SSH gerenciada pelo próprio debkit
+
+Nada de editar o `sshd` à mão:
+
+- arquivo próprio `/etc/ssh/sshd_config.d/debkit.conf` com
+  `DenyGroups debkit_usuarios`; o `sshd_config` principal não é tocado;
 - só aplica se o `sshd_config` inclui `sshd_config.d/*.conf` (padrão no
   Debian 11+) **antes de qualquer bloco `Match`** — depois de um `Match` a
   regra valeria só dentro dele (comprovado com `sshd -T`); senão, avisa e
@@ -58,30 +84,72 @@ Todo usuário criado pelo gsb:
   inválida pode derrubar o serviço), recarrega sem derrubar sessões abertas
   e confere com `sshd -T` que a regra `denygroups` está em vigor para
   todos; se algo falhar, desfaz só o que fez;
-- nunca sobrescreve um arquivo que não tem a marca do gsb e recusa aplicar
-  se quem roda o gsb estiver no grupo (não tranca o administrador fora).
+- nunca sobrescreve um arquivo que não tem a marca do debkit e recusa aplicar
+  se quem roda o debkit estiver no grupo (não tranca o administrador fora).
 - Provado com login real (`tests/t04b_ssh_real.sh`): antes, um usuário com
   `nologin` autenticava e abria **túnel SSH**; depois, é recusado (inclusive
   o túnel), quem está fora do grupo continua entrando e as sessões já
   abertas não caem.
 
-## 4. O gsb só gerencia o que ele cria
+### 3.3 Pasta pessoal (home)
 
-Decisão do projeto: o gsb **nunca** altera usuários, grupos ou
-compartilhamentos que já existiam no servidor. Não existe função "adotar".
+- **Opcional na criação; padrão: não criar.**
+- As homes ficam numa **base no disco de dados** (`HOMES_BASE`, ex.:
+  `/mnt/dados/homes`), não em `/home`: os dados ficam todos juntos para o
+  backup. Na primeira vez o debkit detecta os pontos de montagem
+  (`findmnt`), sugere um, e grava a base escolhida na configuração.
+- Recusa base que não esteja de fato num sistema de arquivos montado
+  diferente do `/` (nunca grava no disco do sistema por engano) e as pastas
+  do sistema (mesma validação do swg).
+- Oferece criar o compartilhamento `[homes]` (cada usuário vê só a própria
+  pasta no Windows).
+- Usuário existente: opção para criar/mover a home depois.
 
-| | Como o gsb reconhece o que é dele | Consequência |
+### 3.4 Remover x desativar
+
+- **Desativar** (reversível): bloqueia o acesso (flag `D` no Samba) e mantém
+  tudo; reativar volta com a mesma senha.
+- **Remover** (definitivo): apaga do **Linux, do Samba e a pasta pessoal, se
+  houver** — sem perguntas separadas, com UMA confirmação digitando o nome
+  do usuário. Antes mostra o que será perdido e sugere desativar.
+  - Sessões Samba abertas: mostra e encerra (necessário para o `userdel`).
+  - A home só é apagada se estiver dentro de `HOMES_BASE` ou de `/home` e
+    não for de outro usuário; fora disso é mantida e o debkit avisa.
+  - Arquivos do usuário nos compartilhamentos NÃO são apagados.
+  - Recusa se o grupo pessoal do usuário é usado no `smb.conf`.
+- **Consistência:** contas só no Linux ou só no Samba aparecem marcadas,
+  com opção de corrigir (criar a senha Samba / limpar a conta Samba órfã).
+
+## 4. O que o debkit gerencia
+
+Decisão de 15/10/2026 (substitui a regra anterior "só gerencia o que ele
+criou"): o debkit gerencia **todos** os usuários, grupos e compartilhamentos
+comuns do servidor — nunca os do sistema.
+
+| | Gerencia | Não aparece / não mexe |
 |---|---|---|
-| Usuários | membros do grupo `gsb_usuarios` | trocar senha, desativar, remover etc. recusam qualquer outro |
-| Grupos | prefixo próprio configurável (ex.: `gsb_vendas`) | só cria/altera/remove os seus |
-| Compartilhamentos | ficam em `/etc/samba/gsb-shares.conf`, incluído no `smb.conf` por **uma** linha `include =` | os blocos do `smb.conf` do administrador nunca são editados; para desligar o gsb basta tirar essa linha |
+| Usuários | UID entre `UID_MIN` e `UID_MAX` do `/etc/login.defs` (Debian: 1000–60000) | usuários de sistema (root, www-data, nobody...): **nem aparecem nas listas** |
+| Grupos | GID entre `GID_MIN` e `GID_MAX` | grupos de sistema; **grupos pessoais** (criados junto com o usuário) não aparecem nas listas |
+| Compartilhamentos | todos do `smb.conf` | `[global]`, `[homes]`*, `[printers]`, `[print$]` |
 
-O que não é do gsb aparece num **inventário somente leitura**.
+\* `[homes]` só pela função de pastas pessoais (3.3).
+
+- **Grupo pessoal** = grupo com o mesmo nome de um usuário e que é o grupo
+  principal dele. É removido junto com o usuário (se não tiver outros
+  membros). Se for usado no `smb.conf`, o debkit avisa nas operações em que
+  isso importa.
+- **Administradores** (membros do `sudo`): aparecem marcados como
+  "admin"; o debkit **não** os remove, desativa nem aplica a proteção SSH.
+  Nunca age sobre o próprio administrador que está rodando o debkit.
+- O `smb.conf` é editado diretamente (não há mais arquivo separado com
+  `include`), sempre com: backup (seção 6) → arquivo novo em temporário →
+  `testparm` e conferência de que só mudou o pretendido → troca atômica
+  mantendo dono/permissões → `reload` → se falhar, restaura o backup.
 
 ## 5. Preparação inteligente do ambiente
 
 "Robusto e inteligente" não é só detectar um problema e mandar o
-administrador resolver: o gsb **prepara o ambiente** para funcionar. Se
+administrador resolver: o debkit **prepara o ambiente** para funcionar. Se
 falta algo, ele explica, pergunta e, com o consentimento, resolve sozinho,
 confere o resultado e segue (ou desfaz, se algo falhar).
 
@@ -95,13 +163,12 @@ precisa):
 | Desenvolvimento | `shellcheck` | **nunca** instala no servidor de quem usa |
 
 **Assistente de primeira execução:** verifica tudo e mostra um plano único
-(instalar pacotes, ativar o serviço do Samba, criar `/etc/gsb/gsb.conf`,
-backups e log, criar o grupo `gsb_usuarios`, incluir a linha `include` no
-`smb.conf`, aplicar a proteção SSH). Com "s", executa item por item,
-conferindo cada um; se algo falhar, desfaz o que fez e explica. Nas
-aberturas seguintes faz uma checagem rápida e oferece consertar o que tiver
-"quebrado" (serviço parado, `include` removido...). Há também a opção de menu
-**"Verificar e preparar o ambiente"**.
+(instalar pacotes, ativar o serviço do Samba, criar `/etc/debkit/debkit.conf`,
+backups e log, criar o grupo `debkit_usuarios`, aplicar a proteção SSH).
+Com "s", executa item por item, conferindo cada um; se algo falhar, desfaz o
+que fez e explica. Nas aberturas seguintes faz uma checagem rápida e
+oferece consertar o que tiver "quebrado" (serviço parado...). Há também a
+opção de menu **"Verificar e preparar o ambiente"**.
 
 **Regras para qualquer mudança automática:**
 
@@ -110,75 +177,90 @@ aberturas seguintes faz uma checagem rápida e oferece consertar o que tiver
   interativas), espera se o apt estiver em uso por outro programa e, sem
   internet, explica sem deixar nada pela metade;
 - registra tudo no log de auditoria;
-- não mexe no que é do administrador além dos dois "ganchos" mínimos (a
-  linha `include` e o arquivo próprio do SSH);
 - firewall ativo (ufw/firewalld) bloqueando o Samba: oferece liberar só a porta
   445/tcp (SMB moderno; NetBIOS 137-139 fica fechado) e só para as redes
   locais do servidor, nunca para qualquer origem; regras próprias de
   nftables/iptables: só avisa (não dá para interpretar regras escritas à mão);
 - fora do Debian / sem `apt`: não arrisca — lista os pacotes e explica.
 
-**Desinstalação:** opção que remove tudo o que o gsb colocou no sistema
-(linha `include`, arquivo do SSH, configuração), perguntando o que fazer com
-os usuários e compartilhamentos que ele criou.
+**Desinstalação:** opção que remove tudo o que o debkit colocou no sistema
+(arquivo do SSH, grupo de proteção, configuração), sem mexer nos usuários e
+compartilhamentos.
 
-**Testes sem estragar o servidor de desenvolvimento:** `apt-get -s`
-(simulação), comandos "faltando" simulados em ambiente controlado e
-serviços parados com cuidado. Instalação do zero de verdade fica para uma
-máquina limpa (VM).
+## 6. Backups
 
-## 6. Arquitetura
+- **`smb.conf`:** antes de QUALQUER alteração, cópia em
+  `/etc/samba/conf-bkp/` (`SMB_BACKUP_DIR`) com o nome
+  `smb.conf.dd-mm-aaaa-hh-mm-ss` (ex.: `smb.conf.15-10-2026-17-42-05`).
+  O debkit cria a pasta se não existir (root, 700) e mantém só os **últimos
+  X** backups, apagando os mais antigos.
+- **X = `BACKUP_MANTER`** (padrão **30**): o valor padrão fica no início do
+  script e pode ser alterado em `/etc/debkit/debkit.conf` (validado: número
+  de 1 a 9999). A rotação só apaga arquivos com o padrão de nome do debkit
+  (nunca outros arquivos da pasta) e só depois que o backup novo foi criado
+  e conferido.
+- Dois backups no mesmo segundo: o segundo ganha sufixo (`-2`), nunca
+  sobrescreve.
+- Demais arquivos do sistema que o debkit alterar (ex.: arquivo SSH):
+  continuam em `BACKUP_DIR` (`/var/backups/debkit`), com a mesma rotação.
 
-- **Um arquivo só** (`gsb.sh`), fácil de instalar e auditar, em seções:
-  configuração → detecção do sistema → mensagens → utilitários → funções →
-  menus → comandos diretos → início.
+## 7. Arquitetura
+
+- **Núcleo + módulos:** um comando `debkit` (menu principal que lista os
+  módulos), o núcleo em arquivo próprio (o que hoje é a Fase 0 do
+  `debkit.sh`) e cada módulo em seu arquivo (`samba.sh`). Instalação em
+  `/usr/local/lib/debkit/` com link `/usr/local/sbin/debkit`.
 - **Dois modos de uso:** menu interativo e comandos diretos
-  (ex.: `gsb usuario criar joao --grupos gsb_vendas`), que também permitem
-  testes automáticos.
+  (ex.: `debkit samba usuario criar joao --grupos vendas`), que também
+  permitem testes automáticos.
 - **Distribuição:** foco em **Debian 12/13** (Ubuntu, derivado do Debian,
   tende a funcionar). O que muda entre distribuições (nomes de serviços,
   caminhos) fica isolado em um único ponto, para facilitar suporte futuro.
 - **Idioma:** todas as mensagens num catálogo; português do Brasil é o
   padrão, preparado para inglês.
 
-Estrutura do repositório:
+Estrutura do repositório (alvo da tarefa 1.0):
 
 ```
-/opt/gsb/
-├── gsb.sh             # o programa
-├── gsb.conf.exemplo   # configuração comentada
-├── install.sh         # instala/atualiza (link em /usr/local/sbin/gsb)
-├── tests/             # testes automáticos (usuários/shares descartáveis)
-├── docs/              # planejamento e decisões
+debkit/
+├── debkit                # ponto de entrada (menu de módulos, linha de comando)
+├── lib/nucleo.sh         # núcleo comum (hoje: Fase 0 do debkit.sh)
+├── modulos/samba.sh      # módulo samba
+├── debkit.conf.exemplo   # configuração comentada
+├── install.sh            # instala/atualiza
+├── tests/                # testes automáticos (dados descartáveis)
+├── docs/                 # planejamento e decisões
 ├── README.md  CHANGELOG.md  LICENSE (MIT)
 ```
 
-## 7. Fases
+## 8. Fases
 
 | Fase | Conteúdo |
 |---|---|
-| 0. Fundação | 0.1 esqueleto (configuração, catálogo de mensagens, utilitários, trava, log, menu) ✔ · 0.2 detecção do ambiente ✔ · 0.3 preparação do ambiente, assistente de abertura (verifica a cada execução e oferece consertar) e backups ✔ · 0.4 proteção SSH ✔ · 0.5 firewall (ufw/firewalld: liberar só 445/tcp e só para as redes locais) ✔ |
-| 1. Usuários | **criar** (item 1 do menu), listar, trocar senha (Linux + Samba), grupos, desativar/reativar, remover |
-| 2. Compartilhamentos | criar, listar, permissões de pasta, remover; avaliar acesso somente leitura por grupo |
-| 3. Diagnóstico | falhas de login, sessões ativas, saúde do Samba, consulta à auditoria, inventário somente leitura |
+| 0. Fundação | 0.1 esqueleto ✔ · 0.2 detecção do ambiente ✔ · 0.3 preparação do ambiente e backups ✔ · 0.4 proteção SSH ✔ · 0.5 firewall ✔ |
+| 1. Usuários e grupos | **1.0 reestruturar** (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário (tipos, home opcional) · listar · trocar senha · grupos (criar, remover, entrar/sair) · desativar/reativar · remover · consistência Linux x Samba |
+| 2. Compartilhamentos | criar, listar, permissões de pasta, remover (inclusive os já existentes); pastas pessoais e `[homes]`; avaliar acesso somente leitura por grupo |
+| 3. Diagnóstico | falhas de login, sessões ativas, saúde do Samba, consulta à auditoria |
 | 4. Publicação | comandos diretos completos, `install.sh`, **desinstalação**, README, mensagens em inglês, testes automáticos e CI |
 
-## 8. Forma de trabalho
+## 9. Forma de trabalho
 
-Uma função (ou tarefa) por vez:
+- **Ambiente:** repositório no GitHub (`debkit`) e uma **VM Debian 13 de
+  desenvolvimento, com snapshot**. Todo código é escrito e testado lá.
+  **Nunca** rodar o debkit nem os testes no servidor de produção (a suíte
+  cria usuários, grupos e unidades systemd de teste).
+- Uma função (ou tarefa) por vez:
+  1. implementar;
+  2. revisão séria, criteriosa e minuciosa;
+  3. testes de verdade cobrindo todas as situações possíveis, com dados
+     descartáveis e limpeza ao final;
+  4. só com tudo certo: commit (autor: Thiago Carrere; coautor: Claude).
+- Trabalho na branch `dev`; levar para a `main` é decisão do Thiago.
 
-1. implementar;
-2. revisão séria, criteriosa e minuciosa;
-3. testes de verdade cobrindo todas as situações possíveis, com dados
-   descartáveis e limpeza ao final — sem tocar no que já existe no servidor;
-4. só com tudo certo: commit (autor: Thiago Carrere; coautor: Claude).
+## 10. Herança do projeto swg
 
-Trabalho na branch `dev`; levar para a `main` é decisão do Thiago.
-
-## 9. Herança do projeto swg
-
-O gsb nasce da experiência do `swg` (menu Samba + WireGuard de uso interno).
-Lições já aprendidas lá e que valem aqui:
+O debkit nasce da experiência do `swg` (menu Samba + WireGuard de uso
+interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqui:
 
 - `smbpasswd` rodando como root **não** aplica o tamanho mínimo de senha;
 - caminho relativo ou `/var/tmp`, `/var/www` etc. em operações recursivas
@@ -186,23 +268,21 @@ Lições já aprendidas lá e que valem aqui:
   lista de pastas do sistema);
 - `userdel -r` em usuário de sistema apaga pastas como `/var/backups` e
   `/var/www`;
+- remover um bloco do `smb.conf` com segurança: backup, arquivo novo,
+  conferir com `testparm` que só aquela seção saiu, troca atômica, reload e
+  restauração se falhar (`smb_remover_compartilhamento` do swg);
 - conferir o resultado real de cada operação (não confiar só no código de
   saída), e testar com login de verdade.
 
-## 10. Situação atual e próximos passos
+## 11. Situação atual e próximos passos
 
-*Atualizado em 02/10/2026, ao fim da Fase 0.*
+*Atualizado em 15/10/2026.*
 
-**Decisão pendente — NOME DO PROJETO (decidir ANTES da tarefa 1.1):**
-ideia do Thiago: **`debkit`**, um kit de módulos para servidores Debian, em
-que o Gerenciador Samba seria o módulo `samba` e, no futuro, viriam outros
-(`wireguard`...). A base da Fase 0 (configuração segura, mensagens,
-detecção/preparação do ambiente, proteção SSH, firewall, testes) serve de
-núcleo comum. A decidir: nome final (checar disponibilidade no GitHub; não
-existe pacote "debkit" no Debian), nome dos módulos e estrutura (um
-programa com módulos ou um por módulo com núcleo compartilhado). Renomear
-agora é barato (nada publicado/instalado); depois da Fase 1, fica caro
-(`/etc/gsb`, grupo `gsb_usuarios`, prefixo `gsb_`, funções, repositório).
+- Nome decidido: **debkit**; renomeação gsb → debkit feita (arquivos,
+  variáveis, funções, grupo `debkit_usuarios`, `/etc/debkit`, testes). As
+  decisões das seções 3, 4 e 6 ainda **não** estão no código.
+- A suíte de testes **não** foi rodada após a renomeação (servidor de
+  produção); rodar na VM antes de qualquer outra coisa.
 
 **Fase 0 (fundação) concluída** — commits na branch `dev`:
 
@@ -214,42 +294,35 @@ agora é barato (nada publicado/instalado); depois da Fase 1, fica caro
 | 0.4 Proteção SSH | `345f64d` |
 | 0.5 Firewall | `9d68faa` |
 
-O que já funciona: `gsb --verificar`, `gsb --preparar`, o assistente ao
-abrir o menu e a tela "9) Ambiente". Ainda não há funções de usuários e
-compartilhamentos no menu.
+**Próximos passos:**
 
-**Próximo passo: Fase 1, tarefa 1.1 — Criar usuário** (item 1 do menu):
+1. Thiago: criar o repositório `debkit` no GitHub e a VM Debian 13 (com
+   snapshot); dar acesso de push (`gh auth login` ou chave SSH).
+2. Enviar este repositório ao GitHub e clonar na VM.
+3. Na VM: rodar a suíte completa (confere a renomeação).
+4. **Tarefa 1.0 — reestruturar** (ver Fase 1).
+5. **Tarefa 1.1 — criar usuário:** nome validado e inexistente; tipo de
+   conta (3.1); home opcional (3.3); grupos; resumo, UMA confirmação e
+   desfazer completo se algo falhar; só com o ambiente preparado; prova
+   real: login no Samba funciona e SSH é recusado (usuário de arquivos).
 
-- nome validado e ainda inexistente;
-- usuário Linux sem pasta pessoal, shell `nologin`;
-- a MESMA senha no Linux (`chpasswd`) e no Samba (`smbpasswd -s -a`),
-  mínimo `SENHA_MIN` (padrão 4), lida sem eco e passada sempre pela entrada
-  padrão (nunca na linha de comando);
-- entra no grupo `GRUPO_USUARIOS` (`gsb_usuarios`) — já nasce bloqueado no
-  SSH;
-- escolha de grupos de compartilhamento do gsb (prefixo `PREFIXO_GRUPO`);
-  como os compartilhamentos só chegam na Fase 2, a lista pode estar vazia;
-- resumo, UMA confirmação e desfazer completo se algo falhar no meio;
-- só funciona com o ambiente preparado (senão orienta o menu 9);
-- prova real: login no Samba funciona e login por SSH é recusado.
-
-**Como rodar os testes:**
+**Como rodar os testes (só na VM):**
 
 ```
-tests/run.sh                                   # suíte normal (caixa de areia)
-GSB_TESTE_REAL=1 tests/run.sh t04b_ssh_real.sh # prova com o SSH real
-GSB_TESTE_REAL=1 tests/run.sh t05b_ufw_real.sh # prova com o ufw real (instalado e INATIVO)
+tests/run.sh                                         # suíte normal (caixa de areia)
+DEBKIT_TESTE_REAL=1 tests/run.sh t04b_ssh_real.sh    # prova com o SSH real
+DEBKIT_TESTE_REAL=1 tests/run.sh t05b_ufw_real.sh    # prova com o ufw real (instalado e INATIVO)
 ```
 
 O `tests/run.sh` compara uma "impressão digital" do sistema real antes e
 depois de cada arquivo de teste e falha se algo mudar. Situação ao fim da
 Fase 0: 320 verificações na suíte normal + 27 nas provas reais, todas
-passando; `shellcheck` sem avisos no `gsb.sh`.
+passando; `shellcheck` sem avisos no `debkit.sh`.
 
 **Cuidados aprendidos na Fase 0** (valem para as próximas tarefas):
 
-- a caixa de areia dos testes precisa isolar TUDO que o gsb pode alterar
-  (smb.conf, shares, grupo, `SSH_DROPIN`...): numa tarefa um teste chegou a
+- a caixa de areia dos testes precisa isolar TUDO que o debkit pode alterar
+  (smb.conf, backups, grupo, `SSH_DROPIN`...): numa tarefa um teste chegou a
   criar o arquivo SSH real; daí nasceu a trava do `run.sh`;
 - testar o comportamento real das ferramentas antes de codificar
   (ex.: `server role = auto`; `Include` depois de `Match` no SSH; o próprio

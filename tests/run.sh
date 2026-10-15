@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Roda todos os testes do gsb (tests/t*.sh). Precisa ser root.
+# Roda todos os testes do debkit (tests/t*.sh). Precisa ser root.
 # Uso: tests/run.sh [arquivo_de_teste ...]
 #
 # TRAVA DE SEGURANÇA: antes e depois de cada arquivo de teste é tirada uma
 # "impressão digital" do sistema REAL (smb.conf, configuração efetiva do
-# SSH, sshd_config.d, grupos e pastas do gsb). Se qualquer coisa mudar, a
+# SSH, sshd_config.d, grupos e pastas do debkit). Se qualquer coisa mudar, a
 # suíte falha e mostra o que mudou - nenhum teste pode alterar o servidor
 # sem ser percebido. (Os testes que precisam tocar no sistema real, como
-# t04b_ssh_real.sh, só rodam com GSB_TESTE_REAL=1 e devem restaurá-lo.)
+# t04b_ssh_real.sh, só rodam com DEBKIT_TESTE_REAL=1 e devem restaurá-lo.)
 
 cd "$(dirname "$0")" || exit 1
 [ "$EUID" -eq 0 ] || { echo "Os testes precisam ser executados como root." >&2; exit 1; }
@@ -16,10 +16,10 @@ impressao_digital() {
     echo "smb.conf:        $(md5sum < /etc/samba/smb.conf 2>/dev/null)"
     echo "sshd -T:         $(sshd -T 2>/dev/null | md5sum)"
     echo "sshd_config.d:   $(ls -A /etc/ssh/sshd_config.d 2>/dev/null | tr '\n' ' ')"
-    echo "grupos gsb:      $(getent group | cut -d: -f1 | grep -E '^gsbt?_' | tr '\n' ' ')"
-    echo "usuários gsbt:   $(getent passwd | cut -d: -f1 | grep -E '^gsbt_' | tr '\n' ' ')"
-    echo "Samba gsbt:      $(pdbedit -L 2>/dev/null | cut -d: -f1 | grep -E '^gsbt_' | tr '\n' ' ')"
-    for p in /etc/gsb /var/backups/gsb /var/log/gsb.log /etc/samba/gsb-shares.conf /run/gsb.lock; do
+    echo "grupos debkit:      $(getent group | cut -d: -f1 | grep -E '^debkitt?_' | tr '\n' ' ')"
+    echo "usuários debkitt:   $(getent passwd | cut -d: -f1 | grep -E '^dkt_' | tr '\n' ' ')"
+    echo "Samba debkitt:      $(pdbedit -L 2>/dev/null | cut -d: -f1 | grep -E '^dkt_' | tr '\n' ' ')"
+    for p in /etc/debkit /var/backups/debkit /var/log/debkit.log /etc/samba/debkit-shares.conf /run/debkit.lock; do
         [ -e "$p" ] && echo "existe:          $p"
     done
 }
