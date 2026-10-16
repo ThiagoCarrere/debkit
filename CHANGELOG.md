@@ -13,6 +13,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   todos os usuários/grupos/compartilhamentos comuns; tipos de conta; senha
   Linux bloqueada por padrão; home opcional no disco de dados; remoção
   completa; backups do `smb.conf` em `/etc/samba/conf-bkp/` com rotação.
+- Testes: passam também num servidor já preparado pelo debkit. A
+  conferência "nada fora da caixa de areia" agora exige que os arquivos
+  reais do debkit não mudem (antes exigia que não existissem), e o `t03`
+  procura o `include` pelo caminho exato da areia.
 
 ### Adicionado
 - **Firewall (tarefa 0.5):** grupo "Firewall" na verificação. Com ufw ou

@@ -43,11 +43,38 @@ verdadeiro() {
 # Grupo de teste (nunca o debkit_usuarios real)
 GRUPO_TESTE="dkt_usuarios"
 
+# Arquivos REAIS do debkit no servidor. Podem existir (servidor já
+# preparado pelo debkit) ou não; os testes só exigem que não mudem.
+ARQUIVOS_REAIS=(/etc/debkit /etc/debkit/debkit.conf /var/log/debkit.log /run/debkit.lock
+                /etc/samba/smb.conf /etc/samba/debkit-shares.conf /etc/ssh/sshd_config.d/debkit.conf
+                /var/backups/debkit)
+
+# Uma linha por arquivo real: "caminho conteúdo/permissão" ou "caminho ausente"
+estado_real() {
+    local p
+    for p in "${ARQUIVOS_REAIS[@]}"; do
+        if [ -d "$p" ]; then
+            echo "$p dir $(stat -c '%a %u:%g' "$p") $(ls -A "$p" | md5sum)"
+        elif [ -e "$p" ]; then
+            echo "$p $(stat -c '%a %u:%g' "$p") $(md5sum < "$p")"
+        else
+            echo "$p ausente"
+        fi
+    done
+}
+
+# Afirmação: nenhum arquivo real do debkit mudou desde a caixa_de_areia
+real_intacto() {
+    caso "nada fora da caixa de areia"
+    igual "$_ESTADO_REAL_INICIO" "$(estado_real)" "arquivos reais do debkit iguais ao início"
+}
+
 # Pasta temporária com configuração própria. TUDO que o debkit pode alterar
 # aponta para dentro dela: log, trava, backups, uma CÓPIA do smb.conf, o
 # arquivo de compartilhamentos e um grupo de teste. Assim nenhum teste
 # consegue mexer no Samba real, nem respondendo "s" ao assistente.
 caixa_de_areia() {
+    _ESTADO_REAL_INICIO=$(estado_real)
     AREIA=$(mktemp -d /tmp/debkit-teste.XXXXXX)
     chmod 755 "$AREIA"
     if [ -f /etc/samba/smb.conf ]; then

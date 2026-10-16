@@ -144,8 +144,6 @@ saida=$(pty 0.8 "bash $DEBKIT" 9 "" 0)
 contem "9) Ambiente: verificar" "$saida"; contem "Ambiente do servidor" "$saida"
 contem "Ambiente pronto para o debkit." "$saida"
 
-caso "nada fora da caixa de areia"
-verdadeiro "/var/log/debkit.log não existe" test ! -e /var/log/debkit.log
-verdadeiro "/run/debkit.lock não existe" test ! -e /run/debkit.lock
+real_intacto
 
 resumo

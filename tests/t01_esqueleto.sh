@@ -179,8 +179,6 @@ sleep 1; kill -INT $! 2>/dev/null; wait $! 2>/dev/null
 verdadeiro "apagado no Ctrl+C" test ! -e "$(cat "$AREIA/tmpnome")"
 
 # ── Nada fora da caixa de areia ──────────────────────────────────────────────
-caso "testes não tocaram no log/trava reais"
-verdadeiro "/var/log/debkit.log não existe" test ! -e /var/log/debkit.log
-verdadeiro "/run/debkit.lock não existe" test ! -e /run/debkit.lock
+real_intacto
 
 resumo

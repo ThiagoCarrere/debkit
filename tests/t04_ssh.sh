@@ -135,8 +135,8 @@ verdadeiro "backup guardado" test -n "$(find "$AREIA/backups" -name 'debkit.conf
 caso "remover sem proteção aplicada: nada a fazer"
 igual "RC=0" "$(s 'debkit_ssh_remover_protecao; echo RC=$?')"
 
+real_intacto
 caso "o SSH real não foi tocado"
-verdadeiro "sshd_config.d real sem arquivo do debkit" test ! -e /etc/ssh/sshd_config.d/debkit.conf
 verdadeiro "sshd -T real sem o grupo de teste" bash -c "! sshd -T 2>/dev/null | grep -qw $GRUPO_TESTE"
 
 resumo

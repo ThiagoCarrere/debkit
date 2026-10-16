@@ -282,8 +282,10 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 - Nome decidido: **debkit**; renomeação gsb → debkit feita (arquivos,
   variáveis, funções, grupo `debkit_usuarios`, `/etc/debkit`, testes). As
   decisões das seções 3, 4 e 6 ainda **não** estão no código.
-- A suíte de testes **não** foi rodada após a renomeação (servidor de
-  produção); rodar na VM antes de qualquer outra coisa.
+- Renomeação conferida na VM em 16/10/2026: a VM limpa (sem Samba) foi
+  preparada pelo próprio debkit (`--preparar`: instalou o Samba, ligou o
+  serviço, criou a estrutura e aplicou a proteção SSH) e a suíte completa
+  passou, inclusive as provas reais.
 
 **Fase 0 (fundação) concluída** — commits na branch `dev`:
 
@@ -300,12 +302,12 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 1. ✔ Repositório `debkit` no GitHub e VM Debian 13 de desenvolvimento (com
    snapshot), com o repositório clonado em `/opt/debkit` e push por chave
    de implantação (deploy key) da VM.
-2. Na VM ainda sem Samba: preparar o ambiente **pelo próprio debkit**
+2. ✔ Na VM ainda sem Samba: preparar o ambiente **pelo próprio debkit**
    (`debkit.sh --preparar`). É a prova real da tarefa 0.3: o debkit precisa
    deixar o servidor pronto sozinho. As ferramentas de desenvolvimento
    (`shellcheck`, `smbclient`, `ufw` para a prova `t05b`) são instaladas à
    mão, porque o debkit nunca as instala.
-3. Na VM: rodar a suíte completa (confere a renomeação).
+3. ✔ Na VM: rodar a suíte completa (confere a renomeação).
 4. **Tarefa 1.0 — reestruturar** (ver Fase 1).
 5. **Tarefa 1.1 — criar usuário:** nome validado e inexistente; tipo de
    conta (3.1); home opcional (3.3); grupos; resumo, UMA confirmação e
@@ -323,7 +325,12 @@ DEBKIT_TESTE_REAL=1 tests/run.sh t05b_ufw_real.sh    # prova com o ufw real (ins
 O `tests/run.sh` compara uma "impressão digital" do sistema real antes e
 depois de cada arquivo de teste e falha se algo mudar. Situação ao fim da
 Fase 0: 320 verificações na suíte normal + 27 nas provas reais, todas
-passando; `shellcheck` sem avisos no `debkit.sh`.
+passando; `shellcheck` sem avisos no `debkit.sh`. Na VM, com o servidor já
+preparado pelo debkit (16/10/2026): 316 + 26, todas passando.
+
+Os testes funcionam com o servidor preparado ou não: em vez de exigir que
+os arquivos reais do debkit não existam, conferem que não mudaram
+(`estado_real`/`real_intacto` em `tests/lib.sh`).
 
 **Cuidados aprendidos na Fase 0** (valem para as próximas tarefas):
 

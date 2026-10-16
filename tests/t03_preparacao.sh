@@ -88,7 +88,7 @@ caso "idempotente: rodar de novo não tem nada a fazer"
 contem "PLANO=" "$(plano)"; igual "PLANO=" "$(plano | grep '^PLANO=')"
 saida=$(g "debkit_preparar")
 contem "O ambiente já está preparado" "$saida"
-igual 1 "$(grep -c '^include' "$AREIA/smb.conf")" "include não duplicado"
+igual 1 "$(grep -cxF "include = $AREIA/debkit-shares.conf" "$AREIA/smb.conf")" "include não duplicado"
 
 caso "include escrito por outra pessoa (maiúsculas/espaços) é reconhecido"
 prep_env
@@ -107,9 +107,11 @@ verdadeiro "válido" testparm -s "$AREIA/smb.conf"
 caso "include falha no testparm: desfaz TUDO (inclusive a linha no smb.conf)"
 prep_env
 md5_antes=$(md5sum < "$AREIA/smb.conf")
-# o testparm "falha" só depois que a linha do debkit entra no arquivo (a
-# verificação inicial precisa ver o smb.conf válido, senão nem há plano)
-saida=$(g "testparm() { grep -q 'debkit-shares' \"\${*: -1}\" 2>/dev/null && return 1; command testparm \"\$@\"; };
+# o testparm "falha" só depois que a linha do debkit (caminho da areia) entra
+# no arquivo (a verificação inicial precisa ver o smb.conf válido, senão nem
+# há plano). O smb.conf copiado de um servidor já preparado pode ter a linha
+# do debkit real: por isso o caminho completo da areia.
+saida=$(g "testparm() { grep -qF '$AREIA/debkit-shares' \"\${*: -1}\" 2>/dev/null && return 1; command testparm \"\$@\"; };
            debkit_verificar_ambiente >/dev/null; debkit_montar_plano; debkit_executar_plano; echo RC=\$?")
 contem "RC=1" "$saida"; contem "Desfazendo" "$saida"
 igual "$md5_antes" "$(md5sum < "$AREIA/smb.conf")" "smb.conf idêntico ao original"
@@ -243,11 +245,8 @@ nao_contem "O debkit vai:" "$saida" "não oferece preparar de novo"
 
 # ── Limpeza ──────────────────────────────────────────────────────────────────
 getent group "$GRUPO_T" >/dev/null && groupdel "$GRUPO_T"
-caso "nada fora da caixa de areia"
-verdadeiro "grupo de teste removido" bash -c "! getent group $GRUPO_T"
-verdadeiro "/etc/debkit não existe" test ! -e /etc/debkit
-verdadeiro "/var/log/debkit.log não existe" test ! -e /var/log/debkit.log
-verdadeiro "/etc/samba/debkit-shares.conf não existe" test ! -e /etc/samba/debkit-shares.conf
-verdadeiro "smb.conf real sem include do debkit" bash -c "! grep -q debkit-shares /etc/samba/smb.conf"
+caso "grupo de teste removido"
+verdadeiro "não existe mais" bash -c "! getent group $GRUPO_T"
+real_intacto
 
 resumo

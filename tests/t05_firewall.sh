@@ -131,4 +131,6 @@ igual "" "$(cat "$AREIA/fwd.regras")" "desfazer removeu as duas"
 caso "o firewall real não foi tocado"
 verdadeiro "ufw não instalado/ativo de verdade" bash -c '! command -v ufw >/dev/null || ! LC_ALL=C ufw status 2>/dev/null | grep -q "Status: active"'
 
+real_intacto
+
 resumo
