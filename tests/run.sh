@@ -19,7 +19,7 @@ impressao_digital() {
     echo "grupos debkit:      $(getent group | cut -d: -f1 | grep -E '^debkitt?_' | tr '\n' ' ')"
     echo "usuários debkitt:   $(getent passwd | cut -d: -f1 | grep -E '^dkt_' | tr '\n' ' ')"
     echo "Samba debkitt:      $(pdbedit -L 2>/dev/null | cut -d: -f1 | grep -E '^dkt_' | tr '\n' ' ')"
-    for p in /etc/debkit /var/backups/debkit /var/log/debkit.log /etc/samba/debkit-shares.conf /run/debkit.lock; do
+    for p in /etc/debkit /var/backups/debkit /var/log/debkit.log /etc/samba/debkit-shares.conf /etc/samba/conf-bkp /run/debkit.lock; do
         [ -e "$p" ] && echo "existe:          $p"
     done
 }

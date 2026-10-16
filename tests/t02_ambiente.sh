@@ -45,7 +45,7 @@ caso "faltam smbd, testparm, chpasswd e useradd"
 saida=$(verif "$(faltando smbd testparm chpasswd useradd)")
 contem "Falta o comando smbd (pacote samba)" "$saida"
 contem "Falta o comando testparm (pacote samba-common-bin)" "$saida"
-contem "PAC=samba samba-common-bin passwd" "$saida" "pacotes sem repetição, na ordem da tabela"
+contem "PAC=passwd samba samba-common-bin" "$saida" "pacotes sem repetição, na ordem da tabela (núcleo, depois módulos)"
 contem "Samba não instalado" "$saida"
 contem "RC=1" "$saida" "verificação falha"
 nao_contem "Todas as" "$saida" "não diz que está tudo presente"
@@ -127,7 +127,7 @@ saida=$(verif)
 contem "nao_existe.conf não existe" "$saida"; contem "RC=1" "$saida"
 # volta a apontar para a cópia do smb.conf real dentro da areia
 sed -i '/^SMB_CONF=/d' "$AREIA/debkit.conf"; echo "SMB_CONF=$AREIA/smb.conf" >> "$AREIA/debkit.conf"
-cp -p /etc/samba/smb.conf "$AREIA/smb.conf"
+copiar_smb_conf "$AREIA/smb.conf"
 
 # ── Serviços (simulado) ──────────────────────────────────────────────────────
 caso "Samba parado e desabilitado"

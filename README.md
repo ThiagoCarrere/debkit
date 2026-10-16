@@ -8,7 +8,8 @@ e pastas pessoais de um **servidor de arquivos Samba**.
 
 > **Status:** em desenvolvimento — ainda não usar em produção.
 > Fundação (Fase 0) concluída: verificação e preparação do ambiente, proteção
-> SSH e firewall. Próximo: gerenciamento de usuários (Fase 1).
+> SSH e firewall. Fase 1 (usuários e grupos) em andamento: estrutura em
+> núcleo + módulos pronta; próximo: criar usuário.
 > O planejamento está em [`docs/PLANEJAMENTO.md`](docs/PLANEJAMENTO.md).
 
 ## Destaques planejados
@@ -21,6 +22,21 @@ e pastas pessoais de um **servidor de arquivos Samba**.
 - Pastas pessoais opcionais no disco de dados (backup junto com o resto).
 - Toda operação valida antes, pede uma confirmação e **desfaz** se algo
   falhar; backups automáticos com rotação e log de auditoria.
+
+## Uso (desenvolvimento)
+
+```
+sudo ./debkit --verificar   # verifica o ambiente, sem alterar nada
+sudo ./debkit --preparar    # prepara o servidor (mostra o plano e pede confirmação)
+sudo ./debkit               # menu
+```
+
+Os arquivos do programa precisam pertencer ao root e não ter escrita para
+grupo/outros (o debkit roda como root e se recusa a carregar código que
+outra pessoa possa alterar).
+
+Estrutura: `debkit` (ponto de entrada), `lib/nucleo.sh` (núcleo comum) e
+`modulos/*.sh` (um arquivo por módulo; primeiro: `samba.sh`).
 
 ## Compatibilidade
 

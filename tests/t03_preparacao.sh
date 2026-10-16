@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Testes da tarefa 0.3 - preparação do ambiente.
-# Tudo em caixa de areia: cópia do smb.conf, grupo de teste "dkt_usuarios",
+# Tudo em caixa de areia: cópia do smb.conf (e backups dele), grupo de teste "dkt_usuarios",
 # apt falso e um serviço systemd de teste. O Samba real não é alterado
 # (o "recarregar" é simulado; nos testes de linha de comando ele recarrega o
 # smbd real, cuja configuração não muda).
@@ -12,15 +12,15 @@ getent group "$GRUPO_T" >/dev/null && { echo "grupo $GRUPO_T já existe - aborta
 
 # Ambiente de teste: configuração AINDA NÃO criada, tudo dentro da areia
 prep_env() {
-    rm -rf "${AREIA:?}/etc" "${AREIA:?}/backups" "${AREIA:?}/debkit.log" "${AREIA:?}/debkit-shares.conf"
-    cp -p /etc/samba/smb.conf "$AREIA/smb.conf"
+    rm -rf "${AREIA:?}/etc" "${AREIA:?}/backups" "${AREIA:?}/conf-bkp" "${AREIA:?}/debkit.log"
+    copiar_smb_conf "$AREIA/smb.conf"
     getent group "$GRUPO_T" >/dev/null && groupdel "$GRUPO_T"
     : > "$AREIA/reloads"
 }
 # Trecho que configura o debkit (em modo source) para a areia
 CFG="DEBKIT_CONF_ARQUIVO='$AREIA/etc/debkit/debkit.conf'; debkit_conf_padroes;
      DEBKIT_LOG='$AREIA/debkit.log'; DEBKIT_BACKUP_DIR='$AREIA/backups'; DEBKIT_SMB_CONF='$AREIA/smb.conf';
-     DEBKIT_SHARES_CONF='$AREIA/debkit-shares.conf'; DEBKIT_GRUPO_USUARIOS='$GRUPO_T'; DEBKIT_TRAVA='$AREIA/debkit.lock';
+     DEBKIT_SMB_BACKUP_DIR='$AREIA/conf-bkp'; DEBKIT_GRUPO_USUARIOS='$GRUPO_T'; DEBKIT_TRAVA='$AREIA/debkit.lock';
      DEBKIT_SSH_DROPIN='$AREIA/sshd_debkit.conf';
      debkit_samba_recarregar() { echo reload >> '$AREIA/reloads'; };"
 g() { bash -c "source '$DEBKIT'; $CFG $1" 2>&1; }
@@ -33,10 +33,13 @@ b=$(g "debkit_backup '$AREIA/arq.conf'")
 igual 700 "$(stat -c %a "$AREIA/backups")" "pasta 700"
 igual 600 "$(stat -c %a "$b")" "cópia 600"
 verdadeiro "conteúdo igual" cmp -s "$AREIA/arq.conf" "$b"
-for i in 1 2 3 4 5; do echo "v$i" > "$AREIA/arq.conf"; g "DEBKIT_BACKUP_MANTER=3; debkit_backup '$AREIA/arq.conf'" >/dev/null; done
+verdadeiro "nome arq.conf.dd-mm-aaaa-hh-mm-ss" bash -c '[[ "${1##*/}" =~ ^arq\.conf\.[0-9]{2}-[0-9]{2}-[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{2}(-[0-9]+)?$ ]]' _ "$b"
+# Os conteúdos v1..v5 em backups seguidos (o mais novo por último na ordem
+# de criação: ver t06 para a ordem por data do nome)
+for i in 1 2 3 4 5; do echo "v$i" > "$AREIA/arq.conf"; ultimo=$(g "DEBKIT_BACKUP_MANTER=3; debkit_backup '$AREIA/arq.conf'"); done
 igual 3 "$(find "$AREIA/backups" -name 'arq.conf.*' | wc -l)" "mantém só 3"
-igual "v5" "$(cat "$(find "$AREIA/backups" -name 'arq.conf.*' | sort | tail -1)")" "a mais nova é a última"
-igual "v3" "$(cat "$(find "$AREIA/backups" -name 'arq.conf.*' | sort | head -1)")" "apagou as mais antigas"
+igual "v5" "$(cat "$ultimo" 2>/dev/null)" "o backup recém-criado existe e é o v5"
+igual "v3 v4 v5" "$(cat "$AREIA"/backups/arq.conf.* | sort | tr '\n' ' ' | sed 's/ $//')" "apagou as mais antigas"
 contem "não existe" "$(g "debkit_backup '$AREIA/nao_existe'")" "arquivo inexistente"
 contem "Não foi possível fazer o backup" "$(g "DEBKIT_BACKUP_DIR=/proc/nao_pode; debkit_backup '$AREIA/arq.conf'")" "pasta impossível"
 
@@ -47,7 +50,8 @@ plano() { g "$1 debkit_verificar_ambiente >/dev/null; debkit_montar_plano; echo 
 caso "plano numa máquina sem nada do debkit"
 prep_env
 saida=$(plano)
-contem "PLANO=dir_conf conf dir_backup log grupo shares_conf include" "$saida"
+contem "PLANO=dir_conf conf dir_backup log grupo" "$saida"
+igual "PLANO=dir_conf conf dir_backup log grupo" "$(grep '^PLANO=' <<< "$saida")" "sem shares_conf/include (removidos na 1.0)"
 nao_contem "samba_servico" "$saida" "Samba real ativo e habilitado: não entra"
 caso "plano com Samba parado"
 contem "PLANO=samba_servico" "$(plano 'debkit_servico_ativo() { return 1; };')"
@@ -75,55 +79,34 @@ igual 700 "$(stat -c %a "$AREIA/backups")" "backups 700"
 igual 640 "$(stat -c %a "$AREIA/debkit.log")" "log 640"
 gid=$(getent group "$GRUPO_T" | cut -d: -f3)
 verdadeiro "grupo criado como grupo de SISTEMA (GID $gid < 1000)" test "${gid:-9999}" -lt 1000
-igual 644 "$(stat -c %a "$AREIA/debkit-shares.conf")" "debkit-shares.conf 644"
-contem "include = $AREIA/debkit-shares.conf" "$(tail -2 "$AREIA/smb.conf")" "linha include no fim"
-verdadeiro "smb.conf continua válido" testparm -s "$AREIA/smb.conf"
-b=$(find "$AREIA/backups" -name 'smb.conf.*' | head -1)
-igual "$md5_antes" "$(md5sum < "$b")" "backup do smb.conf original"
-igual 1 "$(grep -c reload "$AREIA/reloads")" "Samba recarregado 1 vez"
+igual "$md5_antes" "$(md5sum < "$AREIA/smb.conf")" "smb.conf não é tocado pela preparação"
+verdadeiro "nenhum debkit-shares.conf criado" test ! -e "$AREIA/debkit-shares.conf"
+igual 0 "$(grep -c reload "$AREIA/reloads")" "Samba não recarregado"
+contem "SMB_BACKUP_DIR=$AREIA/conf-bkp" "$(cat "$AREIA/etc/debkit/debkit.conf")" "debkit.conf com SMB_BACKUP_DIR"
+nao_contem "SHARES_CONF" "$(cat "$AREIA/etc/debkit/debkit.conf")" "debkit.conf sem SHARES_CONF"
+nao_contem "PREFIXO_GRUPO" "$(cat "$AREIA/etc/debkit/debkit.conf")" "debkit.conf sem PREFIXO_GRUPO"
 log=$(cat "$AREIA/debkit.log")
-for a in dir_conf conf dir_backup log grupo shares_conf include; do contem "preparar acao=$a resultado=ok" "$log" "auditoria $a"; done
+for a in dir_conf conf dir_backup log grupo; do contem "preparar acao=$a resultado=ok" "$log" "auditoria $a"; done
 
 caso "idempotente: rodar de novo não tem nada a fazer"
 contem "PLANO=" "$(plano)"; igual "PLANO=" "$(plano | grep '^PLANO=')"
 saida=$(g "debkit_preparar")
 contem "O ambiente já está preparado" "$saida"
-igual 1 "$(grep -cxF "include = $AREIA/debkit-shares.conf" "$AREIA/smb.conf")" "include não duplicado"
-
-caso "include escrito por outra pessoa (maiúsculas/espaços) é reconhecido"
-prep_env
-printf '\n  Include =   %s  \n' "$AREIA/debkit-shares.conf" >> "$AREIA/smb.conf"
-nao_contem "include" "$(plano | grep '^PLANO=')"
-
-caso "smb.conf sem quebra de linha no final"
-prep_env
-printf '[global]\n   workgroup = TESTE' > "$AREIA/smb.conf"
-g "debkit_verificar_ambiente >/dev/null; debkit_montar_plano; debkit_executar_plano" >/dev/null
-igual "   workgroup = TESTE" "$(sed -n 2p "$AREIA/smb.conf")" "última linha original intacta"
-contem "include = $AREIA/debkit-shares.conf" "$(cat "$AREIA/smb.conf")"
-verdadeiro "válido" testparm -s "$AREIA/smb.conf"
 
 # ── Falha no meio: desfaz o que é do debkit ─────────────────────────────────────
-caso "include falha no testparm: desfaz TUDO (inclusive a linha no smb.conf)"
+caso "falha no meio (log): desfaz tudo o que já tinha feito"
 prep_env
 md5_antes=$(md5sum < "$AREIA/smb.conf")
-# o testparm "falha" só depois que a linha do debkit (caminho da areia) entra
-# no arquivo (a verificação inicial precisa ver o smb.conf válido, senão nem
-# há plano). O smb.conf copiado de um servidor já preparado pode ter a linha
-# do debkit real: por isso o caminho completo da areia.
-saida=$(g "testparm() { grep -qF '$AREIA/debkit-shares' \"\${*: -1}\" 2>/dev/null && return 1; command testparm \"\$@\"; };
-           debkit_verificar_ambiente >/dev/null; debkit_montar_plano; debkit_executar_plano; echo RC=\$?")
+saida=$(g "debkit_acao_log() { return 1; }; debkit_verificar_ambiente >/dev/null; debkit_montar_plano; debkit_executar_plano; echo RC=\$?")
 contem "RC=1" "$saida"; contem "Desfazendo" "$saida"
 igual "$md5_antes" "$(md5sum < "$AREIA/smb.conf")" "smb.conf idêntico ao original"
 verdadeiro "debkit.conf removido" test ! -e "$AREIA/etc/debkit/debkit.conf"
 verdadeiro "pasta de configuração removida" test ! -e "$AREIA/etc/debkit"
-verdadeiro "grupo removido" bash -c "! getent group $GRUPO_T"
-verdadeiro "debkit-shares.conf removido" test ! -e "$AREIA/debkit-shares.conf"
-verdadeiro "backup do smb.conf mantido (pasta não vazia)" test -n "$(find "$AREIA/backups" -name 'smb.conf.*')"
-contem "acao=include resultado=falha" "$(cat "$AREIA/debkit.log")"
-contem "acao=grupo resultado=desfeito" "$(cat "$AREIA/debkit.log")"
+verdadeiro "pasta de backups (vazia) removida" test ! -e "$AREIA/backups"
+verdadeiro "grupo não criado" bash -c "! getent group $GRUPO_T"
+contem "acao=log resultado=falha" "$(cat "$AREIA/debkit.log" 2>/dev/null)" "auditoria da falha"
 
-caso "falha ao criar o grupo: desfaz conf/pastas, para antes do include"
+caso "falha ao criar o grupo: desfaz conf/pastas"
 prep_env
 md5_antes=$(md5sum < "$AREIA/smb.conf")
 saida=$(g "groupadd() { return 1; }; debkit_verificar_ambiente >/dev/null; debkit_montar_plano; debkit_executar_plano; echo RC=\$?")
@@ -132,10 +115,7 @@ verdadeiro "debkit.conf removido" test ! -e "$AREIA/etc/debkit/debkit.conf"
 verdadeiro "backups (vazia) removida" test ! -e "$AREIA/backups"
 igual "$md5_antes" "$(md5sum < "$AREIA/smb.conf")" "smb.conf nem foi tocado"
 
-caso "desfazer não apaga debkit-shares.conf que já tem compartilhamento"
 prep_env
-g "debkit_acao_shares_conf; echo '[algum]' >> '$AREIA/debkit-shares.conf'; debkit_desfazer shares_conf" >/dev/null
-verdadeiro "mantido" test -e "$AREIA/debkit-shares.conf"
 caso "desfazer não apaga o grupo se já tiver membros"
 g "debkit_acao_grupo; usermod -aG $GRUPO_T nobody; debkit_desfazer grupo" >/dev/null
 verdadeiro "grupo mantido" getent group "$GRUPO_T" >/dev/null
@@ -196,18 +176,18 @@ verdadeiro "habilitado" systemctl is-enabled --quiet debkitteste
 caso "serviço que não consegue iniciar: erro claro"
 systemctl stop debkitteste; systemctl disable debkitteste 2>/dev/null; servico_teste /bin/false
 saida=$(g "$SVC debkit_acao_samba_servico; echo RC=\$?")
-contem "RC=1" "$saida"; contem "Não foi possível ativar o serviço debkitteste" "$saida"
+contem "RC=1" "$saida"; contem "Não foi possível ativar o serviço debkitteste (veja: systemctl status debkitteste)" "$saida"
 systemctl stop debkitteste 2>/dev/null; systemctl disable debkitteste 2>/dev/null; rm -f "$UNID"; systemctl daemon-reload; systemctl reset-failed debkitteste 2>/dev/null
 verdadeiro "unidade de teste removida" bash -c '! systemctl cat debkitteste >/dev/null 2>&1'
 
 # ── Linha de comando e assistente ────────────────────────────────────────────
-# Configuração da areia apontando smb.conf/shares/grupo para a areia
+# Configuração da areia apontando smb.conf, backups e grupo para a areia
 conf_areia() { cat > "$AREIA/debkit.conf" <<EOF
 LOG=$AREIA/debkit.log
 TRAVA=$AREIA/debkit.lock
 BACKUP_DIR=$AREIA/backups
 SMB_CONF=$AREIA/smb.conf
-SHARES_CONF=$AREIA/debkit-shares.conf
+SMB_BACKUP_DIR=$AREIA/conf-bkp
 GRUPO_USUARIOS=$GRUPO_T
 SSH_DROPIN=$AREIA/sshd_debkit.conf
 EOF
@@ -222,7 +202,6 @@ contem "resposta=nao" "$(cat "$AREIA/debkit.log")"
 caso "--preparar respondendo s"
 saida=$(printf 's\n' | bash "$DEBKIT" --preparar 2>&1); cod=$?
 igual 0 "$cod"; contem "Ambiente preparado com sucesso" "$saida"
-contem "include = $AREIA/debkit-shares.conf" "$(cat "$AREIA/smb.conf")"
 contem "resposta=sim" "$(cat "$AREIA/debkit.log")"
 caso "--preparar de novo: nada a fazer"
 saida=$(printf '' | bash "$DEBKIT" --preparar 2>&1); cod=$?

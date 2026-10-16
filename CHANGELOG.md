@@ -6,6 +6,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 ## [Não lançado]
 
 ### Alterado
+- **Reestruturação (tarefa 1.0):** o `debkit.sh` virou o ponto de entrada
+  `debkit` + o núcleo `lib/nucleo.sh` + o módulo `modulos/samba.sh`. Rodar
+  com `./debkit` (ou pelo link `/usr/local/sbin/debkit`, quando instalado).
+  O menu principal lista os módulos ("1) Samba", por enquanto em
+  construção); o título passa a ser "debkit - administração de servidores
+  Debian".
+- O debkit não usa mais um arquivo próprio de compartilhamentos incluído no
+  `smb.conf`: as chaves `SHARES_CONF` e `PREFIXO_GRUPO` saíram (no
+  `debkit.conf` viram um aviso "não é mais usada", sem impedir o uso), a
+  preparação não cria mais o `debkit-shares.conf` nem a linha `include`, e
+  em servidores já preparados ela oferece remover essa linha (só se o
+  arquivo não tem compartilhamentos; conferindo com o `testparm` que nada
+  mais muda no Samba) e o arquivo antigo vazio.
+- Backups com o nome `<arquivo>.dd-mm-aaaa-hh-mm-ss` (sufixo `-2`, `-3`...
+  no mesmo segundo); a rotação ordena pela data do nome e só apaga arquivos
+  com esse padrão. Ao desfazer a proteção SSH, o arquivo volta com 644 (o
+  backup é 600).
+
+### Corrigido
+- A mensagem de falha ao ativar o serviço do Samba mostrava
+  "veja: systemctl status " sem o nome do serviço.
 - Projeto renomeado de **gsb** para **debkit** (kit de módulos para Debian;
   o gerenciador Samba vira o módulo `samba`): arquivos, variáveis `DEBKIT_*`,
   funções `debkit_*`, grupo `debkit_usuarios`, `/etc/debkit`, testes.
@@ -19,6 +40,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   procura o `include` pelo caminho exato da areia.
 
 ### Adicionado
+- Carregamento seguro dos arquivos do programa: núcleo, módulos e suas
+  pastas só são carregados se pertencem ao root (ou a quem executa), sem
+  escrita para grupo/outros e sem links.
+- Registro de módulos com ganchos (verificação, plano de preparação, menu):
+  um módulo novo entra só colocando o arquivo em `modulos/`.
+- Faixas das contas comuns lidas do `/etc/login.defs` (`UID_MIN`/`UID_MAX`,
+  `GID_MIN`/`GID_MAX`, sem executar o arquivo; padrão do Debian se ausente
+  ou inválido, com aviso), mostradas na verificação; UID/GID 0 nunca conta.
+- Módulo samba: backups do `smb.conf` em `SMB_BACKUP_DIR`
+  (`/etc/samba/conf-bkp`, criada com 700) e edição segura do `smb.conf`
+  (backup, arquivo novo em temporário, `testparm`, conferência do que mudou
+  na configuração em vigor, troca atômica mantendo dono/permissões, reload e
+  restauração se falhar).
+- Testes da tarefa 1.0 (`tests/t06_estrutura.sh`); a caixa de areia copia o
+  `smb.conf` real sem o `include` antigo e isola também `SMB_BACKUP_DIR`.
 - **Firewall (tarefa 0.5):** grupo "Firewall" na verificação. Com ufw ou
   firewalld ativo que não libera o Samba, o plano de preparação oferece
   liberar só a porta 445/tcp (NetBIOS 137-139 fica fechado) e só para as

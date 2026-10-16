@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  debkit - administração de servidores Debian                             ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+#
+# Kit de módulos de administração para servidores Debian, com foco em
+# segurança. Primeiro módulo: samba (usuários, grupos e compartilhamentos
+# de um servidor de arquivos). Ver docs/PLANEJAMENTO.md.
+#
+# Copyright (c) 2026 Thiago Carrere - Licença MIT (ver LICENSE)
+# Desenvolvido por Thiago Carrere em parceria com Claude (Anthropic).
+#
+# Uso:
+#   debkit                abre o menu (precisa ser root)
+#   debkit --ajuda        mostra a ajuda
+#   debkit --versao       mostra a versão
+#   debkit --verificar    verifica o ambiente (somente leitura; precisa ser root)
+#   debkit --preparar     verifica e prepara o ambiente (pede confirmação)
+#   source debkit         carrega as funções sem executar nada (para testes)
+#
+# Códigos de saída:
+#   0 sucesso | 1 erro (no --verificar: falta algo essencial)
+#   2 uso incorreto | 130 interrompido (Ctrl+C)
+#
+# Estrutura (este arquivo é só o ponto de entrada):
+#   lib/nucleo.sh      núcleo comum (configuração, mensagens, ambiente,
+#                      preparação, backups, menus, linha de comando)
+#   modulos/*.sh       um arquivo por módulo (ex: modulos/samba.sh)
+# Pode ser chamado por um link (ex: /usr/local/sbin/debkit ->
+# /usr/local/lib/debkit/debkit): os arquivos são procurados na pasta real.
+
+# ── Bash ────────────────────────────────────────────────────────────────────
+# Esta verificação usa só sintaxe POSIX, para funcionar mesmo se o arquivo
+# for executado por outro shell (ex: "sh debkit").
+if [ -z "${BASH_VERSINFO:-}" ]; then
+    echo "debkit: este programa precisa do bash (execute: bash debkit)" >&2
+    exit 1
+fi
+if [ "${BASH_VERSINFO[0]}" -lt 4 ] || { [ "${BASH_VERSINFO[0]}" -eq 4 ] && [ "${BASH_VERSINFO[1]}" -lt 4 ]; }; then
+    echo "debkit: é necessário bash 4.4 ou mais novo (atual: ${BASH_VERSION})" >&2
+    exit 1
+fi
+
+# ── Arquivos do programa ────────────────────────────────────────────────────
+DEBKIT_DIR="$(dirname -- "$(realpath -- "${BASH_SOURCE[0]}")")"
+
+# O debkit roda como root: um arquivo de código (ou a pasta dele) que outra
+# pessoa possa alterar daria a ela os poderes do root. Só carrega o que
+# pertence ao root (ou a quem está executando) e não tem escrita para
+# grupo/outros. As mensagens daqui são fixas: o catálogo ainda não foi
+# carregado.
+debkit_caminho_seguro() {
+    local p="$1" tipo="$2" dono perm
+    if [ -L "$p" ] || { [ "$tipo" == "pasta" ] && [ ! -d "$p" ]; } || { [ "$tipo" == "arquivo" ] && [ ! -f "$p" ]; }; then
+        echo "debkit: $p ausente ou é um link (instalação incompleta?)" >&2
+        return 1
+    fi
+    dono=$(stat -c '%u' -- "$p") && perm=$(stat -c '%a' -- "$p") || return 1
+    if { [ "$dono" != "0" ] && [ "$dono" != "$EUID" ]; } || (( 8#$perm & 8#022 )); then
+        echo "debkit: $p não é seguro: precisa pertencer ao root e não ter escrita para grupo/outros (atual: dono UID $dono, permissão $perm)" >&2
+        return 1
+    fi
+}
+
+debkit_caminho_seguro "$DEBKIT_DIR" pasta || exit 1
+debkit_caminho_seguro "$DEBKIT_DIR/lib" pasta || exit 1
+debkit_caminho_seguro "$DEBKIT_DIR/lib/nucleo.sh" arquivo || exit 1
+# shellcheck source=SCRIPTDIR/lib/nucleo.sh
+source "$DEBKIT_DIR/lib/nucleo.sh"
+
+debkit_caminho_seguro "$DEBKIT_DIR/modulos" pasta || exit 1
+for _debkit_mod in "$DEBKIT_DIR"/modulos/*.sh; do
+    [ -e "$_debkit_mod" ] || [ -L "$_debkit_mod" ] || continue
+    debkit_caminho_seguro "$_debkit_mod" arquivo || exit 1
+    # shellcheck source=/dev/null  # cada módulo é verificado à parte
+    source "$_debkit_mod"
+done
+unset _debkit_mod
+
+# Só executa quando chamado diretamente; com "source" apenas carrega
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
+fi

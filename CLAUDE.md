@@ -7,7 +7,7 @@ de começar; a seção 11 diz onde paramos).
 ## Onde trabalhar
 
 - Desenvolver e testar **só na VM Debian 13 de desenvolvimento** (com
-  snapshot). **Nunca** rodar o `debkit.sh` nem a suíte de testes num
+  snapshot). **Nunca** rodar o `debkit` nem a suíte de testes num
   servidor de produção: a suíte cria usuários, grupos e unidades systemd de
   teste, e as provas reais (`DEBKIT_TESTE_REAL=1`) recarregam o SSH e mexem
   no ufw.

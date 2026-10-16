@@ -6,10 +6,12 @@ caixa_de_areia
 
 # ── Qualidade do código ──────────────────────────────────────────────────────
 caso "sintaxe"
-verdadeiro "bash -n" bash -n "$DEBKIT"
+for arq in "$DEBKIT" "$REPO"/lib/*.sh "$REPO"/modulos/*.sh; do
+    verdadeiro "bash -n ${arq#"$REPO"/}" bash -n "$arq"
+done
 caso "shellcheck"
 if command -v shellcheck >/dev/null; then
-    verdadeiro "sem avisos" shellcheck "$DEBKIT"
+    verdadeiro "sem avisos (ponto de entrada, núcleo e módulos)" shellcheck -x "$DEBKIT" "$REPO"/lib/*.sh "$REPO"/modulos/*.sh
 else
     echo "  (shellcheck não instalado: pulado)"
 fi
@@ -112,10 +114,10 @@ igual "Opção inválida: '100%s %d'" "$(bash -c "source '$DEBKIT'; t geral.opca
 preparar_areia
 caso "menu: abrir, opção inválida, Enter vazio e sair"
 saida=$(pty 0.6 "bash $DEBKIT" "" 7 "" 0)
-contem "debkit - Gerenciador Samba" "$saida"; contem "Opção inválida: '7'" "$saida"
+contem "debkit - administração de servidores Debian" "$saida"; contem "Opção inválida: '7'" "$saida"
 nao_contem "Opção inválida: ''" "$saida" "Enter vazio não é erro"
 caso "menu em inglês"
-contem "debkit - Samba Manager" "$(pty 0.6 "env DEBKIT_IDIOMA=en bash $DEBKIT" 0)"
+contem "debkit - Debian server administration" "$(pty 0.6 "env DEBKIT_IDIOMA=en bash $DEBKIT" 0)"
 
 caso "fim da entrada (Ctrl+D) encerra sem travar"
 printf '' | timeout 10 bash "$DEBKIT" >/dev/null 2>&1; igual 0 "$?" "código 0"

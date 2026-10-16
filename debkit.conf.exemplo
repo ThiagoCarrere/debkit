@@ -1,9 +1,13 @@
-# /etc/debkit/debkit.conf - configuração do debkit (Gerenciador Samba)
+# /etc/debkit/debkit.conf - configuração do debkit
 #
 # Formato: CHAVE=valor (uma por linha). Linhas com # são comentários.
 # O arquivo NÃO é executado: só as chaves abaixo são aceitas e cada valor é
 # validado. Precisa pertencer ao root e não ter escrita para grupo/outros.
 # Qualquer chave ausente usa o valor padrão mostrado.
+# (SHARES_CONF e PREFIXO_GRUPO, de versões anteriores, não são mais usadas:
+# são ignoradas com aviso e podem ser apagadas.)
+
+# ── Núcleo ──────────────────────────────────────────────────────────────────
 
 # Idioma das mensagens: pt_BR ou en
 IDIOMA=pt_BR
@@ -11,18 +15,8 @@ IDIOMA=pt_BR
 # Mínimo de caracteres da senha (Linux e Samba), de 1 a 128
 SENHA_MIN=4
 
-# Grupo de todos os usuários criados pelo debkit (bloqueado no SSH)
+# Grupo de proteção: seus membros (usuários de arquivos) são recusados no SSH
 GRUPO_USUARIOS=debkit_usuarios
-
-# Prefixo dos grupos de compartilhamento criados pelo debkit
-PREFIXO_GRUPO=debkit_
-
-# Configuração principal do Samba
-SMB_CONF=/etc/samba/smb.conf
-
-# Arquivo onde o debkit guarda os compartilhamentos que ele cria
-# (incluído no SMB_CONF por uma única linha "include =")
-SHARES_CONF=/etc/samba/debkit-shares.conf
 
 # Arquivo do debkit para o bloqueio SSH (o sshd_config principal não é tocado)
 SSH_DROPIN=/etc/ssh/sshd_config.d/debkit.conf
@@ -30,9 +24,22 @@ SSH_DROPIN=/etc/ssh/sshd_config.d/debkit.conf
 # Log de auditoria (quem fez o quê e quando; nunca senhas)
 LOG=/var/log/debkit.log
 
-# Pasta dos backups automáticos e quantos manter
+# Pasta dos backups dos demais arquivos que o debkit altera (ex: o do SSH)
 BACKUP_DIR=/var/backups/debkit
+
+# Quantos backups manter de cada arquivo (de 1 a 9999; vale para todas as
+# pastas de backup). Os mais antigos são apagados depois de cada backup novo.
 BACKUP_MANTER=30
 
 # Arquivo de trava (uma execução do debkit por vez)
 TRAVA=/run/debkit.lock
+
+# ── Módulo samba ────────────────────────────────────────────────────────────
+
+# Configuração do Samba (editada diretamente pelo debkit, sempre com backup,
+# validação pelo testparm e troca atômica)
+SMB_CONF=/etc/samba/smb.conf
+
+# Pasta dos backups do smb.conf (smb.conf.dd-mm-aaaa-hh-mm-ss), criada com
+# acesso só do root se não existir
+SMB_BACKUP_DIR=/etc/samba/conf-bkp

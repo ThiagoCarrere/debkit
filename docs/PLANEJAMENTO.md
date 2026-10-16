@@ -200,16 +200,30 @@ compartilhamentos.
   (nunca outros arquivos da pasta) e só depois que o backup novo foi criado
   e conferido.
 - Dois backups no mesmo segundo: o segundo ganha sufixo (`-2`), nunca
-  sobrescreve.
+  sobrescreve. O sufixo é sempre maior que o maior já usado naquele
+  segundo (um nome liberado pela rotação não é reaproveitado), e a rotação
+  nunca apaga o backup recém-criado (nem com o relógio atrasado); a ordem
+  da rotação é pela data do nome, não alfabética.
 - Demais arquivos do sistema que o debkit alterar (ex.: arquivo SSH):
   continuam em `BACKUP_DIR` (`/var/backups/debkit`), com a mesma rotação.
 
 ## 7. Arquitetura
 
 - **Núcleo + módulos:** um comando `debkit` (menu principal que lista os
-  módulos), o núcleo em arquivo próprio (o que hoje é a Fase 0 do
-  `debkit.sh`) e cada módulo em seu arquivo (`samba.sh`). Instalação em
-  `/usr/local/lib/debkit/` com link `/usr/local/sbin/debkit`.
+  módulos), o núcleo em arquivo próprio (`lib/nucleo.sh`) e cada módulo em
+  seu arquivo (`modulos/samba.sh`). Instalação em `/usr/local/lib/debkit/`
+  com link `/usr/local/sbin/debkit` (o `debkit` acha os arquivos pela pasta
+  real, seguindo o link).
+- **Como um módulo se encaixa** (feito na tarefa 1.0): o arquivo em
+  `modulos/` chama `debkit_modulo_registrar <nome>`, acrescenta suas chaves
+  de configuração, mensagens e dependências nas tabelas do núcleo e define,
+  se quiser, os ganchos `debkit_<nome>_verificar` (itens da verificação),
+  `debkit_<nome>_plano` (ações da preparação, com `debkit_acao_/descrever_/
+  desfazer_<id>`) e `debkit_<nome>_menu` (item do menu principal). Um módulo
+  novo entra só colocando o arquivo na pasta.
+- **Carregamento seguro:** o debkit roda como root, então só carrega
+  arquivos de código (e pastas) que pertencem ao root (ou a quem executa) e
+  não têm escrita para grupo/outros; links também são recusados.
 - **Dois modos de uso:** menu interativo e comandos diretos
   (ex.: `debkit samba usuario criar joao --grupos vendas`), que também
   permitem testes automáticos.
@@ -219,12 +233,12 @@ compartilhamentos.
 - **Idioma:** todas as mensagens num catálogo; português do Brasil é o
   padrão, preparado para inglês.
 
-Estrutura do repositório (alvo da tarefa 1.0):
+Estrutura do repositório (feita na tarefa 1.0; `install.sh` vem na Fase 4):
 
 ```
 debkit/
 ├── debkit                # ponto de entrada (menu de módulos, linha de comando)
-├── lib/nucleo.sh         # núcleo comum (hoje: Fase 0 do debkit.sh)
+├── lib/nucleo.sh         # núcleo comum (o que era a Fase 0 do debkit.sh)
 ├── modulos/samba.sh      # módulo samba
 ├── debkit.conf.exemplo   # configuração comentada
 ├── install.sh            # instala/atualiza
@@ -238,7 +252,7 @@ debkit/
 | Fase | Conteúdo |
 |---|---|
 | 0. Fundação | 0.1 esqueleto ✔ · 0.2 detecção do ambiente ✔ · 0.3 preparação do ambiente e backups ✔ · 0.4 proteção SSH ✔ · 0.5 firewall ✔ |
-| 1. Usuários e grupos | **1.0 reestruturar** (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário (tipos, home opcional) · listar · trocar senha · grupos (criar, remover, entrar/sair) · desativar/reativar · remover · consistência Linux x Samba |
+| 1. Usuários e grupos | 1.0 reestruturar ✔ (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário (tipos, home opcional) · listar · trocar senha · grupos (criar, remover, entrar/sair) · desativar/reativar · remover · consistência Linux x Samba |
 | 2. Compartilhamentos | criar, listar, permissões de pasta, remover (inclusive os já existentes); pastas pessoais e `[homes]`; avaliar acesso somente leitura por grupo |
 | 3. Diagnóstico | falhas de login, sessões ativas, saúde do Samba, consulta à auditoria |
 | 4. Publicação | comandos diretos completos, `install.sh`, **desinstalação**, README, mensagens em inglês, testes automáticos e CI |
@@ -282,6 +296,15 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 - Nome decidido: **debkit**; renomeação gsb → debkit feita (arquivos,
   variáveis, funções, grupo `debkit_usuarios`, `/etc/debkit`, testes). As
   decisões das seções 3, 4 e 6 ainda **não** estão no código.
+- **Tarefa 1.0 (reestruturação) concluída** em 16/10/2026: `debkit` (ponto
+  de entrada) + `lib/nucleo.sh` + `modulos/samba.sh`, com registro de
+  módulos e carregamento seguro; `include`/`SHARES_CONF`/`PREFIXO_GRUPO`
+  retirados (chaves antigas viram aviso; a preparação remove o `include`
+  antigo dos servidores já preparados, conferindo com o `testparm` que nada
+  mais muda); faixas de UID/GID do `login.defs`; backups do `smb.conf` em
+  `SMB_BACKUP_DIR` (`/etc/samba/conf-bkp`) com o nome
+  `smb.conf.dd-mm-aaaa-hh-mm-ss` e rotação por data; edição segura do
+  `smb.conf` (`debkit_smbconf_editar`, pronta para a Fase 2).
 - Renomeação conferida na VM em 16/10/2026: a VM limpa (sem Samba) foi
   preparada pelo próprio debkit (`--preparar`: instalou o Samba, ligou o
   serviço, criou a estrutura e aplicou a proteção SSH) e a suíte completa
@@ -297,19 +320,27 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | 0.4 Proteção SSH | `345f64d` |
 | 0.5 Firewall | `18e39fc` |
 
+**Fase 1** — commits na branch `dev`:
+
+| Tarefa | Commit |
+|---|---|
+| 1.0 Reestruturação | (este commit) |
+
 **Próximos passos:**
 
 1. ✔ Repositório `debkit` no GitHub e VM Debian 13 de desenvolvimento (com
    snapshot), com o repositório clonado em `/opt/debkit` e push por chave
    de implantação (deploy key) da VM.
 2. ✔ Na VM ainda sem Samba: preparar o ambiente **pelo próprio debkit**
-   (`debkit.sh --preparar`). É a prova real da tarefa 0.3: o debkit precisa
+   (`debkit --preparar`; na época, `debkit.sh`). É a prova real da tarefa 0.3: o debkit precisa
    deixar o servidor pronto sozinho. As ferramentas de desenvolvimento
    (`shellcheck`, `smbclient`, `ufw` para a prova `t05b`) são instaladas à
    mão, porque o debkit nunca as instala.
 3. ✔ Na VM: rodar a suíte completa (confere a renomeação).
-4. **Tarefa 1.0 — reestruturar** (ver Fase 1).
-5. **Tarefa 1.1 — criar usuário:** nome validado e inexistente; tipo de
+4. ✔ Tarefa 1.0 — reestruturar.
+5. Na VM: `./debkit --preparar` remove o `include` antigo (a VM foi
+   preparada antes da 1.0) — é a prova real dessa limpeza.
+6. **Tarefa 1.1 — criar usuário:** nome validado e inexistente; tipo de
    conta (3.1); home opcional (3.3); grupos; resumo, UMA confirmação e
    desfazer completo se algo falhar; só com o ambiente preparado; prova
    real: login no Samba funciona e SSH é recusado (usuário de arquivos).
@@ -320,13 +351,16 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 tests/run.sh                                         # suíte normal (caixa de areia)
 DEBKIT_TESTE_REAL=1 tests/run.sh t04b_ssh_real.sh    # prova com o SSH real
 DEBKIT_TESTE_REAL=1 tests/run.sh t05b_ufw_real.sh    # prova com o ufw real (instalado e INATIVO)
+shellcheck -x debkit lib/*.sh modulos/*.sh           # cada arquivo (o -x sozinho não mostra os avisos dos carregados)
 ```
 
 O `tests/run.sh` compara uma "impressão digital" do sistema real antes e
 depois de cada arquivo de teste e falha se algo mudar. Situação ao fim da
 Fase 0: 320 verificações na suíte normal + 27 nas provas reais, todas
 passando; `shellcheck` sem avisos no `debkit.sh`. Na VM, com o servidor já
-preparado pelo debkit (16/10/2026): 316 + 26, todas passando.
+preparado pelo debkit (16/10/2026): 316 + 26, todas passando. Ao fim da
+tarefa 1.0: 493 + 26, todas passando; `shellcheck` sem avisos nos três
+arquivos do programa.
 
 Os testes funcionam com o servidor preparado ou não: em vez de exigir que
 os arquivos reais do debkit não existam, conferem que não mudaram
@@ -342,3 +376,20 @@ os arquivos reais do debkit não existam, conferem que não mudaram
   `ufw allow` com o ufw inativo cria tabelas nft vazias);
 - em operações sobre serviços sensíveis (SSH), validar antes de recarregar
   e desfazer só o que a operação realmente fez.
+
+**Cuidados aprendidos na tarefa 1.0:**
+
+- a cópia do `smb.conf` real na caixa de areia traz caminhos REAIS (o
+  `include` antigo apontava para `/etc/samba/debkit-shares.conf`): a cópia
+  agora sai sem essas linhas (`copiar_smb_conf`), e a ação só apaga o
+  arquivo antigo se ele estiver na mesma pasta do `smb.conf` e tiver o
+  cabeçalho do debkit - foi essa trava que protegeu o arquivo real quando
+  um teste ainda copiava o `smb.conf` sem limpar;
+- toda chave de configuração nova precisa ir também para a configuração da
+  areia (`tests/lib.sh` e o `CFG` dos testes): um teste montava a
+  configuração à mão sem `SMB_BACKUP_DIR` e criou `/etc/samba/conf-bkp`
+  real (só com cópias da areia; apagada, e a pasta agora está na
+  impressão digital do `run.sh`);
+- rotação de backups com nomes reaproveitáveis: o nome liberado pela
+  rotação voltava a ser usado e o backup novo era apagado logo depois de
+  criado. Teste "o backup recém-criado existe" em toda rotação.
