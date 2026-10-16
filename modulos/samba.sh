@@ -52,6 +52,13 @@ MSG_pt_BR+=(
     [smb.gravar_falhou]="Não foi possível gravar o %s. Nada foi alterado."
     [smb.restaurado]="%s restaurado do backup %s."
     [smb.restaurar_falhou]="ATENÇÃO: não foi possível restaurar o %s do backup %s. Restaure à mão."
+    [amb.pacotes_dominio]="Pacotes de domínio instalados sem necessidade num servidor independente: %s. O winbind faz o Linux aceitar a senha do Samba em logins como o SSH: a preparação vai removê-los"
+    [prep.d_samba_pacotes_dominio]="Remover os pacotes de domínio desnecessários: %s (apt-get purge; depois confere que o PAM e o NSS não usam mais o winbind e que o Samba continua funcionando)"
+    [prep.dominio_removeria_mais]="O apt removeria também outros pacotes (%s): nada foi removido."
+    [prep.dominio_simulacao_falhou]="Não foi possível simular a remoção (apt-get -s). Nada foi removido."
+    [prep.dominio_falhou]="A remoção falhou. Últimas linhas:"
+    [prep.dominio_conferencia]="Depois da remoção: %s"
+    [prep.dominio_mantidos]="Os pacotes removidos não foram reinstalados: %s"
     [samba.criar_usuario]="Criar usuário"
     [usr.titulo_criar]="Criar usuário"
     [usr.ambiente_nao_pronto]="O ambiente ainda não está preparado para criar usuários. Use \"9) Ambiente: verificar e preparar\" no menu principal."
@@ -136,6 +143,13 @@ MSG_en+=(
     [smb.gravar_falhou]="Could not write %s. Nothing was changed."
     [smb.restaurado]="%s restored from the backup %s."
     [smb.restaurar_falhou]="WARNING: could not restore %s from the backup %s. Restore it by hand."
+    [amb.pacotes_dominio]="Domain packages installed without need on a standalone server: %s. winbind makes Linux accept the Samba password in logins such as SSH: the setup will remove them"
+    [prep.d_samba_pacotes_dominio]="Remove the unneeded domain packages: %s (apt-get purge; then checks that PAM and NSS no longer use winbind and that Samba still works)"
+    [prep.dominio_removeria_mais]="apt would also remove other packages (%s): nothing was removed."
+    [prep.dominio_simulacao_falhou]="Could not simulate the removal (apt-get -s). Nothing was removed."
+    [prep.dominio_falhou]="The removal failed. Last lines:"
+    [prep.dominio_conferencia]="After the removal: %s"
+    [prep.dominio_mantidos]="The removed packages were not reinstalled: %s"
     [samba.criar_usuario]="Create user"
     [usr.titulo_criar]="Create user"
     [usr.ambiente_nao_pronto]="The environment is not set up for creating users yet. Use \"9) Environment: check and set up\" in the main menu."
@@ -296,6 +310,88 @@ debkit_samba_conferir_sem_include() {
                  '{ s = $0; sub(/^[ \t]+/, "", s); if (s == "include = " p) next; print }' "$1") "$2"
 }
 
+# ── Pacotes de domínio (não usados num servidor independente) ──────────────
+# Versões anteriores da preparação instalavam o samba com os "recomendados"
+# do apt: vinham o samba-ad-dc (controlador de domínio) e o winbind, que se
+# coloca no PAM (pam_winbind: aceita a senha do Samba na autenticação de
+# logins como o SSH) e no NSS. Nada disso serve a um servidor independente.
+DEBKIT_SAMBA_PACOTES_DOMINIO=(samba-ad-dc winbind libpam-winbind libnss-winbind)
+DEBKIT_DIR_PAM="${DEBKIT_DIR_PAM:-/etc/pam.d}"
+DEBKIT_ARQ_NSSWITCH="${DEBKIT_ARQ_NSSWITCH:-/etc/nsswitch.conf}"
+
+# Imprime os pacotes de domínio instalados (separados por espaço)
+debkit_samba_pacotes_dominio() {
+    local p l=""
+    debkit_tem_comando dpkg-query || return 0
+    for p in "${DEBKIT_SAMBA_PACOTES_DOMINIO[@]}"; do
+        debkit_pacote_instalado "$p" && l+="${l:+ }$p"
+    done
+    printf '%s' "$l"
+}
+
+# Imprime onde o winbind ainda aparece no PAM (common-*) e no NSS (passwd/
+# group); nada se não aparece
+debkit_samba_winbind_no_sistema() {
+    local onde=""
+    if grep -lsE '^[^#]*pam_winbind' "$DEBKIT_DIR_PAM"/common-* >/dev/null 2>&1; then onde+="PAM "; fi
+    if grep -sqE '^[[:space:]]*(passwd|group):.*[[:space:]]winbind\b' "$DEBKIT_ARQ_NSSWITCH"; then onde+="NSS "; fi
+    printf '%s' "${onde% }"
+}
+
+debkit_descrever_samba_pacotes_dominio() { t prep.d_samba_pacotes_dominio "$DEBKIT_SAMBA_DOMINIO"; }
+
+# Simula a remoção e recusa se o apt quiser levar junto qualquer outro
+# pacote; remove com purge (os scripts dos pacotes tiram o winbind do PAM e
+# do NSS) e confere o resultado real. Pacote removido não é reinstalado se
+# um passo seguinte falhar (só é informado).
+debkit_acao_samba_pacotes_dominio() {
+    local registro simulacao p fora="" problema=""
+    local -a pacotes=()
+    read -ra pacotes <<< "$DEBKIT_SAMBA_DOMINIO"
+    DEBKIT_SAMBA_DOMINIO_REMOVIDOS=""
+    [ ${#pacotes[@]} -gt 0 ] || return 0
+    if ! simulacao=$(LC_ALL=C DEBIAN_FRONTEND=noninteractive "$DEBKIT_APT" -s purge "${pacotes[@]}" 2>&1); then
+        msg_erro "$(t prep.dominio_simulacao_falhou)"
+        return 1
+    fi
+    while read -r p; do
+        [[ " ${pacotes[*]} " == *" $p "* ]] || fora+="${fora:+ }$p"
+    done < <(awk '$1 == "Remv" || $1 == "Purg" {print $2}' <<< "$simulacao")
+    if [ -n "$fora" ]; then
+        msg_erro "$(t prep.dominio_removeria_mais "$fora")"
+        return 1
+    fi
+    registro=$(debkit_temp) || return 1
+    if ! DEBIAN_FRONTEND=noninteractive "$DEBKIT_APT" -o DPkg::Lock::Timeout=120 purge -y "${pacotes[@]}" >"$registro" 2>&1; then
+        msg_erro "$(t prep.dominio_falhou)"
+        tail -n 8 "$registro" | sed 's/^/     /' >&2
+        DEBKIT_SAMBA_DOMINIO_REMOVIDOS="$(debkit_samba_removidos "${pacotes[@]}")"
+        return 1
+    fi
+    DEBKIT_SAMBA_DOMINIO_REMOVIDOS="$(debkit_samba_removidos "${pacotes[@]}")"
+    # Conferência: nada instalado, winbind fora do PAM/NSS, Samba de pé
+    [ -z "$(debkit_samba_pacotes_dominio)" ] || problema="ainda instalados: $(debkit_samba_pacotes_dominio)"
+    [ -z "$(debkit_samba_winbind_no_sistema)" ] || problema="winbind ainda no $(debkit_samba_winbind_no_sistema)"
+    testparm -s "$DEBKIT_SMB_CONF" >/dev/null 2>&1 || problema="smb.conf inválido"
+    if [ -n "$DEBKIT_SVC_SAMBA" ] && ! debkit_servico_ativo "$DEBKIT_SVC_SAMBA"; then problema="serviço $DEBKIT_SVC_SAMBA parado"; fi
+    if [ -n "$problema" ]; then
+        msg_erro "$(t prep.dominio_conferencia "$problema")"
+        return 1
+    fi
+}
+
+# Dos pacotes indicados, imprime os que não estão mais instalados
+debkit_samba_removidos() {
+    local p l=""
+    for p in "$@"; do debkit_pacote_instalado "$p" || l+="${l:+ }$p"; done
+    printf '%s' "$l"
+}
+
+debkit_desfazer_samba_pacotes_dominio() {
+    [ -n "${DEBKIT_SAMBA_DOMINIO_REMOVIDOS:-}" ] && msg_aviso "$(t prep.dominio_mantidos "$DEBKIT_SAMBA_DOMINIO_REMOVIDOS")"
+    return 0
+}
+
 # ── Verificação (gancho) ────────────────────────────────────────────────────
 # Deixa prontos para a preparação:
 #   DEBKIT_SVC_SAMBA             nome do serviço (vazio se não encontrado)
@@ -303,7 +399,7 @@ debkit_samba_conferir_sem_include() {
 #   DEBKIT_SAMBA_INCLUDE_VAZIO   1 se esse arquivo não tem compartilhamentos
 debkit_samba_verificar() {
     local papel backend
-    DEBKIT_SVC_SAMBA=""; DEBKIT_SAMBA_INCLUDE_ANTIGO=""; DEBKIT_SAMBA_INCLUDE_VAZIO=0
+    DEBKIT_SVC_SAMBA=""; DEBKIT_SAMBA_INCLUDE_ANTIGO=""; DEBKIT_SAMBA_INCLUDE_VAZIO=0; DEBKIT_SAMBA_DOMINIO=""
     if ! debkit_tem_comando smbd; then
         debkit_verif_add samba falta "$(t amb.samba_ausente)"
         return 0
@@ -329,7 +425,10 @@ debkit_samba_verificar() {
         debkit_verif_add samba ok "$(t amb.smbconf_ok "$DEBKIT_SMB_CONF")"
         papel=$(debkit_samba_papel_efetivo)
         case "$papel" in
-            "standalone server") debkit_verif_add samba ok "$(t amb.papel_ok)" ;;
+            "standalone server")
+                debkit_verif_add samba ok "$(t amb.papel_ok)"
+                DEBKIT_SAMBA_DOMINIO=$(debkit_samba_pacotes_dominio)
+                [ -n "$DEBKIT_SAMBA_DOMINIO" ] && debkit_verif_add samba aviso "$(t amb.pacotes_dominio "$DEBKIT_SAMBA_DOMINIO")" ;;
             *"domain controller"*) debkit_verif_manual samba "$(t amb.papel_dc "$papel")" ;;
             *) debkit_verif_add samba aviso "$(t amb.papel_outro "$papel")" ;;
         esac
@@ -357,6 +456,9 @@ debkit_samba_plano() {
     if [[ " ${DEBKIT_PLANO[*]} " == *" pacotes "* ]] || [ -z "$DEBKIT_SVC_SAMBA" ] \
        || ! debkit_servico_ativo "$DEBKIT_SVC_SAMBA" || ! debkit_servico_habilitado "$DEBKIT_SVC_SAMBA"; then
         DEBKIT_PLANO+=(samba_servico)
+    fi
+    if [ -n "${DEBKIT_SAMBA_DOMINIO:-}" ] && debkit_familia_debian && debkit_tem_comando "$DEBKIT_APT"; then
+        DEBKIT_PLANO+=(samba_pacotes_dominio)
     fi
     if [ "${DEBKIT_SAMBA_INCLUDE_VAZIO:-0}" -eq 1 ]; then
         DEBKIT_PLANO+=(samba_include_antigo)

@@ -142,7 +142,7 @@ saida=$(pac)
 contem "RC=0" "$saida"; contem "Instalar os pacotes: samba samba-common-bin" "$saida"
 args=$(cat "$AREIA/apt-args")
 contem "-o DPkg::Lock::Timeout=120 update" "$args" "update com espera pelo apt"
-contem "--force-confold install -y samba samba-common-bin" "$args" "mantém config existente"
+contem "--force-confold install -y --no-install-recommends samba samba-common-bin" "$args" "mantém config existente e não instala os recomendados"
 caso "pacotes: falha na instalação mostra o motivo"
 saida=$(FAKE_INSTALL_RC=100 pac)
 contem "RC=1" "$saida"; contem "A instalação falhou" "$saida"; contem "E: falha simulada linha 2" "$saida"
@@ -158,7 +158,7 @@ saida=$(FAKE_INSTALL_RC=100 g "$APT debkit_verificar_ambiente >/dev/null; DEBKIT
 verdadeiro "dir_conf não executado" test ! -e "$AREIA/etc/debkit"
 caso "linha de comando real do apt-get é válida (simulação -s)"
 verdadeiro "apt-get -s aceita as opções" env DEBIAN_FRONTEND=noninteractive apt-get -s -o DPkg::Lock::Timeout=120 \
-    -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold install -y samba samba-common-bin
+    -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold install -y --no-install-recommends samba samba-common-bin
 
 # ── Serviço (unidade systemd de teste) ───────────────────────────────────────
 UNID=/etc/systemd/system/debkitteste.service

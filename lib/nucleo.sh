@@ -552,6 +552,11 @@ DEBKIT_DEPENDENCIAS=(
 # Verifica se um comando existe (função separada para os testes simularem)
 debkit_tem_comando() { command -v "$1" >/dev/null 2>&1; }
 
+# O pacote (Debian) está instalado? (função separada para os testes
+# simularem; DEBKIT_DPKG_ADMIN = base do dpkg, para a caixa de areia)
+DEBKIT_DPKG_ADMIN="${DEBKIT_DPKG_ADMIN:-/var/lib/dpkg}"
+debkit_pacote_instalado() { dpkg-query --admindir="$DEBKIT_DPKG_ADMIN" -W -f='${db:Status-Abbrev}' -- "$1" 2>/dev/null | grep -q '^ii'; }
+
 # Lê o /etc/os-release SEM executá-lo (só ID, ID_LIKE, VERSION_ID, PRETTY_NAME)
 debkit_ler_os_release() {
     local linha chave valor
@@ -1090,10 +1095,12 @@ debkit_acao_pacotes() {
     fi
     msg_info "$(t prep.apt_instalando "${DEBKIT_PACOTES_FALTANDO[*]}")"
     # confdef/confold: se existir configuração antiga (ex: smb.conf de uma
-    # instalação anterior), mantém a existente em vez de parar perguntando
+    # instalação anterior), mantém a existente em vez de parar perguntando.
+    # --no-install-recommends: só o necessário (os "recomendados" do samba
+    # trazem o samba-ad-dc e o winbind, que entra no PAM do sistema)
     if ! DEBIAN_FRONTEND=noninteractive "$DEBKIT_APT" -o DPkg::Lock::Timeout=120 \
             -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold \
-            install -y "${DEBKIT_PACOTES_FALTANDO[@]}" >>"$registro" 2>&1; then
+            install -y --no-install-recommends "${DEBKIT_PACOTES_FALTANDO[@]}" >>"$registro" 2>&1; then
         msg_erro "$(t prep.apt_falhou)"
         tail -n 8 "$registro" | sed 's/^/     /' >&2
         return 1

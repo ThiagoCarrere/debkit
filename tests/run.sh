@@ -19,6 +19,8 @@ impressao_digital() {
     echo "grupos debkit:      $(getent group | cut -d: -f1 | grep -E '^(debkitt?|dkt)_' | tr '\n' ' ')"
     echo "usuários debkitt:   $(getent passwd | cut -d: -f1 | grep -E '^dkt_' | tr '\n' ' ')"
     echo "Samba debkitt:      $(pdbedit -L 2>/dev/null | cut -d: -f1 | grep -E '^dkt_' | tr '\n' ' ')"
+    echo "pacotes:         $(dpkg-query -W -f='${binary:Package}=${db:Status-Abbrev} ' samba samba-common-bin samba-ad-dc winbind libpam-winbind libnss-winbind openssh-server ufw 2>/dev/null)"
+    echo "PAM/NSS:         $(cat /etc/pam.d/common-* /etc/nsswitch.conf 2>/dev/null | md5sum)"
     for p in /etc/debkit /var/backups/debkit /var/log/debkit.log /etc/samba/debkit-shares.conf /etc/samba/conf-bkp /run/debkit.lock; do
         [ -e "$p" ] && echo "existe:          $p"
     done

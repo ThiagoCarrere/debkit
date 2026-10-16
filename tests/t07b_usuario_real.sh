@@ -34,8 +34,9 @@ limpar_real() {
 }
 trap limpar_real EXIT
 
-# Configuração REAL; só o log vai para a areia (o real não muda)
-s() { bash -c "source '$DEBKIT'; debkit_conf_carregar /etc/debkit/debkit.conf >/dev/null; debkit_ler_login_defs; DEBKIT_LOG='$AREIA/debkit.log'; $1" 2>&1; }
+# Configuração REAL (e apt/dpkg reais: só consulta); só o log vai para a
+# areia (o real não muda)
+s() { env -u DEBKIT_APT -u DEBKIT_DPKG_ADMIN bash -c "source '$DEBKIT'; debkit_conf_carregar /etc/debkit/debkit.conf >/dev/null; debkit_ler_login_defs; DEBKIT_LOG='$AREIA/debkit.log'; $1" 2>&1; }
 
 ( umask 027; : > "$AREIA/debkit.log" )   # senão o plano pediria para criar o log
 caso "ambiente real preparado pelo debkit"
@@ -85,6 +86,7 @@ caso "SSH: com a senha do Samba (diferente) não entra"
 saida=$(ssh_tentar "$SRV" "$SENHA_SAMBA")
 nao_contem "RC=0" "$saida" "login recusado"
 contem "Failed password for $SRV" "$(journalctl -u ssh --since "$INICIO" --no-pager 2>/dev/null)" "falha registrada no log do SSH"
+nao_contem "user '$SRV' granted access" "$(journalctl --since "$INICIO" --no-pager 2>/dev/null)" "o PAM NÃO aceita a senha do Samba (sem pam_winbind)"
 
 caso "auditoria (log da areia) sem senhas"
 log=$(cat "$AREIA/debkit.log")

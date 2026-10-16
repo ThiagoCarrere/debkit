@@ -27,6 +27,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   backup é 600).
 
 ### Corrigido
+- **Segurança:** a preparação instalava o Samba com os pacotes
+  "recomendados" do apt, que trazem o `samba-ad-dc` e o `winbind`; o
+  `pam_winbind` entrava no PAM e aceitava a senha do Samba na autenticação
+  de logins como o SSH. Agora instala com `--no-install-recommends` e, num
+  servidor independente, a verificação detecta `samba-ad-dc`, `winbind`,
+  `libpam-winbind` e `libnss-winbind` e a preparação oferece removê-los
+  (simulação antes, recusa se o apt quiser remover mais; conferência do
+  PAM, do NSS e do Samba depois).
+- Testes: a caixa de areia agora isola o apt e a base do dpkg (um teste
+  chegou a remover pacotes reais) e a impressão digital confere pacotes,
+  PAM e `nsswitch.conf`.
 - Validação de nomes e caminhos do `debkit.conf` aceitava letras
   acentuadas (no bash, `[a-z]` em pt_BR casa com "ã", "é"...).
 - A mensagem de falha ao ativar o serviço do Samba mostrava

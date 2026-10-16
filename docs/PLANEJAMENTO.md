@@ -376,14 +376,19 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
    (`t07b`): login no Samba funciona (senha errada é recusada), usuário de
    arquivos recusado no SSH por DenyGroups, usuário com acesso ao servidor
    entra com a senha do Linux.
-7. **Achado na prova real da 1.1 (decidir):** a preparação instalou o
+7. ✔ **Achado na prova real da 1.1 (corrigido, decisão do Thiago):** a preparação instalou o
    Samba com os pacotes "recomendados" do apt: veio o `samba-ad-dc`
    (controlador de domínio) e, com ele, `winbind`, `libpam-winbind` e
    `libnss-winbind`. O `pam_winbind` entrou no PAM do sistema e aceita a
    senha do Samba na fase de autenticação do SSH ("granted access"); só a
    fase de conta barrou. Num servidor independente nada disso é necessário.
-   Correção proposta: instalar com `--no-install-recommends` e, na
-   verificação, detectar esses pacotes e oferecer removê-los.
+   Correção: instalar com `--no-install-recommends`; num servidor
+   independente a verificação detecta esses pacotes e a preparação oferece
+   removê-los (simula antes e recusa se o apt quiser levar qualquer outro
+   pacote; `purge`; confere PAM, NSS, `testparm` e o serviço do Samba). Na
+   VM eles acabaram removidos por um teste (ver "Cuidados" abaixo); o
+   resultado foi conferido: PAM/NSS sem winbind, smbd e SSH ativos, e a
+   prova `t07b` confirma que o PAM não aceita mais a senha do Samba.
 8. **Tarefa 1.1b — pasta pessoal** (3.3).
 
 **Como rodar os testes (só na VM):**
@@ -406,7 +411,8 @@ arquivos do programa. Ao fim da 1.1: 688 + 47 (provas reais: `t04b`,
 `t05b` e `t07b_usuario_real.sh`). Os testes da 1.1 criam usuários Linux
 `dkt_*` reais (removidos no fim); a base de senhas do Samba da areia é
 separada da real (`copiar_smb_conf` aponta `passdb backend` e as pastas
-de estado para a areia).
+de estado para a areia). Com a correção dos pacotes de domínio: 734 + 48
+(`t08_dominio.sh`).
 
 Os testes funcionam com o servidor preparado ou não: em vez de exigir que
 os arquivos reais do debkit não existam, conferem que não mudaram
@@ -439,3 +445,19 @@ os arquivos reais do debkit não existam, conferem que não mudaram
 - rotação de backups com nomes reaproveitáveis: o nome liberado pela
   rotação voltava a ser usado e o backup novo era apagado logo depois de
   criado. Teste "o backup recém-criado existe" em toda rotação.
+
+**Cuidados aprendidos na tarefa 1.1:**
+
+- a caixa de areia não isolava o apt nem a base do dpkg: com o item novo
+  de remover pacotes de domínio, um `--preparar` de teste respondendo "s"
+  rodou o `apt-get purge` REAL (removeu os pacotes que já iam ser
+  removidos, mas por um teste). Agora a areia usa um apt que recusa tudo
+  (`DEBKIT_APT`) e uma base do dpkg vazia (`DEBKIT_DPKG_ADMIN`), e a
+  impressão digital do `run.sh` inclui pacotes, PAM e `nsswitch.conf`.
+  Regra: toda ação nova que mexa em algo do sistema precisa, junto, do
+  isolamento na areia e de uma linha na impressão digital;
+- a cópia do `smb.conf` na areia apontava a base de senhas REAL do Samba:
+  agora `passdb backend` e as pastas de estado vão para a areia;
+- no bash, `[a-z]` em pt_BR aceita letras acentuadas: listar as letras;
+- `read -p` não mostra a pergunta quando a entrada não é um terminal:
+  textos de pergunta se testam com `pty`.

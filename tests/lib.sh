@@ -123,6 +123,13 @@ caixa_de_areia() {
     } > "$AREIA/debkit.conf"
     chmod 644 "$AREIA/debkit.conf"
     export DEBKIT_CONF_ARQUIVO="$AREIA/debkit.conf"
+    # apt e base do dpkg da areia: nenhum teste instala ou remove pacote de
+    # verdade (o apt da areia recusa tudo e anota a tentativa; a base vazia
+    # = nada instalado). Testes de pacotes usam o seu apt falso.
+    printf '#!/bin/sh\necho "apt-get $*" >> "%s/apt-bloqueado.log"\necho "apt bloqueado nos testes" >&2\nexit 100\n' "$AREIA" > "$AREIA/apt-bloqueado"
+    chmod 755 "$AREIA/apt-bloqueado"
+    mkdir -p "$AREIA/dpkg/info"; : > "$AREIA/dpkg/status"
+    export DEBKIT_APT="$AREIA/apt-bloqueado" DEBKIT_DPKG_ADMIN="$AREIA/dpkg"
     export NO_COLOR=1
     trap 'rm -rf -- "${AREIA:?}"; getent group "$GRUPO_TESTE" >/dev/null && groupdel "$GRUPO_TESTE"' EXIT
 }
