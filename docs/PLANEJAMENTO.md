@@ -324,7 +324,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 
 | Tarefa | Commit |
 |---|---|
-| 1.0 Reestruturação | (este commit) |
+| 1.0 Reestruturação | `361c996` |
 
 **Próximos passos:**
 
