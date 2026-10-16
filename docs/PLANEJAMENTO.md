@@ -67,7 +67,13 @@ outro tipo de servidor; misturar os dois deixaria o debkit frágil.
   repetida para conferir e passada sempre pela entrada padrão.
 - Nenhum usuário acessa o servidor a não ser pelo Samba, salvo os liberados
   por um administrador (tipo acima) e os administradores (`sudo`).
-- *Em aberto (trocar senha):* o `smb.conf` padrão do Debian tem `unix
+- **Decisão de 16/10/2026 (Thiago): desligar a sincronização.** A
+  preparação oferece mudar para `unix password sync = no` (edição segura do
+  `smb.conf`, com backup e conferência). Trocar a senha pelo Windows passa
+  a mudar só a do Samba; a senha Linux do usuário de arquivos fica sempre
+  bloqueada. Quem tem acesso ao servidor troca a senha Linux pelo debkit
+  ("trocar senha" pergunta: Samba, Linux ou as duas) ou com `passwd`.
+  Motivo, registrado antes da decisão: o `smb.conf` padrão do Debian tem `unix
   password sync = yes`. Se um usuário de arquivos trocar a senha pelo
   Windows (Ctrl+Alt+Del), o Samba roda o `passwd` e a senha do Linux deixa
   de estar bloqueada (o `nologin` e o DenyGroups continuam barrando o SSH).
@@ -429,8 +435,8 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
     mostrou). Colunas alinhadas por caracteres (acentos). O menu do Samba
     passou a ser: 1 listar, 2 criar usuário, 3 pasta pessoal de usuário
     existente, 4 pastas pessoais.
-12. **Próxima tarefa:** trocar senha (decidir antes o `unix password sync`,
-    ver 3.1).
+12. **Próxima tarefa:** trocar senha, começando pelo item da preparação
+    que desliga o `unix password sync` (decidido, ver 3.1).
 
 **VM limpa de novo:** `dev/vmnova.sh` → (reinicia) → `dev/vmprepara.sh` →
 `./debkit --preparar` → testes.
