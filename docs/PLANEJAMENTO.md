@@ -374,7 +374,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | Correção: pacotes de domínio (winbind) | `3e16425` |
 | 1.1b Pasta pessoal | `df06673` |
 | Scripts da VM de desenvolvimento | `7e20a14` |
-| Listar usuários | (este commit) |
+| Listar usuários | `8ff61b1` |
 
 **Próximos passos:**
 
