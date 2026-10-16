@@ -405,6 +405,78 @@ igual 0 "$cod"; contem "Ambiente preparado com sucesso" "$saida"
 verdadeiro "smb.conf original" cmp -s "$AREIA/smb.original" "$AREIA/smb.conf"
 verdadeiro "arquivo antigo removido" test ! -e "$AREIA/debkit-shares.conf"
 
+# ════════════════════════════════════════════════════════════════════════════
+# Chaves antigas no debkit.conf (a preparação tira as linhas)
+# ════════════════════════════════════════════════════════════════════════════
+CONF_T="$AREIA/ct/debkit.conf"
+# debkit.conf da areia + comentários + valor próprio + chaves antigas (com
+# espaços, repetida). "esperado" = o mesmo arquivo sem as linhas antigas.
+conf_antiga() {
+    mkdir -p "$AREIA/ct"
+    { echo "# meu comentário"; echo "# SHARES_CONF=/comentado (fica)"; cat "$AREIA/debkit.conf"
+      echo "SENHA_MIN=7"; echo "  PREFIXO_GRUPO = debkit_"; echo "SHARES_CONF=/etc/samba/debkit-shares.conf"
+      echo "SHARES_CONF=/de/novo"; } > "$CONF_T"
+    chmod 640 "$CONF_T"
+    grep -vE '^[[:space:]]*(PREFIXO_GRUPO|SHARES_CONF)[[:space:]]*=' "$CONF_T" > "$AREIA/ct/esperado"
+    cp -p "$CONF_T" "$AREIA/ct/antigo"
+    rm -rf "$AREIA/backups"
+}
+gc() { DEBKIT_CONF_ARQUIVO="$CONF_T" g "$1"; }
+sem_temp_conf() { [ -z "$(find "$AREIA/ct" -name '.debkit.conf.*')" ]; }
+
+caso "chaves antigas: oferecido na preparação"
+conf_antiga
+saida=$(gc "debkit_verificar_ambiente >/dev/null; debkit_montar_plano; echo \"PLANO=\${DEBKIT_PLANO[*]}\"; debkit_mostrar_plano")
+contem "conf_obsoletas" "$(grep '^PLANO=' <<< "$saida")"
+contem "Remover do $CONF_T as chaves que não são mais usadas: PREFIXO_GRUPO, SHARES_CONF" "$saida" "descrição (sem repetir, na ordem do arquivo)"
+
+caso "chaves antigas: removidas, o resto do arquivo fica igual"
+saida=$(gc "debkit_verificar_ambiente >/dev/null; DEBKIT_PLANO=(conf_obsoletas); debkit_executar_plano; echo RC=\$?; echo \"AV=[\$DEBKIT_CONF_AVISOS] SENHA=\$DEBKIT_SENHA_MIN\"")
+contem "RC=0" "$saida"
+verdadeiro "arquivo = original sem as linhas antigas (comentários e valores mantidos)" cmp -s "$AREIA/ct/esperado" "$CONF_T"
+contem "# SHARES_CONF=/comentado (fica)" "$(cat "$CONF_T")" "comentário com o nome da chave fica"
+igual "640 0" "$(stat -c '%a %u' "$CONF_T")" "dono e permissões mantidos"
+verdadeiro "backup do original em BACKUP_DIR" cmp -s "$AREIA/ct/antigo" "$(find "$AREIA/backups" -name 'debkit.conf.*' | head -1)"
+contem "AV=[] SENHA=7" "$saida" "configuração recarregada, sem avisos"
+verdadeiro "nenhum temporário deixado" sem_temp_conf
+contem "acao=conf_obsoletas resultado=ok" "$(cat "$AREIA/debkit.log")" "auditoria"
+caso "chaves antigas: idempotente"
+nao_contem "conf_obsoletas" "$(gc "debkit_verificar_ambiente >/dev/null; debkit_montar_plano; echo \"PLANO=\${DEBKIT_PLANO[*]}\"")"
+
+caso "chaves antigas: falha ao gravar - nada muda"
+conf_antiga
+contem "RC=1" "$(gc "mv() { return 1; }; DEBKIT_PLANO=(conf_obsoletas); debkit_executar_plano; echo RC=\$?")"
+verdadeiro "arquivo intacto" cmp -s "$AREIA/ct/antigo" "$CONF_T"
+verdadeiro "nenhum temporário deixado" sem_temp_conf
+
+caso "chaves antigas: conferência recusa se outro valor mudaria"
+conf_antiga
+# defeito simulado: o filtro tiraria também a linha SENHA_MIN
+saida=$(gc "debkit_conf_linha_obsoleta() { [[ \"\$1\" =~ ^[[:space:]]*(PREFIXO_GRUPO|SHARES_CONF|SENHA_MIN)[[:space:]]*= ]]; }; DEBKIT_PLANO=(conf_obsoletas); debkit_executar_plano; echo RC=\$?")
+contem "RC=1" "$saida"; contem "mudaria em outros valores" "$saida"
+verdadeiro "arquivo intacto" cmp -s "$AREIA/ct/antigo" "$CONF_T"
+verdadeiro "nenhum temporário deixado" sem_temp_conf
+
+caso "chaves antigas: falha num passo seguinte - arquivo de volta"
+conf_antiga
+saida=$(gc "groupadd() { return 1; }; getent() { [ \"\$1\" == group ] && return 2; command getent \"\$@\"; }; DEBKIT_PLANO=(conf_obsoletas grupo); debkit_executar_plano; echo RC=\$?")
+contem "RC=1" "$saida"; contem "Desfazendo" "$saida"
+verdadeiro "arquivo de volta (com as chaves antigas)" cmp -s "$AREIA/ct/antigo" "$CONF_T"
+igual "640 0" "$(stat -c '%a %u' "$CONF_T")" "dono e permissões mantidos"
+
+caso "chaves antigas: sem elas, nada no plano"
+conf_antiga; cp "$AREIA/ct/esperado" "$CONF_T"
+nao_contem "conf_obsoletas" "$(gc "debkit_verificar_ambiente >/dev/null; debkit_montar_plano; echo \"PLANO=\${DEBKIT_PLANO[*]}\"")"
+
+caso "chaves antigas: --preparar pela linha de comando tira o aviso"
+cp "$AREIA/debkit.conf" "$AREIA/debkit.conf.limpo"
+printf 'PREFIXO_GRUPO=debkit_\nSHARES_CONF=/etc/samba/debkit-shares.conf\n' >> "$AREIA/debkit.conf"
+contem "não é mais usada" "$(bash "$DEBKIT" --verificar 2>&1)" "antes: aviso"
+saida=$(printf 's\n' | bash "$DEBKIT" --preparar 2>&1); cod=$?
+igual 0 "$cod"; contem "Ambiente preparado com sucesso" "$saida"
+nao_contem "não é mais usada" "$(bash "$DEBKIT" --verificar 2>&1)" "depois: sem aviso"
+verdadeiro "debkit.conf = o de antes das chaves antigas" cmp -s "$AREIA/debkit.conf.limpo" "$AREIA/debkit.conf"
+
 # ── Limpeza ──────────────────────────────────────────────────────────────────
 getent group "$GRUPO_TESTE" >/dev/null && groupdel "$GRUPO_TESTE"
 real_intacto

@@ -5,7 +5,7 @@
 # validado. Precisa pertencer ao root e não ter escrita para grupo/outros.
 # Qualquer chave ausente usa o valor padrão mostrado.
 # (SHARES_CONF e PREFIXO_GRUPO, de versões anteriores, não são mais usadas:
-# são ignoradas com aviso e podem ser apagadas.)
+# são ignoradas com aviso, e o "debkit --preparar" oferece tirar as linhas.)
 
 # ── Núcleo ──────────────────────────────────────────────────────────────────
 

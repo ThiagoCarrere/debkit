@@ -14,7 +14,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   Debian".
 - O debkit não usa mais um arquivo próprio de compartilhamentos incluído no
   `smb.conf`: as chaves `SHARES_CONF` e `PREFIXO_GRUPO` saíram (no
-  `debkit.conf` viram um aviso "não é mais usada", sem impedir o uso), a
+  `debkit.conf` viram um aviso "não é mais usada", sem impedir o uso, e a
+  preparação oferece tirar essas linhas - com backup, sem mexer no resto
+  do arquivo e conferindo que nenhum outro valor muda), a
   preparação não cria mais o `debkit-shares.conf` nem a linha `include`, e
   em servidores já preparados ela oferece remover essa linha (só se o
   arquivo não tem compartilhamentos; conferindo com o `testparm` que nada

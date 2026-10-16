@@ -216,6 +216,9 @@ declare -A MSG_pt_BR=(
     [prep.d_pacotes]="Instalar os pacotes: %s"
     [prep.d_dir_conf]="Criar a pasta de configuração %s"
     [prep.d_conf]="Criar a configuração %s (com os valores padrão)"
+    [prep.d_conf_obsoletas]="Remover do %s as chaves que não são mais usadas: %s (com backup; o resto do arquivo fica igual)"
+    [prep.conf_obsoletas_conferencia]="Depois de tirar as chaves antigas, a configuração mudaria em outros valores. Nada foi alterado."
+    [prep.conf_gravar_falhou]="Não foi possível gravar o %s. Nada foi alterado."
     [prep.d_dir_backup]="Criar a pasta de backups %s (acesso só do root)"
     [prep.d_log]="Criar o log de auditoria %s"
     [prep.d_grupo]="Criar o grupo de sistema %s (usuários do debkit)"
@@ -316,6 +319,9 @@ declare -A MSG_en=(
     [prep.d_pacotes]="Install the packages: %s"
     [prep.d_dir_conf]="Create the configuration folder %s"
     [prep.d_conf]="Create the configuration %s (default values)"
+    [prep.d_conf_obsoletas]="Remove from %s the keys that are no longer used: %s (with backup; the rest of the file stays the same)"
+    [prep.conf_obsoletas_conferencia]="After removing the old keys, other configuration values would change. Nothing was changed."
+    [prep.conf_gravar_falhou]="Could not write %s. Nothing was changed."
     [prep.d_dir_backup]="Create the backup folder %s (root only)"
     [prep.d_log]="Create the audit log %s"
     [prep.d_grupo]="Create the system group %s (debkit users)"
@@ -1022,7 +1028,11 @@ debkit_montar_plano() {
     # Ações dos módulos (ex: ligar o Samba)
     debkit_modulos_gancho plano
     [ -d "$(debkit_dir_conf)" ]      || DEBKIT_PLANO+=(dir_conf)
-    [ -f "$DEBKIT_CONF_ARQUIVO" ]    || DEBKIT_PLANO+=(conf)
+    if [ ! -f "$DEBKIT_CONF_ARQUIVO" ]; then
+        DEBKIT_PLANO+=(conf)
+    elif [ -n "$(debkit_conf_obsoletas_no_arquivo)" ]; then
+        DEBKIT_PLANO+=(conf_obsoletas)
+    fi
     [ -d "$DEBKIT_BACKUP_DIR" ]      || DEBKIT_PLANO+=(dir_backup)
     [ -f "$DEBKIT_LOG" ]             || DEBKIT_PLANO+=(log)
     getent group "$DEBKIT_GRUPO_USUARIOS" >/dev/null 2>&1 || DEBKIT_PLANO+=(grupo)
@@ -1044,6 +1054,7 @@ debkit_descrever_acao() {
         pacotes)       t prep.d_pacotes "${DEBKIT_PACOTES_FALTANDO[*]}" ;;
         dir_conf)      t prep.d_dir_conf "$(debkit_dir_conf)" ;;
         conf)          t prep.d_conf "$DEBKIT_CONF_ARQUIVO" ;;
+        conf_obsoletas) t prep.d_conf_obsoletas "$DEBKIT_CONF_ARQUIVO" "$(debkit_conf_obsoletas_no_arquivo)" ;;
         dir_backup)    t prep.d_dir_backup "$DEBKIT_BACKUP_DIR" ;;
         log)           t prep.d_log "$DEBKIT_LOG" ;;
         grupo)         t prep.d_grupo "$DEBKIT_GRUPO_USUARIOS" ;;
@@ -1111,6 +1122,91 @@ debkit_acao_conf() {
         done
     } > "$DEBKIT_CONF_ARQUIVO" && chmod 644 -- "$DEBKIT_CONF_ARQUIVO" && chown 0:0 -- "$DEBKIT_CONF_ARQUIVO" \
         && debkit_conf_carregar "$DEBKIT_CONF_ARQUIVO"
+}
+
+# ── Chaves antigas no debkit.conf ───────────────────────────────────────────
+# Mesma regra de leitura de debkit_conf_carregar: linha "CHAVE=valor" (com
+# espaços opcionais) cuja chave está em DEBKIT_CONF_OBSOLETA. Comentários
+# ("# SHARES_CONF=...") não contam.
+debkit_conf_linha_obsoleta() {
+    [[ "$1" =~ ^[[:space:]]*([A-Z_]+)[[:space:]]*= ]] && [ -n "${DEBKIT_CONF_OBSOLETA[${BASH_REMATCH[1]}]+x}" ]
+}
+
+# Imprime as chaves antigas presentes no debkit.conf (ou no arquivo
+# indicado), na ordem do arquivo, sem repetir, separadas por ", "; nada se
+# não houver.
+debkit_conf_obsoletas_no_arquivo() {
+    local arq="${1:-$DEBKIT_CONF_ARQUIVO}" linha chaves=""
+    [ -f "$arq" ] && [ -r "$arq" ] || return 0
+    while IFS= read -r linha || [ -n "$linha" ]; do
+        if debkit_conf_linha_obsoleta "$linha" && [[ ",$chaves," != *",${BASH_REMATCH[1]},"* ]]; then
+            chaves+="${chaves:+,}${BASH_REMATCH[1]}"
+        fi
+    done < "$arq"
+    printf '%s' "${chaves//,/, }"
+}
+
+# Valores em vigor (todas as chaves conhecidas) de um debkit.conf, uma por
+# linha, em ordem: serve para conferir que só as chaves antigas saíram.
+debkit_conf_valores() {
+    (
+        local chave var
+        debkit_conf_carregar "$1" >/dev/null 2>&1 || echo "ERRO $DEBKIT_CONF_ERROS"
+        for chave in $(printf '%s\n' "${!DEBKIT_CONF_TIPO[@]}" | sort); do
+            var="DEBKIT_$chave"
+            printf '%s=%s\n' "$chave" "${!var}"
+        done
+    )
+}
+
+# Tira do debkit.conf as linhas das chaves antigas, sem mexer no resto
+# (comentários, valores próprios, ordem). Backup em BACKUP_DIR, arquivo novo
+# num temporário na mesma pasta, conferência (mesmos valores em vigor e
+# nenhuma chave antiga) e troca atômica mantendo dono/permissões.
+debkit_acao_conf_obsoletas() {
+    local arq="$DEBKIT_CONF_ARQUIVO" novo linha antes
+    DEBKIT_BACKUP_CONF=""; DEBKIT_CONF_TROCADO=0
+    DEBKIT_BACKUP_CONF=$(debkit_backup "$arq") || return 1
+    if ! novo=$(umask 077; mktemp -- "$(dirname -- "$arq")/.debkit.conf.XXXXXX"); then
+        msg_erro "$(t prep.conf_gravar_falhou "$arq")"
+        return 1
+    fi
+    DEBKIT_TEMPORARIOS+=("$novo")
+    while IFS= read -r linha || [ -n "$linha" ]; do
+        debkit_conf_linha_obsoleta "$linha" || printf '%s\n' "$linha"
+    done < "$arq" > "$novo"
+    antes=$(debkit_conf_valores "$arq")
+    if [ "$(debkit_conf_valores "$novo")" != "$antes" ] \
+       || [ -n "$(debkit_conf_obsoletas_no_arquivo "$novo")" ]; then
+        rm -f -- "$novo"
+        msg_erro "$(t prep.conf_obsoletas_conferencia)"
+        return 1
+    fi
+    if ! chown --reference="$arq" -- "$novo" || ! chmod --reference="$arq" -- "$novo" || ! mv -f -- "$novo" "$arq"; then
+        rm -f -- "$novo"
+        msg_erro "$(t prep.conf_gravar_falhou "$arq")"
+        return 1
+    fi
+    DEBKIT_CONF_TROCADO=1
+    debkit_conf_carregar "$arq" >/dev/null
+}
+
+# Volta o debkit.conf do backup, se a ação o trocou (troca atômica, mesmo
+# dono/permissões)
+debkit_conf_restaurar() {
+    local arq="$DEBKIT_CONF_ARQUIVO" novo=""
+    [ "${DEBKIT_CONF_TROCADO:-0}" -eq 1 ] || return 0
+    if [ -f "$DEBKIT_BACKUP_CONF" ] \
+       && novo=$(umask 077; mktemp -- "$(dirname -- "$arq")/.debkit.conf.XXXXXX") \
+       && cp -- "$DEBKIT_BACKUP_CONF" "$novo" \
+       && chown --reference="$arq" -- "$novo" && chmod --reference="$arq" -- "$novo" \
+       && mv -f -- "$novo" "$arq"; then
+        DEBKIT_CONF_TROCADO=0
+        debkit_conf_carregar "$arq" >/dev/null
+        return 0
+    fi
+    [ -n "$novo" ] && rm -f -- "$novo"
+    return 1
 }
 
 # ── Proteção SSH ────────────────────────────────────────────────────────────
@@ -1276,6 +1372,7 @@ debkit_desfazer() {
     case "$1" in
         dir_conf)    rmdir -- "$(debkit_dir_conf)" 2>/dev/null ;;
         conf)        rm -f -- "$DEBKIT_CONF_ARQUIVO" ;;
+        conf_obsoletas) debkit_conf_restaurar ;;
         dir_backup)  rmdir -- "$DEBKIT_BACKUP_DIR" 2>/dev/null ;;   # só se vazia
         grupo)       getent group "$DEBKIT_GRUPO_USUARIOS" | awk -F: '$4 != "" {exit 1}' \
                          && groupdel -- "$DEBKIT_GRUPO_USUARIOS" ;;

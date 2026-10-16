@@ -299,9 +299,10 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 - **Tarefa 1.0 (reestruturação) concluída** em 16/10/2026: `debkit` (ponto
   de entrada) + `lib/nucleo.sh` + `modulos/samba.sh`, com registro de
   módulos e carregamento seguro; `include`/`SHARES_CONF`/`PREFIXO_GRUPO`
-  retirados (chaves antigas viram aviso; a preparação remove o `include`
-  antigo dos servidores já preparados, conferindo com o `testparm` que nada
-  mais muda); faixas de UID/GID do `login.defs`; backups do `smb.conf` em
+  retirados (chaves antigas viram aviso e a preparação tira as linhas do
+  `debkit.conf`, conferindo que nenhum outro valor muda; ela também remove o
+  `include` antigo dos servidores já preparados, conferindo com o
+  `testparm` que nada mais muda no Samba); faixas de UID/GID do `login.defs`; backups do `smb.conf` em
   `SMB_BACKUP_DIR` (`/etc/samba/conf-bkp`) com o nome
   `smb.conf.dd-mm-aaaa-hh-mm-ss` e rotação por data; edição segura do
   `smb.conf` (`debkit_smbconf_editar`, pronta para a Fase 2).
@@ -338,8 +339,9 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
    mão, porque o debkit nunca as instala.
 3. ✔ Na VM: rodar a suíte completa (confere a renomeação).
 4. ✔ Tarefa 1.0 — reestruturar.
-5. Na VM: `./debkit --preparar` remove o `include` antigo (a VM foi
-   preparada antes da 1.0) — é a prova real dessa limpeza.
+5. Na VM: `./debkit --preparar` remove o `include` antigo e as chaves
+   antigas do `debkit.conf` (a VM foi preparada antes da 1.0) — é a prova
+   real dessa limpeza.
 6. **Tarefa 1.1 — criar usuário:** nome validado e inexistente; tipo de
    conta (3.1); home opcional (3.3); grupos; resumo, UMA confirmação e
    desfazer completo se algo falhar; só com o ambiente preparado; prova
@@ -359,7 +361,7 @@ depois de cada arquivo de teste e falha se algo mudar. Situação ao fim da
 Fase 0: 320 verificações na suíte normal + 27 nas provas reais, todas
 passando; `shellcheck` sem avisos no `debkit.sh`. Na VM, com o servidor já
 preparado pelo debkit (16/10/2026): 316 + 26, todas passando. Ao fim da
-tarefa 1.0: 493 + 26, todas passando; `shellcheck` sem avisos nos três
+tarefa 1.0: 521 + 26, todas passando; `shellcheck` sem avisos nos três
 arquivos do programa.
 
 Os testes funcionam com o servidor preparado ou não: em vez de exigir que
