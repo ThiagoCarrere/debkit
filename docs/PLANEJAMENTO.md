@@ -372,7 +372,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | 1.0 Reestruturação | `361c996` |
 | 1.1 Criar usuário | `caa0774` |
 | Correção: pacotes de domínio (winbind) | `3e16425` |
-| 1.1b Pasta pessoal | (este commit) |
+| 1.1b Pasta pessoal | `df06673` |
 
 **Próximos passos:**
 
