@@ -255,7 +255,8 @@ debkit/
   3. testes de verdade cobrindo todas as situações possíveis, com dados
      descartáveis e limpeza ao final;
   4. só com tudo certo: commit (autor: Thiago Carrere; coautor: Claude).
-- Trabalho na branch `dev`; levar para a `main` é decisão do Thiago.
+- Trabalho na branch `dev`; a `main` é a versão pública estável e só recebe
+  a `dev` (fast-forward) quando o Thiago decidir que está estável.
 
 ## 10. Herança do projeto swg
 
@@ -276,7 +277,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 
 ## 11. Situação atual e próximos passos
 
-*Atualizado em 15/10/2026.*
+*Atualizado em 16/10/2026.*
 
 - Nome decidido: **debkit**; renomeação gsb → debkit feita (arquivos,
   variáveis, funções, grupo `debkit_usuarios`, `/etc/debkit`, testes). As
@@ -296,9 +297,14 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 
 **Próximos passos:**
 
-1. Thiago: criar o repositório `debkit` no GitHub e a VM Debian 13 (com
-   snapshot); dar acesso de push (`gh auth login` ou chave SSH).
-2. Enviar este repositório ao GitHub e clonar na VM.
+1. ✔ Repositório `debkit` no GitHub e VM Debian 13 de desenvolvimento (com
+   snapshot), com o repositório clonado em `/opt/debkit` e push por chave
+   de implantação (deploy key) da VM.
+2. Na VM ainda sem Samba: preparar o ambiente **pelo próprio debkit**
+   (`debkit.sh --preparar`). É a prova real da tarefa 0.3: o debkit precisa
+   deixar o servidor pronto sozinho. As ferramentas de desenvolvimento
+   (`shellcheck`, `smbclient`, `ufw` para a prova `t05b`) são instaladas à
+   mão, porque o debkit nunca as instala.
 3. Na VM: rodar a suíte completa (confere a renomeação).
 4. **Tarefa 1.0 — reestruturar** (ver Fase 1).
 5. **Tarefa 1.1 — criar usuário:** nome validado e inexistente; tipo de

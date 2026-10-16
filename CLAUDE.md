@@ -32,9 +32,8 @@ reescrito e o repositório recriado.)
 
 ## Git
 
-- Trabalho na branch `dev`. **Por enquanto, `main` e `dev` andam
-  sincronizadas**: depois de cada commit na `dev`, avançar a `main`
-  (fast-forward) e enviar as duas.
+- Trabalho na branch `dev` (commit e push só na `dev`). A `main` é a versão
+  pública estável: só recebe a `dev` (fast-forward) quando o Thiago pedir.
 - Autor dos commits: Thiago Carrere; coautor: Claude.
 - Forma de trabalho (uma tarefa por vez, revisão minuciosa, testes de
   verdade, só então commit): seção 9 do planejamento.
