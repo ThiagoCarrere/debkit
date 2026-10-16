@@ -55,6 +55,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   procura o `include` pelo caminho exato da areia.
 
 ### Adicionado
+- **Pasta pessoal (tarefa 1.1b):** opcional na criação do usuário (padrão:
+  não) e para usuário existente sem pasta (menu Samba, opção 2). A base
+  (`HOMES_BASE`) é escolhida na primeira vez entre os discos de dados
+  montados e gravada no `debkit.conf` (`debkit_conf_definir`: backup, só a
+  chave muda, troca atômica); recusa disco do sistema, pastas do sistema,
+  links, tmpfs, sistemas sem dono/permissões e montagem somente leitura, e
+  é conferida a cada uso (disco desmontado = nada é criado). Pasta
+  `HOMES_BASE/<login>` 700 do usuário (com `/etc/skel` só para acesso ao
+  servidor), desfeita se algo falhar. Compartilhamento `[homes]`: o debkit
+  oferece liberar a escrita do `[homes]` do Debian (somente leitura) ou
+  criar a seção, com conferência do que muda; opção 3 do menu Samba mostra
+  a base e o estado do `[homes]`.
 - **Criar usuário (tarefa 1.1):** menu "1) Samba" → "1) Criar usuário".
   Nome completo opcional (com acentos) e sugestão de login a partir dele;
   login no padrão `nome_sobrenome` (minúsculas sem acento, números e `_`,

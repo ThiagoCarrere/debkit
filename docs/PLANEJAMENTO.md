@@ -112,6 +112,22 @@ Nada de editar o `sshd` à mão:
 - Oferece criar o compartilhamento `[homes]` (cada usuário vê só a própria
   pasta no Windows).
 - Usuário existente: opção para criar/mover a home depois.
+- **Feito na 1.1b** (16/10/2026): `HOMES_BASE` (vazio = ainda não
+  definida) é escolhida na primeira vez entre os discos de dados montados
+  (sugestão `<disco>/homes`), validada e gravada no `debkit.conf`. A base é
+  recusada se: fica no disco do sistema (`/`), numa pasta do sistema
+  (`/etc`, `/var`, `/usr`, `/tmp`, `/root`, `/boot`, `/run`...), passa por
+  link (ou tem `/` no fim, `//`), é tmpfs/pseudo, não guarda dono e
+  permissões (vfat, exfat, ntfs) ou está montada somente leitura. É
+  conferida de novo a cada uso: com o disco de dados desmontado, nada é
+  criado. A pasta é `HOMES_BASE/<login>`, 700, do usuário (com `/etc/skel`
+  só para quem tem acesso ao servidor); nunca usa uma pasta que já existe.
+  O `[homes]` do smb.conf padrão do Debian existe mas é somente leitura: o
+  debkit oferece liberar a escrita (`read only = no`, e `valid users = %S`
+  se faltar) ou criar a seção, pela edição segura; `[homes]` feito à mão
+  (com `path` ou `valid users` próprios) não é mexido.
+- *Em aberto:* **mover** a home de um usuário que já tem pasta (mexe em
+  dados; fica para uma tarefa própria).
 
 ### 3.5 Nome de login e nome completo
 
@@ -280,7 +296,7 @@ debkit/
 | Fase | Conteúdo |
 |---|---|
 | 0. Fundação | 0.1 esqueleto ✔ · 0.2 detecção do ambiente ✔ · 0.3 preparação do ambiente e backups ✔ · 0.4 proteção SSH ✔ · 0.5 firewall ✔ |
-| 1. Usuários e grupos | 1.0 reestruturar ✔ (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário ✔ (tipos, nome completo, grupos; sem home) · 1.1b pasta pessoal (base no disco de dados, criar na criação ou depois) · listar · trocar senha · grupos (criar, remover, entrar/sair) · desativar/reativar · remover · consistência Linux x Samba |
+| 1. Usuários e grupos | 1.0 reestruturar ✔ (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário ✔ (tipos, nome completo, grupos; sem home) · 1.1b pasta pessoal ✔ (base no disco de dados, na criação ou depois, `[homes]`) · listar · trocar senha · grupos (criar, remover, entrar/sair) · desativar/reativar · remover · consistência Linux x Samba |
 | 2. Compartilhamentos | criar, listar, permissões de pasta, remover (inclusive os já existentes); pastas pessoais e `[homes]`; avaliar acesso somente leitura por grupo |
 | 3. Diagnóstico | falhas de login, sessões ativas, saúde do Samba, consulta à auditoria |
 | 4. Publicação | comandos diretos completos, `install.sh`, **desinstalação**, README, mensagens em inglês, testes automáticos e CI |
@@ -355,6 +371,8 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 |---|---|
 | 1.0 Reestruturação | `361c996` |
 | 1.1 Criar usuário | `caa0774` |
+| Correção: pacotes de domínio (winbind) | `3e16425` |
+| 1.1b Pasta pessoal | (este commit) |
 
 **Próximos passos:**
 
@@ -389,7 +407,13 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
    VM eles acabaram removidos por um teste (ver "Cuidados" abaixo); o
    resultado foi conferido: PAM/NSS sem winbind, smbd e SSH ativos, e a
    prova `t07b` confirma que o PAM não aceita mais a senha do Samba.
-8. **Tarefa 1.1b — pasta pessoal** (3.3).
+8. ✔ Tarefa 1.1b — pasta pessoal (3.3). Prova real (`t09b`): com um
+   disco de teste e o `[homes]` liberado pelo debkit, o usuário grava na
+   própria pasta pelo Samba e outro usuário não acessa.
+9. Para testar à mão na VM: adicionar um segundo disco no VirtualBox,
+   formatar (ext4) e montar (ex: `/mnt/dados`) — a VM só tem o disco do
+   sistema, e a pasta pessoal nunca vai para ele.
+10. **Próxima tarefa:** listar usuários (Fase 1).
 
 **Como rodar os testes (só na VM):**
 
@@ -398,6 +422,7 @@ tests/run.sh                                         # suíte normal (caixa de a
 DEBKIT_TESTE_REAL=1 tests/run.sh t04b_ssh_real.sh    # prova com o SSH real
 DEBKIT_TESTE_REAL=1 tests/run.sh t05b_ufw_real.sh    # prova com o ufw real (instalado e INATIVO)
 DEBKIT_TESTE_REAL=1 tests/run.sh t07b_usuario_real.sh  # login real no Samba e no SSH (ambiente real preparado)
+DEBKIT_TESTE_REAL=1 tests/run.sh t09b_home_real.sh   # [homes] real com disco de teste (smb.conf volta idêntico)
 shellcheck -x debkit lib/*.sh modulos/*.sh           # cada arquivo (o -x sozinho não mostra os avisos dos carregados)
 ```
 
@@ -412,7 +437,10 @@ arquivos do programa. Ao fim da 1.1: 688 + 47 (provas reais: `t04b`,
 `dkt_*` reais (removidos no fim); a base de senhas do Samba da areia é
 separada da real (`copiar_smb_conf` aponta `passdb backend` e as pastas
 de estado para a areia). Com a correção dos pacotes de domínio: 733 + 48
-(`t08_dominio.sh`).
+(`t08_dominio.sh`). Ao fim da 1.1b: 898 + 65 (`t09_home.sh` monta discos
+de teste de verdade - arquivos ext4 em loop, um somente leitura e um tmpfs
+- em `/mnt/dkt-teste.*` e desmonta no fim; a impressão digital do `run.sh`
+confere que nenhuma montagem sobrou).
 
 Os testes funcionam com o servidor preparado ou não: em vez de exigir que
 os arquivos reais do debkit não existam, conferem que não mudaram

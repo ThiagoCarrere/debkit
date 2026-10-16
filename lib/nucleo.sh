@@ -90,6 +90,7 @@ debkit_conf_valor_valido() {
         inteiro_1_9999) [[ "$valor" =~ ^[0-9]{1,4}$ ]] && [ "$valor" -ge 1 ] ;;
         nome)           [[ "$valor" =~ ^[${DEBKIT_MINUSCULAS}_][${DEBKIT_MINUSCULAS}${DEBKIT_DIGITOS}_-]{0,31}$ ]] ;;
         caminho)        [[ "$valor" == /* && "$valor" != *..* && "$valor" =~ ^[${DEBKIT_MINUSCULAS}${DEBKIT_MAIUSCULAS}${DEBKIT_DIGITOS}/._-]+$ ]] ;;
+        caminho_opcional) [ -z "$valor" ] || debkit_conf_valor_valido caminho "$valor" ;;
         *)              return 1 ;;
     esac
 }
@@ -1202,6 +1203,55 @@ debkit_acao_conf_obsoletas() {
     fi
     DEBKIT_CONF_TROCADO=1
     debkit_conf_carregar "$arq" >/dev/null
+}
+
+# debkit_conf_definir <CHAVE> <valor>
+# Grava uma chave no debkit.conf (substitui a linha da chave ou acrescenta
+# no fim), sem mexer no resto: backup em BACKUP_DIR, arquivo novo num
+# temporário na mesma pasta, conferência (só essa chave mudou nos valores em
+# vigor), troca atômica mantendo dono/permissões. Atualiza DEBKIT_<CHAVE>.
+# Para desfazer: debkit_conf_restaurar.
+debkit_conf_definir() {
+    local chave="$1" valor="$2" arq="$DEBKIT_CONF_ARQUIVO" novo linha achou=0 antes esperado
+    DEBKIT_BACKUP_CONF=""; DEBKIT_CONF_TROCADO=0
+    if [ -z "${DEBKIT_CONF_TIPO[$chave]+x}" ] || ! debkit_conf_valor_valido "${DEBKIT_CONF_TIPO[$chave]}" "$valor"; then
+        msg_erro "$(t prep.conf_gravar_falhou "$arq")"
+        return 1
+    fi
+    if [ ! -f "$arq" ]; then
+        msg_erro "$(t prep.conf_gravar_falhou "$arq")"
+        return 1
+    fi
+    DEBKIT_BACKUP_CONF=$(debkit_backup "$arq") || return 1
+    if ! novo=$(umask 077; mktemp -- "$(dirname -- "$arq")/.debkit.conf.XXXXXX"); then
+        msg_erro "$(t prep.conf_gravar_falhou "$arq")"
+        return 1
+    fi
+    DEBKIT_TEMPORARIOS+=("$novo")
+    while IFS= read -r linha || [ -n "$linha" ]; do
+        if [[ "$linha" =~ ^[[:space:]]*([A-Z_]+)[[:space:]]*= ]] && [ "${BASH_REMATCH[1]}" == "$chave" ]; then
+            [ "$achou" -eq 0 ] && printf '%s=%s\n' "$chave" "$valor"
+            achou=1
+            continue
+        fi
+        printf '%s\n' "$linha"
+    done < "$arq" > "$novo"
+    [ "$achou" -eq 1 ] || printf '%s=%s\n' "$chave" "$valor" >> "$novo"
+    antes=$(debkit_conf_valores "$arq")
+    esperado=$(printf '%s\n' "$antes" | sed "s|^$chave=.*|$chave=$valor|")
+    if [ "$(debkit_conf_valores "$novo")" != "$esperado" ]; then
+        rm -f -- "$novo"
+        msg_erro "$(t prep.conf_gravar_falhou "$arq")"
+        return 1
+    fi
+    if ! chown --reference="$arq" -- "$novo" || ! chmod --reference="$arq" -- "$novo" || ! mv -f -- "$novo" "$arq"; then
+        rm -f -- "$novo"
+        msg_erro "$(t prep.conf_gravar_falhou "$arq")"
+        return 1
+    fi
+    DEBKIT_CONF_TROCADO=1
+    printf -v "DEBKIT_$chave" '%s' "$valor"
+    debkit_auditar conf_definir "chave=$chave valor=$valor"
 }
 
 # Volta o debkit.conf do backup, se a ação o trocou (troca atômica, mesmo

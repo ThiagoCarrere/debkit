@@ -128,7 +128,7 @@ contem "[U" "$(PDB -u dkt_arq -v | grep 'Account Flags')" "conta Samba ativa"
 igual "$ref" "$(nt_hash dkt_arq)" "senha do Samba é a informada"
 verdadeiro "nada na base Samba REAL" bash -c '! pdbedit -L 2>/dev/null | grep -q "^dkt_"'
 log=$(cat "$AREIA/debkit.log")
-contem "usuario_criar nome=dkt_arq tipo=arquivos uid=$uid grupos=dkt_g1,dkt_g2 resultado=ok" "$log" "auditoria"
+contem "usuario_criar nome=dkt_arq tipo=arquivos uid=$uid grupos=dkt_g1,dkt_g2 home=/nonexistent resultado=ok" "$log" "auditoria"
 nao_contem "Arq#Senha" "$log" "senha nunca no log"
 
 caso "criar usuário de arquivos sem grupos e sem nome completo"
@@ -209,7 +209,7 @@ idx() { u "debkit_samba_grupos_comuns" | grep -nx "$1" | cut -d: -f1; }
 G1=$(idx dkt_g1); G2=$(idx dkt_g2)
 
 caso "tela: usuário de arquivos com sugestão de login, grupos e confirmação"
-saida=$(tela "Dkt Tela - Teste" "" "" "$G1,$G2" "senha12" "senha12" s "")
+saida=$(tela "Dkt Tela - Teste" "" "" "$G1,$G2" n "senha12" "senha12" s "")
 contem "Login: dkt_tela" "$saida" "Enter no login usa a sugestão do nome completo"; contem "Nome completo: Dkt Tela - Teste" "$saida"
 contem "Grupos: dkt_g1, dkt_g2" "$saida"; contem "Senha: definida (não é mostrada)" "$saida"
 contem "Pasta pessoal: não" "$saida"; contem "Usuário dkt_tela criado" "$saida"; contem "RC=0" "$saida"
@@ -217,18 +217,18 @@ nao_contem "senha12" "$saida" "senha não aparece na tela"
 igual "/usr/sbin/nologin" "$(getent passwd dkt_tela | cut -d: -f7)"
 
 caso "tela: nome inválido, senha curta e senhas diferentes pedem de novo"
-saida=$(tela "" "Dkt.Ruim" "dkt_tela2" "" "" "abc" "senha12" "outra12" "senha12" "senha12" s "")
+saida=$(tela "" "Dkt.Ruim" "dkt_tela2" "" "" n "abc" "senha12" "outra12" "senha12" "senha12" s "")
 contem "Nome inválido: 'Dkt.Ruim'" "$saida"
 contem "pelo menos 4 caractere(s)" "$saida"; contem "As senhas não conferem" "$saida"
 contem "RC=0" "$saida"; verdadeiro "criado" getent passwd dkt_tela2
 
 caso "tela: respondendo n na confirmação, nada é criado"
-saida=$(tela "" dkt_tela3 "" "" "senha12" "senha12" n "")
+saida=$(tela "" dkt_tela3 "" "" n "senha12" "senha12" n "")
 contem "Cancelado. Nada foi feito." "$saida"; contem "RC=1" "$saida"
 verdadeiro "não criado" nada_sobrou dkt_tela3
 
 caso "tela: acesso ao servidor exige confirmação explícita"
-saida=$(tela "" dkt_tela4 2 n 2 s "" "senha12" "senha12" n "Linux123" "Linux123" s "")
+saida=$(tela "" dkt_tela4 2 n 2 s "" n "senha12" "senha12" n "Linux123" "Linux123" s "")
 contem "poderá ENTRAR NO SERVIDOR" "$saida"
 contem "Tipo: Usuário com acesso ao servidor" "$saida"; contem "Senha do Linux: própria" "$saida"
 contem "RC=0" "$saida"
@@ -236,7 +236,7 @@ igual "/bin/bash" "$(getent passwd dkt_tela4 | cut -d: -f7)"
 verdadeiro "senha do Linux própria" senha_linux_ok dkt_tela4 "Linux123"
 
 caso "tela: número de grupo inválido pede de novo"
-saida=$(tela "" dkt_tela5 "" "99" "x" "$G1" "senha12" "senha12" s "")
+saida=$(tela "" dkt_tela5 "" "99" "x" "$G1" n "senha12" "senha12" s "")
 contem "Escolha inválida: '99'" "$saida"; contem "Escolha inválida: 'x'" "$saida"
 contem "Grupos: dkt_g1" "$saida"; contem "RC=0" "$saida"
 
@@ -251,7 +251,7 @@ saida=$(printf '\n' | u "debkit_samba_ambiente_pronto() { return 1; }; debkit_sa
 contem "ainda não está preparado" "$saida"; nao_contem "Nome completo" "$saida"; contem "RC=1" "$saida"
 
 caso "menu do Samba: 1) Criar usuário, no terminal (perguntas, sugestão, senha sem eco)"
-saida=$(pty 0.7 "bash $DEBKIT" 1 1 "Dkt Pty" "" "" "" "SenhaPty1" "SenhaPty1" n "" 0 0)
+saida=$(pty 0.7 "bash $DEBKIT" 1 1 "Dkt Pty" "" "" "" n "SenhaPty1" "SenhaPty1" n "" 0 0)
 contem "Nome completo (opcional; Enter para pular):" "$saida"
 contem "Nome de login [dkt_pty]:" "$saida" "sugestão mostrada"
 contem "Senha do Samba (pastas):" "$saida"; contem "Repita a senha:" "$saida"

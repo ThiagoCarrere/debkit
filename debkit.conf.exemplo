@@ -43,3 +43,8 @@ SMB_CONF=/etc/samba/smb.conf
 # Pasta dos backups do smb.conf (smb.conf.dd-mm-aaaa-hh-mm-ss), criada com
 # acesso só do root se não existir
 SMB_BACKUP_DIR=/etc/samba/conf-bkp
+
+# Base das pastas pessoais (HOMES_BASE/<login>), num disco de dados montado
+# (nunca o disco do sistema). Vazio = ainda não definida: o debkit pergunta
+# na primeira vez e grava aqui.
+HOMES_BASE=

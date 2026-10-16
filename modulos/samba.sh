@@ -20,9 +20,11 @@ debkit_modulo_registrar samba
 {
     DEBKIT_CONF_PADRAO[SMB_CONF]="/etc/samba/smb.conf"
     DEBKIT_CONF_PADRAO[SMB_BACKUP_DIR]="/etc/samba/conf-bkp"
+    DEBKIT_CONF_PADRAO[HOMES_BASE]=""
     DEBKIT_CONF_TIPO[SMB_CONF]="caminho"
     DEBKIT_CONF_TIPO[SMB_BACKUP_DIR]="caminho"
-    DEBKIT_CONF_ORDEM+=(SMB_CONF SMB_BACKUP_DIR)
+    DEBKIT_CONF_TIPO[HOMES_BASE]="caminho_opcional"
+    DEBKIT_CONF_ORDEM+=(SMB_CONF SMB_BACKUP_DIR HOMES_BASE)
 }
 
 # ── Mensagens ───────────────────────────────────────────────────────────────
@@ -116,6 +118,52 @@ MSG_pt_BR+=(
     [usr.f_bloqueio]="a senha do Linux não ficou bloqueada"
     [usr.f_samba]="não foi possível criar a conta no Samba"
     [usr.f_conferencia]="a conferência final não bateu (%s)"
+    [samba.criar_home]="Criar pasta pessoal para um usuário existente"
+    [samba.pastas_pessoais]="Pastas pessoais: base e compartilhamento [homes]"
+    [home.titulo]="Pastas pessoais"
+    [home.titulo_criar]="Criar pasta pessoal"
+    [home.p_criar]="Criar pasta pessoal?"
+    [home.base_atual]="Base das pastas pessoais: %s"
+    [home.base_nenhuma]="Base das pastas pessoais: ainda não definida"
+    [home.base_intro]="As pastas pessoais ficam num disco de dados (separado do disco do sistema), para os dados ficarem juntos no backup. Isso é definido uma vez e gravado na configuração."
+    [home.discos]="Discos de dados montados:"
+    [home.sem_discos]="Nenhum disco de dados montado (só o disco do sistema). Monte um disco de dados (ex: em /mnt/dados) e tente de novo."
+    [home.p_base]="Base [%s]: "
+    [home.p_base_sem]="Base (caminho completo; Enter cancela): "
+    [home.base_vazia]="Informe o caminho da base."
+    [home.base_formato]="Caminho inválido: '%s'. Use o caminho completo, só com letras sem acento, números e / . _ -"
+    [home.base_link]="Use o caminho real de '%s' (sem links, sem / no fim nem //): %s"
+    [home.base_sistema]="'%s' fica numa pasta do sistema (%s): escolha uma pasta num disco de dados."
+    [home.base_nao_pasta]="'%s' existe e não é uma pasta."
+    [home.base_disco_sistema]="'%s' fica no disco do sistema (/): escolha uma pasta num disco de dados montado."
+    [home.base_nao_disco]="'%s' fica em %s (%s), que não é um disco de dados."
+    [home.base_somente_leitura]="'%s' fica em %s, montado somente leitura."
+    [home.base_sem_permissoes]="'%s' fica em %s (%s), que não guarda dono e permissões do Linux."
+    [home.p_confirma_base]="Usar %s como base das pastas pessoais (cria a pasta se não existir e grava HOMES_BASE na configuração)?"
+    [home.base_criar_falhou]="Não foi possível criar a pasta %s."
+    [home.base_definida]="Base das pastas pessoais: %s (gravada em %s)."
+    [home.base_invalida_agora]="A base das pastas pessoais (%s) não pode ser usada agora: %s"
+    [home.r_sim]="Pasta pessoal: %s"
+    [home.ja_existe]="A pasta %s já existe: o debkit não usa uma pasta que não criou."
+    [home.f_criar]="não foi possível criar a pasta pessoal %s"
+    [home.sem_candidatos]="Nenhum usuário comum sem pasta pessoal."
+    [home.titulo_usuarios]="Usuários sem pasta pessoal:"
+    [home.p_usuario]="Usuário (número; Enter cancela): "
+    [home.usuario_tem_home]="O usuário %s já tem pasta pessoal (%s)."
+    [home.usuario_nao_comum]="'%s' não é um usuário comum do servidor."
+    [home.p_confirmar]="Criar a pasta pessoal %s para %s?"
+    [home.criada]="Pasta pessoal %s criada para %s."
+    [home.falhou]="Não foi possível criar a pasta pessoal de %s: %s"
+    [home.f_usermod]="o usermod falhou"
+    [home.segue_sem]="Seguindo sem pasta pessoal (ela pode ser criada depois)."
+    [homes.estado_ok]="Compartilhamento [homes]: ativo e com escrita (cada usuário vê só a própria pasta)"
+    [homes.estado_ausente]="Compartilhamento [homes]: não existe (as pastas pessoais não aparecem no Windows)"
+    [homes.estado_leitura]="Compartilhamento [homes]: existe, mas somente leitura (ou sem \"valid users = %S\")"
+    [homes.estado_outro]="Compartilhamento [homes]: configurado à mão com outro caminho (o debkit não mexe)"
+    [homes.p_criar]="Criar o compartilhamento [homes] no smb.conf (cada usuário vê só a própria pasta, com escrita)?"
+    [homes.p_liberar]="Liberar a escrita no compartilhamento [homes] (\"read only = no\"; cada usuário continua vendo só a própria pasta)?"
+    [homes.feito]="Compartilhamento [homes] pronto."
+    [homes.aviso_depois]="Para a pasta aparecer no Windows, ajuste o compartilhamento [homes] em \"Pastas pessoais\" no menu do Samba."
 )
 # shellcheck disable=SC2034  # catálogo do núcleo
 MSG_en+=(
@@ -207,6 +255,52 @@ MSG_en+=(
     [usr.f_bloqueio]="the Linux password was not locked"
     [usr.f_samba]="could not create the Samba account"
     [usr.f_conferencia]="the final check did not match (%s)"
+    [samba.criar_home]="Create home folder for an existing user"
+    [samba.pastas_pessoais]="Home folders: base and [homes] share"
+    [home.titulo]="Home folders"
+    [home.titulo_criar]="Create home folder"
+    [home.p_criar]="Create a home folder?"
+    [home.base_atual]="Home folders base: %s"
+    [home.base_nenhuma]="Home folders base: not defined yet"
+    [home.base_intro]="Home folders live on a data disk (separate from the system disk), so all data stays together for backup. This is set once and saved in the configuration."
+    [home.discos]="Mounted data disks:"
+    [home.sem_discos]="No data disk mounted (only the system disk). Mount a data disk (e.g. at /mnt/dados) and try again."
+    [home.p_base]="Base [%s]: "
+    [home.p_base_sem]="Base (full path; Enter cancels): "
+    [home.base_vazia]="Enter the base path."
+    [home.base_formato]="Invalid path: '%s'. Use the full path, only letters without accents, digits and / . _ -"
+    [home.base_link]="Use the real path of '%s' (no links, no trailing / or //): %s"
+    [home.base_sistema]="'%s' is in a system folder (%s): choose a folder on a data disk."
+    [home.base_nao_pasta]="'%s' exists and is not a folder."
+    [home.base_disco_sistema]="'%s' is on the system disk (/): choose a folder on a mounted data disk."
+    [home.base_nao_disco]="'%s' is on %s (%s), which is not a data disk."
+    [home.base_somente_leitura]="'%s' is on %s, mounted read-only."
+    [home.base_sem_permissoes]="'%s' is on %s (%s), which does not keep Linux owners and permissions."
+    [home.p_confirma_base]="Use %s as the home folders base (creates the folder if needed and saves HOMES_BASE in the configuration)?"
+    [home.base_criar_falhou]="Could not create the folder %s."
+    [home.base_definida]="Home folders base: %s (saved in %s)."
+    [home.base_invalida_agora]="The home folders base (%s) cannot be used now: %s"
+    [home.r_sim]="Home folder: %s"
+    [home.ja_existe]="The folder %s already exists: debkit does not use a folder it did not create."
+    [home.f_criar]="could not create the home folder %s"
+    [home.sem_candidatos]="No regular user without a home folder."
+    [home.titulo_usuarios]="Users without a home folder:"
+    [home.p_usuario]="User (number; Enter cancels): "
+    [home.usuario_tem_home]="User %s already has a home folder (%s)."
+    [home.usuario_nao_comum]="'%s' is not a regular server user."
+    [home.p_confirmar]="Create the home folder %s for %s?"
+    [home.criada]="Home folder %s created for %s."
+    [home.falhou]="Could not create the home folder of %s: %s"
+    [home.f_usermod]="usermod failed"
+    [home.segue_sem]="Continuing without a home folder (it can be created later)."
+    [homes.estado_ok]="[homes] share: active and writable (each user only sees their own folder)"
+    [homes.estado_ausente]="[homes] share: does not exist (home folders do not show up in Windows)"
+    [homes.estado_leitura]="[homes] share: exists, but read-only (or without \"valid users = %S\")"
+    [homes.estado_outro]="[homes] share: configured by hand with another path (debkit does not touch it)"
+    [homes.p_criar]="Create the [homes] share in smb.conf (each user only sees their own folder, writable)?"
+    [homes.p_liberar]="Allow writing in the [homes] share (\"read only = no\"; each user still only sees their own folder)?"
+    [homes.feito]="[homes] share ready."
+    [homes.aviso_depois]="For the folder to show up in Windows, adjust the [homes] share in \"Home folders\" in the Samba menu."
 )
 
 # ── Dependências (comando | tipo | pacote no Debian; ver núcleo) ───────────
@@ -704,15 +798,16 @@ debkit_samba_ambiente_pronto() {
 # Entrada (variáveis, para a senha nunca ir para a linha de comando):
 #   DEBKIT_U_NOME, DEBKIT_U_GECOS, DEBKIT_U_TIPO (arquivos | servidor),
 #   DEBKIT_U_GRUPOS (array), DEBKIT_U_SENHA (Samba),
-#   DEBKIT_U_SENHA_LINUX (só tipo servidor)
+#   DEBKIT_U_SENHA_LINUX (só tipo servidor), DEBKIT_U_HOME (1 = criar a
+#   pasta pessoal em HOMES_BASE/<login>; a base já precisa estar pronta)
 # Tudo ou nada: cria o usuário Linux (grupo pessoal, sem home; tipo
 # arquivos: shell nologin, senha Linux bloqueada e grupo de proteção SSH;
 # tipo servidor: /bin/bash e senha Linux própria), a conta Samba, confere
 # tudo e, se algo falhar, desfaz o que fez. Senhas só pela entrada padrão.
 debkit_usuario_criar() {
-    local nome="$DEBKIT_U_NOME" shell grupos estado uid gid g motivo=""
+    local nome="$DEBKIT_U_NOME" shell grupos estado uid gid g motivo="" home="$DEBKIT_USR_HOME" skel=0
     local -a membros=()
-    DEBKIT_U_FEITO_LINUX=0; DEBKIT_U_FEITO_SAMBA=0
+    DEBKIT_U_FEITO_LINUX=0; DEBKIT_U_FEITO_SAMBA=0; DEBKIT_H_CRIADA=0; DEBKIT_U_HOME_DIR=""
     if ! debkit_usuario_nome_problema "$nome" >/dev/null || ! debkit_usuario_gecos_problema "$DEBKIT_U_GECOS" >/dev/null; then
         motivo=$(debkit_usuario_nome_problema "$nome"; debkit_usuario_gecos_problema "$DEBKIT_U_GECOS")
         msg_erro "$(t usr.falhou "$nome" "$motivo")"
@@ -725,10 +820,25 @@ debkit_usuario_criar() {
         *)        return 1 ;;
     esac
     grupos=$(IFS=,; echo "${membros[*]}")
+    # Pasta pessoal: base pronta agora (disco montado) e pasta ainda inexistente
+    if [ "${DEBKIT_U_HOME:-0}" -eq 1 ]; then
+        if ! motivo=$(debkit_samba_base_problema "$DEBKIT_HOMES_BASE") || [ ! -d "$DEBKIT_HOMES_BASE" ]; then
+            msg_erro "$(t usr.falhou "$nome" "$(t home.base_invalida_agora "$DEBKIT_HOMES_BASE" "$motivo")")"
+            return 1
+        fi
+        home="$DEBKIT_HOMES_BASE/$nome"
+        if [ -e "$home" ] || [ -L "$home" ]; then
+            msg_erro "$(t usr.falhou "$nome" "$(t home.ja_existe "$home")")"
+            return 1
+        fi
+        [ "$DEBKIT_U_TIPO" == "servidor" ] && skel=1
+    fi
+    DEBKIT_U_HOME_DIR="$home"
 
     msg_info "$(t usr.criando "$nome")"
-    # 1. Usuário Linux (useradd já deixa a senha bloqueada: "!")
-    if ! useradd -M -d "$DEBKIT_USR_HOME" -s "$shell" -U -c "$DEBKIT_U_GECOS" ${grupos:+-G "$grupos"} -- "$nome" >/dev/null 2>&1; then
+    # 1. Usuário Linux (useradd já deixa a senha bloqueada: "!"); a pasta
+    # pessoal é criada pelo debkit logo depois (dono, 700, skel só p/ servidor)
+    if ! useradd -M -d "$home" -s "$shell" -U -c "$DEBKIT_U_GECOS" ${grupos:+-G "$grupos"} -- "$nome" >/dev/null 2>&1; then
         debkit_usuario_falhou "$(t usr.f_useradd)"
         return 1
     fi
@@ -736,6 +846,10 @@ debkit_usuario_criar() {
     IFS=: read -r _ _ uid gid _ < <(getent passwd "$nome")
     if ! debkit_uid_comum "$uid"; then
         debkit_usuario_falhou "$(t usr.f_uid "$uid")"
+        return 1
+    fi
+    if [ "${DEBKIT_U_HOME:-0}" -eq 1 ] && ! debkit_samba_criar_pasta "$nome" "$home" "$gid" "$skel"; then
+        debkit_usuario_falhou "$(t home.f_criar "$home")"
         return 1
     fi
     # 2. Senha do Linux
@@ -757,7 +871,7 @@ debkit_usuario_criar() {
     DEBKIT_U_FEITO_SAMBA=1
     # 4. Conferência final (resultado real, não só o código de saída)
     estado=$(getent passwd "$nome" | cut -d: -f6,7)
-    [ "$estado" == "$DEBKIT_USR_HOME:$shell" ] || motivo="home/shell"
+    [ "$estado" == "$home:$shell" ] || motivo="home/shell"
     [ "$(getent group "$nome" | cut -d: -f3)" == "$gid" ] || motivo="grupo pessoal"
     for g in "${membros[@]}"; do
         id -nG -- "$nome" 2>/dev/null | tr ' ' '\n' | grep -qxF "$g" || motivo="grupo $g"
@@ -770,12 +884,16 @@ debkit_usuario_criar() {
         motivo="senha do Linux não bloqueada"
     fi
     debkit_samba_conta_existe "$nome" || motivo="Samba"
-    if [ -d "$DEBKIT_USR_HOME" ]; then motivo="$DEBKIT_USR_HOME existe"; fi
+    if [ "${DEBKIT_U_HOME:-0}" -eq 1 ]; then
+        [ "$(stat -c '%u %g %a' -- "$home" 2>/dev/null)" == "$uid $gid 700" ] || motivo="pasta pessoal"
+    elif [ -d "$DEBKIT_USR_HOME" ]; then
+        motivo="$DEBKIT_USR_HOME existe"
+    fi
     if [ -n "$motivo" ]; then
         debkit_usuario_falhou "$(t usr.f_conferencia "$motivo")"
         return 1
     fi
-    debkit_auditar usuario_criar "nome=$nome tipo=$DEBKIT_U_TIPO uid=$uid grupos=$(IFS=,; echo "${DEBKIT_U_GRUPOS[*]}") resultado=ok"
+    debkit_auditar usuario_criar "nome=$nome tipo=$DEBKIT_U_TIPO uid=$uid grupos=$(IFS=,; echo "${DEBKIT_U_GRUPOS[*]}") home=$home resultado=ok"
     msg_ok "$(t usr.criado "$nome")"
 }
 
@@ -784,7 +902,7 @@ debkit_usuario_falhou() {
     local nome="$DEBKIT_U_NOME"
     msg_erro "$(t usr.falhou "$nome" "$1")"
     debkit_auditar usuario_criar "nome=$nome tipo=$DEBKIT_U_TIPO resultado=falha motivo=$1"
-    local havia=$((DEBKIT_U_FEITO_LINUX + DEBKIT_U_FEITO_SAMBA))
+    local havia=$((DEBKIT_U_FEITO_LINUX + DEBKIT_U_FEITO_SAMBA + ${DEBKIT_H_CRIADA:-0}))
     if debkit_usuario_desfazer; then
         [ "$havia" -eq 0 ] || msg_info "$(t usr.desfeito)"
         debkit_auditar usuario_criar "nome=$nome resultado=desfeito"
@@ -801,6 +919,7 @@ debkit_usuario_desfazer() {
         debkit_smbpasswd -x -- "$nome" >/dev/null 2>&1
     fi
     if [ "$DEBKIT_U_FEITO_LINUX" -eq 1 ]; then
+        debkit_samba_remover_pasta_criada "$DEBKIT_U_HOME_DIR" || return 1
         userdel -- "$nome" >/dev/null 2>&1
         # O userdel tira o grupo pessoal (USERGROUPS_ENAB); se sobrou e está vazio, tira
         if getent group "$nome" | awk -F: '$4 == "" {ok = 1} END {exit !ok}'; then
@@ -811,6 +930,276 @@ debkit_usuario_desfazer() {
     if [ $((DEBKIT_U_FEITO_LINUX + DEBKIT_U_FEITO_SAMBA)) -gt 0 ] && debkit_samba_conta_existe "$nome"; then return 1; fi
     DEBKIT_U_FEITO_LINUX=0; DEBKIT_U_FEITO_SAMBA=0
     return 0
+}
+
+# ── Pastas pessoais: base ───────────────────────────────────────────────────
+# As pastas pessoais ficam em HOMES_BASE/<login>, num disco de dados (nunca
+# no disco do sistema nem em pastas do sistema), para o backup pegar todos
+# os dados juntos (decisão 3.3).
+DEBKIT_PASTAS_SISTEMA=(/bin /boot /dev /etc /lib /lib32 /lib64 /libx32 /lost+found /proc /root /run /sbin /snap /sys /tmp /usr /var)
+# Sistemas de arquivos que não são disco de dados / não guardam dono e permissões
+DEBKIT_FS_NAO_DISCO=" tmpfs ramfs devtmpfs proc sysfs cgroup cgroup2 overlay squashfs iso9660 udf autofs devpts mqueue debugfs tracefs securityfs pstore bpf hugetlbfs configfs fusectl binfmt_misc efivarfs nsfs "
+DEBKIT_FS_SEM_PERMISSOES=" vfat msdos exfat ntfs ntfs3 fuseblk "
+
+# Imprime o problema da base (mensagem) e retorna 1; 0 = pode ser usada.
+# A base pode ainda não existir (será criada): vale o disco onde ficaria.
+debkit_samba_base_problema() {
+    local dir="$1" s real existente alvo fstipo opcoes
+    if [ -z "$dir" ]; then t home.base_vazia; return 1; fi
+    if ! debkit_conf_valor_valido caminho "$dir"; then t home.base_formato "$dir"; return 1; fi
+    if [ "$dir" == "/" ]; then t home.base_disco_sistema "$dir"; return 1; fi
+    for s in "${DEBKIT_PASTAS_SISTEMA[@]}"; do
+        if [ "$dir" == "$s" ] || [[ "$dir" == "$s"/* ]]; then t home.base_sistema "$dir" "$s"; return 1; fi
+    done
+    real=$(realpath -m -- "$dir")
+    if [ "$real" != "$dir" ]; then t home.base_link "$dir" "$real"; return 1; fi
+    existente="$dir"
+    while [ ! -e "$existente" ] && [ ! -L "$existente" ]; do existente=$(dirname -- "$existente"); done
+    if [ ! -d "$existente" ] || [ -L "$existente" ]; then t home.base_nao_pasta "$existente"; return 1; fi
+    read -r alvo fstipo opcoes < <(findmnt -n -o TARGET,FSTYPE,OPTIONS --target "$existente" 2>/dev/null | tail -n 1)
+    if [ -z "$alvo" ] || [ "$alvo" == "/" ]; then t home.base_disco_sistema "$dir"; return 1; fi
+    if [[ "$DEBKIT_FS_NAO_DISCO" == *" $fstipo "* ]]; then t home.base_nao_disco "$dir" "$alvo" "$fstipo"; return 1; fi
+    if [[ "$DEBKIT_FS_SEM_PERMISSOES" == *" $fstipo "* ]]; then t home.base_sem_permissoes "$dir" "$alvo" "$fstipo"; return 1; fi
+    if [[ ",$opcoes," == *",ro,"* ]]; then t home.base_somente_leitura "$dir" "$alvo"; return 1; fi
+    return 0
+}
+
+# Pontos de montagem que servem de base (um por linha): disco de dados,
+# com dono/permissões, gravável, fora das pastas do sistema
+debkit_samba_discos_dados() {
+    local alvo fstipo opcoes
+    while read -r alvo fstipo opcoes; do
+        [ "$alvo" == "/" ] && continue
+        [[ "$DEBKIT_FS_NAO_DISCO$DEBKIT_FS_SEM_PERMISSOES" == *" $fstipo "* ]] && continue
+        [[ ",$opcoes," == *",ro,"* ]] && continue
+        debkit_samba_base_problema "$alvo" >/dev/null || continue
+        echo "$alvo"
+    done < <(findmnt -rn -o TARGET,FSTYPE,OPTIONS 2>/dev/null) | sort -u
+}
+
+# Define a base (sem perguntas): valida, cria a pasta se não existe (root,
+# 755) e grava HOMES_BASE no debkit.conf. Se a gravação falhar, tira a
+# pasta que criou.
+debkit_samba_definir_base() {
+    local base="$1" problema criada=0
+    if ! problema=$(debkit_samba_base_problema "$base"); then msg_erro "$problema"; return 1; fi
+    if [ ! -d "$base" ]; then
+        if ! ( umask 022; mkdir -p -- "$base" ) || ! chown 0:0 -- "$base" || ! chmod 755 -- "$base"; then
+            msg_erro "$(t home.base_criar_falhou "$base")"
+            return 1
+        fi
+        criada=1
+    fi
+    if ! debkit_conf_definir HOMES_BASE "$base"; then
+        [ "$criada" -eq 1 ] && rmdir -- "$base" 2>/dev/null
+        return 1
+    fi
+    msg_ok "$(t home.base_definida "$base" "$DEBKIT_CONF_ARQUIVO")"
+}
+
+# Pergunta a base (primeira vez): mostra os discos de dados e sugere
+# <primeiro disco>/homes. Retorna 1 se não há disco, cancelou ou falhou.
+debkit_samba_escolher_base() {
+    local base sugestao problema d
+    local -a discos=()
+    echo ""
+    msg_info "$(t home.base_intro)"
+    mapfile -t discos < <(debkit_samba_discos_dados)
+    if [ ${#discos[@]} -eq 0 ]; then
+        msg_erro "$(t home.sem_discos)"
+        return 1
+    fi
+    echo "  $(t home.discos)"
+    for d in "${discos[@]}"; do echo "    $d"; done
+    sugestao="${discos[0]}/homes"
+    while true; do
+        debkit_ler base "$(t home.p_base "$sugestao")" || return 1
+        [ -z "$base" ] && base="$sugestao"
+        problema=$(debkit_samba_base_problema "$base") && break
+        msg_erro "$problema"
+    done
+    confirmar "$(t home.p_confirma_base "$base")" || return 1
+    debkit_samba_definir_base "$base"
+}
+
+# A base está pronta para uso agora? Se não definida, pergunta (primeira
+# vez); se definida, confere (ex: o disco de dados pode estar desmontado).
+debkit_samba_garantir_base() {
+    local problema
+    if [ -z "$DEBKIT_HOMES_BASE" ]; then
+        debkit_samba_escolher_base
+        return
+    fi
+    if ! problema=$(debkit_samba_base_problema "$DEBKIT_HOMES_BASE"); then
+        msg_erro "$(t home.base_invalida_agora "$DEBKIT_HOMES_BASE" "$problema")"
+        return 1
+    fi
+    [ -d "$DEBKIT_HOMES_BASE" ] || debkit_samba_definir_base "$DEBKIT_HOMES_BASE"
+}
+
+# ── Pastas pessoais: criar a pasta ──────────────────────────────────────────
+# debkit_samba_criar_pasta <login> <pasta> <gid> <com_skel 0|1>
+# Cria a pasta (não pode existir), 700, dono o usuário e o grupo principal;
+# com_skel=1 copia o /etc/skel (usuário com acesso ao servidor). Deixa
+# DEBKIT_H_CRIADA=1 (para debkit_samba_remover_pasta_criada desfazer).
+debkit_samba_criar_pasta() {
+    local nome="$1" dir="$2" gid="$3" skel="$4"
+    DEBKIT_H_CRIADA=0
+    if [ -e "$dir" ] || [ -L "$dir" ]; then
+        msg_erro "$(t home.ja_existe "$dir")"
+        return 1
+    fi
+    ( umask 077; mkdir -- "$dir" ) || return 1
+    DEBKIT_H_CRIADA=1
+    if [ "$skel" -eq 1 ] && [ -d /etc/skel ]; then
+        cp -a -- /etc/skel/. "$dir"/ || return 1
+    fi
+    chown -R -- "$nome:$gid" "$dir" && chmod 700 -- "$dir"
+}
+
+# Remove a pasta criada nesta operação - só se é exatamente
+# HOMES_BASE/<um nome> (nunca outra coisa)
+debkit_samba_remover_pasta_criada() {
+    local dir="$1" resto
+    [ "${DEBKIT_H_CRIADA:-0}" -eq 1 ] || return 0
+    [ -n "$DEBKIT_HOMES_BASE" ] || return 1
+    resto="${dir#"$DEBKIT_HOMES_BASE"/}"
+    if [ "$resto" == "$dir" ] || [ -z "$resto" ] || [[ "$resto" == */* || "$resto" == .* ]]; then return 1; fi
+    rm -rf -- "$dir" && DEBKIT_H_CRIADA=0
+}
+
+# ── Pastas pessoais: usuário existente ──────────────────────────────────────
+# Usuários comuns sem pasta pessoal (home /nonexistent ou pasta que não existe)
+debkit_samba_usuarios_sem_home() {
+    local nome uid home
+    while IFS=: read -r nome _ uid _ _ home _; do
+        debkit_uid_comum "$uid" || continue
+        if [ "$home" == "$DEBKIT_USR_HOME" ] || [ ! -d "$home" ]; then echo "$nome"; fi
+    done < <(getent passwd) | sort
+}
+
+# Cria HOMES_BASE/<login> para um usuário comum que não tem pasta pessoal
+# e grava no Linux (usermod -d). Base já garantida. Desfaz se algo falhar.
+debkit_samba_home_existente() {
+    local nome="$1" uid gid home_atual shell dir skel=1 motivo=""
+    DEBKIT_H_CRIADA=0
+    if ! IFS=: read -r _ _ uid gid _ home_atual shell < <(getent passwd "$nome") || ! debkit_uid_comum "$uid"; then
+        msg_erro "$(t home.usuario_nao_comum "$nome")"
+        return 1
+    fi
+    if [ "$home_atual" != "$DEBKIT_USR_HOME" ] && [ -d "$home_atual" ]; then
+        msg_erro "$(t home.usuario_tem_home "$nome" "$home_atual")"
+        return 1
+    fi
+    if ! motivo=$(debkit_samba_base_problema "$DEBKIT_HOMES_BASE") || [ ! -d "$DEBKIT_HOMES_BASE" ]; then
+        msg_erro "$(t home.base_invalida_agora "$DEBKIT_HOMES_BASE" "$motivo")"
+        return 1
+    fi
+    dir="$DEBKIT_HOMES_BASE/$nome"
+    case "$shell" in */nologin|*/false) skel=0 ;; esac
+    if ! debkit_samba_criar_pasta "$nome" "$dir" "$gid" "$skel"; then
+        motivo="$(t home.f_criar "$dir")"
+    elif ! usermod -d "$dir" -- "$nome" >/dev/null 2>&1; then
+        motivo="$(t home.f_usermod)"
+    elif [ "$(getent passwd "$nome" | cut -d: -f6)" != "$dir" ] || [ "$(stat -c '%u %g %a' -- "$dir")" != "$uid $gid 700" ]; then
+        motivo="$(t usr.f_conferencia "home")"
+    fi
+    if [ -n "$motivo" ]; then
+        msg_erro "$(t home.falhou "$nome" "$motivo")"
+        [ "$(getent passwd "$nome" | cut -d: -f6)" == "$dir" ] && usermod -d "$home_atual" -- "$nome" >/dev/null 2>&1
+        debkit_samba_remover_pasta_criada "$dir"
+        debkit_auditar home_criar "nome=$nome pasta=$dir resultado=falha"
+        return 1
+    fi
+    debkit_auditar home_criar "nome=$nome pasta=$dir resultado=ok"
+    msg_ok "$(t home.criada "$dir" "$nome")"
+}
+
+# ── Compartilhamento [homes] ────────────────────────────────────────────────
+# O [homes] do Samba mostra a cada usuário só a própria pasta pessoal (o
+# caminho vem do Linux). O smb.conf padrão do Debian já tem um [homes], mas
+# somente leitura. Estados: ok | ausente | leitura (somente leitura ou sem
+# "valid users = %S") | outro (com "path" próprio ou "valid users" sem %S:
+# feito à mão, o debkit não mexe).
+debkit_samba_homes_param() { testparm -s --section-name=homes --parameter-name="$1" "$DEBKIT_SMB_CONF" 2>/dev/null; }
+
+debkit_samba_homes_estado() {
+    local vu
+    if ! testparm -s "$DEBKIT_SMB_CONF" 2>/dev/null | grep -qx '\[homes\]'; then echo ausente; return; fi
+    vu=$(debkit_samba_homes_param "valid users")
+    if [ -n "$(debkit_samba_homes_param path)" ] || { [ -n "$vu" ] && [[ " $vu " != *" %S "* ]]; }; then echo outro; return; fi
+    if [ "$(debkit_samba_homes_param "read only")" == "No" ] && [ -n "$vu" ]; then echo ok; else echo leitura; fi
+}
+
+# Filtro: acrescenta um [homes] no fim
+debkit_samba_filtro_homes_novo() {
+    cat
+    printf '\n# debkit: pastas pessoais (cada usuário vê só a própria pasta)\n[homes]\n'
+    printf '   comment = Pasta pessoal\n   browseable = no\n   read only = no\n   valid users = %%S\n   create mask = 0600\n   directory mask = 0700\n'
+}
+
+# Filtro: no [homes] existente, tira as linhas de escrita (read only,
+# writable/writeable, write ok) e põe "read only = no" logo depois do
+# cabeçalho; acrescenta "valid users = %S" se não houver
+debkit_samba_filtro_homes_ajustar() {
+    local vu=1
+    [ -n "$(debkit_samba_homes_param "valid users")" ] && vu=0
+    awk -v vu="$vu" '
+        /^[ \t]*\[/ { em = (tolower($0) ~ /^[ \t]*\[homes\][ \t]*$/) ? 1 : 0
+                      print
+                      if (em) { print "   read only = no"; if (vu) print "   valid users = %S" }
+                      next }
+        em && tolower($0) ~ /^[ \t]*(read[ \t]*only|writ[e]?able|write[ \t]*ok)[ \t]*=/ { next }
+        { print }'
+}
+
+# Bloco do [homes] / tudo menos ele, na saída do testparm -s (sem as linhas
+# vazias, que ali só separam as seções)
+debkit_samba_bloco_homes() { awk '/^\[/ { em = ($0 == "[homes]"); next } em && NF' "$1"; }
+debkit_samba_sem_homes()   { awk '/^\[/ { em = ($0 == "[homes]") } !em && NF' "$1"; }
+
+# Conferência: fora do [homes] nada muda; no [homes], além de read only/
+# valid users, nada muda (no criado do zero, o resto é o que o debkit pôs);
+# e o resultado é read only = No com valid users = %S
+debkit_samba_conferir_homes() {
+    local filtro='/^\t(read only|valid users) = /'
+    cmp -s <(debkit_samba_sem_homes "$1") <(debkit_samba_sem_homes "$2") || return 1
+    if [ -n "$(debkit_samba_bloco_homes "$1")" ]; then
+        cmp -s <(debkit_samba_bloco_homes "$1" | awk "!$filtro") <(debkit_samba_bloco_homes "$2" | awk "!$filtro") || return 1
+    fi
+    debkit_samba_bloco_homes "$2" | grep -qxF $'\tread only = No' || return 1
+    debkit_samba_bloco_homes "$2" | grep -qE $'^\tvalid users = (.* )?%S( |$)'
+}
+
+# Deixa o [homes] pronto (cria ou ajusta) pela edição segura do smb.conf
+debkit_samba_ajustar_homes() {
+    local estado rc
+    estado=$(debkit_samba_homes_estado)
+    case "$estado" in
+        ok)      return 0 ;;
+        ausente) debkit_smbconf_editar debkit_samba_filtro_homes_novo debkit_samba_conferir_homes; rc=$? ;;
+        leitura) debkit_smbconf_editar debkit_samba_filtro_homes_ajustar debkit_samba_conferir_homes; rc=$? ;;
+        *)       msg_aviso "$(t homes.estado_outro)"; return 1 ;;
+    esac
+    if [ "$rc" -eq 0 ] && [ "$(debkit_samba_homes_estado)" == "ok" ]; then
+        debkit_auditar homes_ajustar "estado_antes=$estado resultado=ok"
+        msg_ok "$(t homes.feito)"
+        return 0
+    fi
+    debkit_auditar homes_ajustar "estado_antes=$estado resultado=falha"
+    [ "$rc" -eq 0 ] && debkit_smbconf_restaurar
+    return 1
+}
+
+# Oferece ajustar o [homes] se não estiver ok (pergunta antes)
+debkit_samba_oferecer_homes() {
+    case "$(debkit_samba_homes_estado)" in
+        ok)      return 0 ;;
+        ausente) msg_info "$(t homes.estado_ausente)"; confirmar "$(t homes.p_criar)" || { msg_info "$(t homes.aviso_depois)"; return 1; } ;;
+        leitura) msg_info "$(t homes.estado_leitura)"; confirmar "$(t homes.p_liberar)" || { msg_info "$(t homes.aviso_depois)"; return 1; } ;;
+        *)       msg_aviso "$(t homes.estado_outro)"; return 1 ;;
+    esac
+    debkit_samba_ajustar_homes
 }
 
 # ── Usuários: tela ──────────────────────────────────────────────────────────
@@ -848,7 +1237,7 @@ debkit_ler_senha() {
 
 # Pergunta tudo, mostra o resumo, pede UMA confirmação e cria
 debkit_samba_tela_criar_usuario() {
-    local gecos nome sugestao problema tipo resp escolha n i mesma=1
+    local gecos nome sugestao problema tipo resp escolha n i mesma=1 com_home=0
     local -a lista=() escolhidos=()
     titulo "$(t usr.titulo_criar)"
     if ! debkit_samba_ambiente_pronto; then
@@ -910,6 +1299,11 @@ debkit_samba_tela_criar_usuario() {
             msg_erro "$(t usr.grupos_invalido "$problema")"
         done
     fi
+    # Pasta pessoal (opcional; padrão: não). Na primeira vez define a base.
+    echo ""
+    if confirmar "$(t home.p_criar)"; then
+        if debkit_samba_garantir_base; then com_home=1; else msg_aviso "$(t home.segue_sem)"; fi
+    fi
     # Senhas
     echo ""
     DEBKIT_U_SENHA=""; DEBKIT_U_SENHA_LINUX=""
@@ -938,18 +1332,67 @@ debkit_samba_tela_criar_usuario() {
     if [ "$tipo" == "servidor" ]; then
         if [ "$mesma" -eq 1 ]; then echo "    $(t usr.r_senha_linux_mesma)"; else echo "    $(t usr.r_senha_linux_outra)"; fi
     fi
-    echo "    $(t usr.r_home)"
+    if [ "$com_home" -eq 1 ]; then echo "    $(t home.r_sim "$DEBKIT_HOMES_BASE/$nome")"; else echo "    $(t usr.r_home)"; fi
     echo ""
     if ! confirmar "$(t usr.p_confirmar)"; then
         DEBKIT_U_SENHA=""; DEBKIT_U_SENHA_LINUX=""
         msg_aviso "$(t usr.cancelado)"
         pausar; return 1
     fi
-    DEBKIT_U_NOME="$nome"; DEBKIT_U_GECOS="$gecos"; DEBKIT_U_TIPO="$tipo"; DEBKIT_U_GRUPOS=("${escolhidos[@]}")
+    DEBKIT_U_NOME="$nome"; DEBKIT_U_GECOS="$gecos"; DEBKIT_U_TIPO="$tipo"; DEBKIT_U_GRUPOS=("${escolhidos[@]}"); DEBKIT_U_HOME="$com_home"
     debkit_usuario_criar; local rc=$?
     DEBKIT_U_SENHA=""; DEBKIT_U_SENHA_LINUX=""
+    if [ "$rc" -eq 0 ] && [ "$com_home" -eq 1 ]; then echo ""; debkit_samba_oferecer_homes; fi
     pausar
     return "$rc"
+}
+
+# Tela: criar a pasta pessoal de um usuário que ainda não tem
+debkit_samba_tela_home_existente() {
+    local escolha nome i
+    local -a lista=()
+    titulo "$(t home.titulo_criar)"
+    if ! debkit_samba_ambiente_pronto; then msg_erro "$(t usr.ambiente_nao_pronto)"; pausar; return 1; fi
+    mapfile -t lista < <(debkit_samba_usuarios_sem_home)
+    if [ ${#lista[@]} -eq 0 ]; then msg_info "$(t home.sem_candidatos)"; pausar; return 0; fi
+    echo "  $(t home.titulo_usuarios)"
+    for i in "${!lista[@]}"; do echo "    $((i + 1))) ${lista[$i]}"; done
+    while true; do
+        debkit_ler escolha "$(t home.p_usuario)" || { msg_aviso "$(t usr.cancelado)"; return 1; }
+        [ -z "$escolha" ] && { msg_aviso "$(t usr.cancelado)"; return 1; }
+        if [[ "$escolha" =~ ^[0-9]+$ ]] && [ "$((10#$escolha))" -ge 1 ] && [ "$((10#$escolha))" -le ${#lista[@]} ]; then
+            nome="${lista[$((10#$escolha - 1))]}"; break
+        fi
+        msg_erro "$(t geral.opcao_invalida "$escolha")"
+    done
+    if ! debkit_samba_garantir_base; then pausar; return 1; fi
+    if ! confirmar "$(t home.p_confirmar "$DEBKIT_HOMES_BASE/$nome" "$nome")"; then
+        msg_aviso "$(t usr.cancelado)"; pausar; return 1
+    fi
+    if debkit_samba_home_existente "$nome"; then echo ""; debkit_samba_oferecer_homes; fi
+    pausar
+}
+
+# Tela: base das pastas pessoais e [homes]
+debkit_samba_tela_pastas_pessoais() {
+    local problema
+    titulo "$(t home.titulo)"
+    if ! debkit_samba_ambiente_pronto; then msg_erro "$(t usr.ambiente_nao_pronto)"; pausar; return 1; fi
+    if [ -z "$DEBKIT_HOMES_BASE" ]; then
+        echo "  $(t home.base_nenhuma)"
+        debkit_samba_escolher_base || { pausar; return 1; }
+    else
+        echo "  $(t home.base_atual "$DEBKIT_HOMES_BASE")"
+        if ! problema=$(debkit_samba_base_problema "$DEBKIT_HOMES_BASE"); then
+            msg_erro "$(t home.base_invalida_agora "$DEBKIT_HOMES_BASE" "$problema")"
+        fi
+    fi
+    echo ""
+    case "$(debkit_samba_homes_estado)" in
+        ok) msg_ok "$(t homes.estado_ok)" ;;
+        *)  debkit_samba_oferecer_homes ;;
+    esac
+    pausar
 }
 
 # ── Menu ────────────────────────────────────────────────────────────────────
@@ -958,6 +1401,8 @@ debkit_samba_menu() {
     while true; do
         titulo "$(t samba.titulo)"
         echo "  1) $(t samba.criar_usuario)"
+        echo "  2) $(t samba.criar_home)"
+        echo "  3) $(t samba.pastas_pessoais)"
         echo ""
         echo "  0) $(t geral.voltar)"
         echo ""
@@ -965,6 +1410,8 @@ debkit_samba_menu() {
         case "$opcao" in
             "") continue ;;
             1)  debkit_samba_tela_criar_usuario ;;
+            2)  debkit_samba_tela_home_existente ;;
+            3)  debkit_samba_tela_pastas_pessoais ;;
             0)  return 0 ;;
             *)  msg_erro "$(t geral.opcao_invalida "$opcao")"; pausar ;;
         esac
