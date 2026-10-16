@@ -413,7 +413,15 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 9. Para testar à mão na VM: adicionar um segundo disco no VirtualBox,
    formatar (ext4) e montar (ex: `/mnt/dados`) — a VM só tem o disco do
    sistema, e a pasta pessoal nunca vai para ele.
-10. **Próxima tarefa:** listar usuários (Fase 1).
+10. ✔ Scripts da VM de desenvolvimento: `dev/vmnova.sh` (volta ao
+    snapshot "limpa" e reinicia, com travas: só VM, repositório commitado,
+    enviado e fora dos snapshots, digitar RESTAURAR, `--simular`) e
+    `dev/vmprepara.sh` (instala shellcheck, smbclient e ufw inativo; não
+    instala o Samba). Testes em `t10_dev.sh` com Timeshift e apt falsos.
+11. **Próxima tarefa:** listar usuários (Fase 1).
+
+**VM limpa de novo:** `dev/vmnova.sh` → (reinicia) → `dev/vmprepara.sh` →
+`./debkit --preparar` → testes.
 
 **Como rodar os testes (só na VM):**
 

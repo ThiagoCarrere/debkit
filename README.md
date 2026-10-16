@@ -39,6 +39,22 @@ outra pessoa possa alterar).
 Estrutura: `debkit` (ponto de entrada), `lib/nucleo.sh` (núcleo comum) e
 `modulos/*.sh` (um arquivo por módulo; primeiro: `samba.sh`).
 
+## VM de desenvolvimento
+
+Dois scripts em `dev/` (só para a VM de desenvolvimento; recusam máquina
+que não é virtual):
+
+```
+sudo dev/vmnova.sh --simular   # mostra o snapshot e o comando, sem fazer nada
+sudo dev/vmnova.sh             # volta ao snapshot "limpa" do Timeshift e REINICIA
+sudo dev/vmprepara.sh          # depois: instala shellcheck, smbclient e ufw (inativo)
+```
+
+O `vmnova.sh` recusa se o repositório tiver mudança sem commit, commit sem
+push ou estiver fora das exclusões do Timeshift, e pede para digitar
+`RESTAURAR`. O `vmprepara.sh` não instala o Samba: preparar o servidor é
+trabalho do próprio `./debkit --preparar`.
+
 ## Compatibilidade
 
 Foco em **Debian 12/13**. Ubuntu, derivado do Debian, tende a funcionar.

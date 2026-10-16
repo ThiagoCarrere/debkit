@@ -55,6 +55,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   procura o `include` pelo caminho exato da areia.
 
 ### Adicionado
+- Scripts da VM de desenvolvimento: `dev/vmnova.sh` (volta ao snapshot
+  "limpa" do Timeshift e reinicia; só em máquina virtual, com repositório
+  commitado, enviado e fora dos snapshots; confirmação digitando RESTAURAR;
+  `--simular`) e `dev/vmprepara.sh` (instala as ferramentas de
+  desenvolvimento sem os recomendados e confere o ufw inativo). Testes em
+  `tests/t10_dev.sh` com Timeshift e apt falsos.
 - **Pasta pessoal (tarefa 1.1b):** opcional na criação do usuário (padrão:
   não) e para usuário existente sem pasta (menu Samba, opção 2). A base
   (`HOMES_BASE`) é escolhida na primeira vez entre os discos de dados

@@ -13,6 +13,9 @@ de começar; a seção 11 diz onde paramos).
   no ufw.
 - Se houver dúvida se a máquina é a VM, perguntar antes de executar
   qualquer coisa.
+- VM limpa de novo: `dev/vmnova.sh` (restaura o snapshot "limpa" e reinicia;
+  exige tudo commitado e enviado) e, depois, `dev/vmprepara.sh` (ferramentas
+  de desenvolvimento). O Samba quem instala é o `./debkit --preparar`.
 
 ## Repositório público: nada de dados reais
 
