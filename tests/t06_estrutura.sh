@@ -90,7 +90,7 @@ caso "menu principal lista os módulos e abre o do Samba"
 saida=$(pty 0.6 "bash $DEBKIT" 1 0 0)
 contem "1) Samba: usuários, grupos e compartilhamentos" "$saida"
 contem "9) Ambiente: verificar e preparar" "$saida"
-contem "(as funções serão adicionadas nas próximas etapas)" "$saida" "tela do Samba"
+contem "1) Criar usuário" "$saida" "tela do Samba"
 contem "0) Voltar" "$saida"
 caso "menu: número sem módulo é opção inválida"
 saida=$(pty 0.6 "bash $DEBKIT" 2 "" 8 "" 0)

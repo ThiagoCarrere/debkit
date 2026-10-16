@@ -72,7 +72,12 @@ real_intacto() {
 # Cópia do smb.conf real para <destino>, SEM as linhas do "include" antigo
 # do debkit (marca + include): elas apontam para o arquivo REAL, que a
 # preparação removeria. Os testes do include antigo montam o seu, na areia.
+# A base de senhas e as pastas de estado do Samba apontam para <destino>.samba/
+# (logo depois do [global]): um smbpasswd/pdbedit de teste NUNCA grava na
+# base real.
 copiar_smb_conf() {
+    local base="$1.samba"
+    mkdir -p "$base/private" "$base/state" "$base/lock" "$base/cache"
     if [ -f /etc/samba/smb.conf ]; then
         awk '$0 == "# debkit - Gerenciador Samba: compartilhamentos do debkit (não remova esta linha)" { pula = 1; next }
              pula && /^[ \t]*include[ \t]*=/ { pula = 0; next } { pula = 0; print }' /etc/samba/smb.conf > "$1"
@@ -80,6 +85,20 @@ copiar_smb_conf() {
     else
         printf '[global]\n   server role = standalone server\n' > "$1"
     fi
+    isolar_smb_conf "$1"
+}
+
+# Faz o smb.conf <arquivo> usar a base de senhas e as pastas do Samba em
+# <arquivo>.samba/ (insere logo depois do primeiro [global]; cria o
+# [global] se não houver)
+isolar_smb_conf() {
+    local base="$1.samba"
+    mkdir -p "$base/private" "$base/state" "$base/lock" "$base/cache"
+    grep -qiE '^[[:space:]]*\[global\]' "$1" || sed -i '1i [global]' "$1"
+    awk -v b="$base" '!feito && tolower($0) ~ /^[ \t]*\[global\]/ {
+            print; print "   passdb backend = tdbsam:" b "/passdb.tdb"; print "   private dir = " b "/private"
+            print "   state directory = " b "/state"; print "   lock directory = " b "/lock"
+            print "   cache directory = " b "/cache"; feito = 1; next } { print }' "$1" > "$1.tmp" && cat "$1.tmp" > "$1" && rm -f "$1.tmp"
 }
 
 # Pasta temporária com configuração própria. TUDO que o debkit pode alterar

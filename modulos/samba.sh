@@ -52,6 +52,63 @@ MSG_pt_BR+=(
     [smb.gravar_falhou]="Não foi possível gravar o %s. Nada foi alterado."
     [smb.restaurado]="%s restaurado do backup %s."
     [smb.restaurar_falhou]="ATENÇÃO: não foi possível restaurar o %s do backup %s. Restaure à mão."
+    [samba.criar_usuario]="Criar usuário"
+    [usr.titulo_criar]="Criar usuário"
+    [usr.ambiente_nao_pronto]="O ambiente ainda não está preparado para criar usuários. Use \"9) Ambiente: verificar e preparar\" no menu principal."
+    [usr.cancelado]="Cancelado. Nada foi feito."
+    [usr.p_gecos]="Nome completo (opcional; Enter para pular): "
+    [usr.p_login]="Nome de login: "
+    [usr.p_login_sugestao]="Nome de login [%s]: "
+    [usr.dica_login]="Login: letras minúsculas sem acento e números, começando por letra, com _ entre as partes (ex: maria_souza). Enter vazio cancela."
+    [usr.nome_vazio]="Informe o nome de login."
+    [usr.nome_tamanho]="O nome '%s' tem %d caractere(s): use de 2 a 32."
+    [usr.nome_formato]="Nome inválido: '%s'. Use letras minúsculas sem acento e números, começando por letra, com _ entre as partes (ex: maria_souza)."
+    [usr.nome_reservado]="'%s' é um nome reservado e não pode ser usado."
+    [usr.nome_existe]="Já existe um usuário '%s' no servidor."
+    [usr.nome_grupo_existe]="Já existe um grupo '%s' (o usuário novo ganha um grupo com o próprio nome)."
+    [usr.nome_samba_existe]="Já existe uma conta Samba '%s' sem usuário no Linux."
+    [usr.gecos_invalido]="Nome completo inválido: não use : , = \\ nem caracteres de controle."
+    [usr.gecos_tamanho]="Nome completo muito longo (máximo %d caracteres)."
+    [usr.titulo_tipo]="Tipo de conta:"
+    [usr.tipo_arquivos]="Usuário de arquivos: só acessa as pastas pelo Samba (sem acesso ao servidor)"
+    [usr.tipo_servidor]="Usuário com acesso ao servidor: Samba e também SSH/console"
+    [usr.p_tipo]="Tipo [1]: "
+    [usr.aviso_servidor]="ATENÇÃO: este usuário poderá ENTRAR NO SERVIDOR por SSH/console com a senha do Linux."
+    [usr.confirma_servidor]="Confirma o acesso ao servidor para este usuário?"
+    [usr.titulo_grupos]="Grupos disponíveis:"
+    [usr.sem_grupos]="(nenhum grupo comum no servidor ainda)"
+    [usr.p_grupos]="Grupos (números separados por vírgula ou espaço; Enter para nenhum): "
+    [usr.grupos_invalido]="Escolha inválida: '%s'. Use os números da lista."
+    [usr.p_senha_samba]="Senha do Samba (pastas): "
+    [usr.p_senha_linux]="Senha do Linux (SSH/console): "
+    [usr.p_senha_repetir]="Repita a senha: "
+    [usr.senha_curta]="A senha precisa ter pelo menos %d caractere(s)."
+    [usr.senha_longa]="A senha pode ter no máximo %d caracteres."
+    [usr.senha_diferente]="As senhas não conferem. Tente de novo."
+    [usr.senha_desistiu]="Muitas tentativas."
+    [usr.p_mesma_senha]="Usar a mesma senha para entrar no servidor (Linux)?"
+    [usr.titulo_resumo]="Resumo:"
+    [usr.r_login]="Login: %s"
+    [usr.r_gecos]="Nome completo: %s"
+    [usr.r_tipo]="Tipo: %s"
+    [usr.r_grupos]="Grupos: %s"
+    [usr.r_nenhum]="(nenhum)"
+    [usr.r_senha]="Senha: definida (não é mostrada)"
+    [usr.r_senha_linux_mesma]="Senha do Linux: a mesma do Samba"
+    [usr.r_senha_linux_outra]="Senha do Linux: própria (definida)"
+    [usr.r_home]="Pasta pessoal: não (poderá ser criada depois)"
+    [usr.p_confirmar]="Criar o usuário?"
+    [usr.criando]="Criando o usuário %s..."
+    [usr.criado]="Usuário %s criado."
+    [usr.falhou]="Não foi possível criar o usuário %s: %s"
+    [usr.desfeito]="O que já tinha sido feito foi desfeito: nada ficou pela metade."
+    [usr.desfazer_falhou]="ATENÇÃO: não foi possível desfazer tudo: confira o usuário %s à mão."
+    [usr.f_useradd]="o useradd falhou"
+    [usr.f_uid]="o UID %s criado está fora da faixa de contas comuns"
+    [usr.f_senha_linux]="não foi possível definir a senha do Linux"
+    [usr.f_bloqueio]="a senha do Linux não ficou bloqueada"
+    [usr.f_samba]="não foi possível criar a conta no Samba"
+    [usr.f_conferencia]="a conferência final não bateu (%s)"
 )
 # shellcheck disable=SC2034  # catálogo do núcleo
 MSG_en+=(
@@ -79,6 +136,63 @@ MSG_en+=(
     [smb.gravar_falhou]="Could not write %s. Nothing was changed."
     [smb.restaurado]="%s restored from the backup %s."
     [smb.restaurar_falhou]="WARNING: could not restore %s from the backup %s. Restore it by hand."
+    [samba.criar_usuario]="Create user"
+    [usr.titulo_criar]="Create user"
+    [usr.ambiente_nao_pronto]="The environment is not set up for creating users yet. Use \"9) Environment: check and set up\" in the main menu."
+    [usr.cancelado]="Cancelled. Nothing was done."
+    [usr.p_gecos]="Full name (optional; Enter to skip): "
+    [usr.p_login]="Login name: "
+    [usr.p_login_sugestao]="Login name [%s]: "
+    [usr.dica_login]="Login: lowercase letters without accents and digits, starting with a letter, with _ between parts (e.g. maria_souza). Empty Enter cancels."
+    [usr.nome_vazio]="Enter the login name."
+    [usr.nome_tamanho]="The name '%s' has %d character(s): use 2 to 32."
+    [usr.nome_formato]="Invalid name: '%s'. Use lowercase letters without accents and digits, starting with a letter, with _ between parts (e.g. maria_souza)."
+    [usr.nome_reservado]="'%s' is a reserved name and cannot be used."
+    [usr.nome_existe]="A user '%s' already exists on the server."
+    [usr.nome_grupo_existe]="A group '%s' already exists (the new user gets a group with its own name)."
+    [usr.nome_samba_existe]="A Samba account '%s' already exists without a Linux user."
+    [usr.gecos_invalido]="Invalid full name: do not use : , = \\ or control characters."
+    [usr.gecos_tamanho]="Full name too long (at most %d characters)."
+    [usr.titulo_tipo]="Account type:"
+    [usr.tipo_arquivos]="File user: only accesses folders through Samba (no server access)"
+    [usr.tipo_servidor]="User with server access: Samba and also SSH/console"
+    [usr.p_tipo]="Type [1]: "
+    [usr.aviso_servidor]="WARNING: this user will be able to LOG IN TO THE SERVER via SSH/console with the Linux password."
+    [usr.confirma_servidor]="Confirm server access for this user?"
+    [usr.titulo_grupos]="Available groups:"
+    [usr.sem_grupos]="(no regular groups on the server yet)"
+    [usr.p_grupos]="Groups (numbers separated by commas or spaces; Enter for none): "
+    [usr.grupos_invalido]="Invalid choice: '%s'. Use the numbers from the list."
+    [usr.p_senha_samba]="Samba password (folders): "
+    [usr.p_senha_linux]="Linux password (SSH/console): "
+    [usr.p_senha_repetir]="Repeat the password: "
+    [usr.senha_curta]="The password must have at least %d character(s)."
+    [usr.senha_longa]="The password can have at most %d characters."
+    [usr.senha_diferente]="The passwords do not match. Try again."
+    [usr.senha_desistiu]="Too many attempts."
+    [usr.p_mesma_senha]="Use the same password to log in to the server (Linux)?"
+    [usr.titulo_resumo]="Summary:"
+    [usr.r_login]="Login: %s"
+    [usr.r_gecos]="Full name: %s"
+    [usr.r_tipo]="Type: %s"
+    [usr.r_grupos]="Groups: %s"
+    [usr.r_nenhum]="(none)"
+    [usr.r_senha]="Password: set (not shown)"
+    [usr.r_senha_linux_mesma]="Linux password: same as Samba"
+    [usr.r_senha_linux_outra]="Linux password: its own (set)"
+    [usr.r_home]="Home folder: no (can be created later)"
+    [usr.p_confirmar]="Create the user?"
+    [usr.criando]="Creating user %s..."
+    [usr.criado]="User %s created."
+    [usr.falhou]="Could not create user %s: %s"
+    [usr.desfeito]="What had been done was undone: nothing was left half-done."
+    [usr.desfazer_falhou]="WARNING: could not undo everything: check user %s by hand."
+    [usr.f_useradd]="useradd failed"
+    [usr.f_uid]="the created UID %s is outside the regular account range"
+    [usr.f_senha_linux]="could not set the Linux password"
+    [usr.f_bloqueio]="the Linux password was not locked"
+    [usr.f_samba]="could not create the Samba account"
+    [usr.f_conferencia]="the final check did not match (%s)"
 )
 
 # ── Dependências (comando | tipo | pacote no Debian; ver núcleo) ───────────
@@ -220,7 +334,8 @@ debkit_samba_verificar() {
             *) debkit_verif_add samba aviso "$(t amb.papel_outro "$papel")" ;;
         esac
         backend=$(debkit_samba_param "passdb backend")
-        if [ "$backend" == "tdbsam" ]; then
+        # "tdbsam" ou "tdbsam:<arquivo>" (base num caminho próprio)
+        if [ "$backend" == "tdbsam" ] || [[ "$backend" == tdbsam:/* ]]; then
             debkit_verif_add samba ok "$(t amb.backend_ok "$backend")"
         else
             debkit_verif_manual samba "$(t amb.backend_outro "$backend")"
@@ -386,18 +501,368 @@ debkit_smbconf_restaurar() {
     return 1
 }
 
+# ── Usuários: regras ────────────────────────────────────────────────────────
+# Nome de login (decisão de 16/10/2026): letras minúsculas sem acento e
+# números, começando por letra; nomes compostos com "_" entre as partes
+# (nome_sobrenome), sem "_" no começo/fim nem repetido; 2 a 32 caracteres.
+# Fica de fora o que já existe (usuário, grupo - o usuário novo ganha um
+# grupo pessoal com o mesmo nome -, conta Samba) e os nomes reservados.
+DEBKIT_USR_RESERVADOS=(root admin administrator administrador guest convidado nobody)
+DEBKIT_USR_GECOS_MAX=100
+DEBKIT_USR_SENHA_MAX=128
+DEBKIT_USR_HOME="/nonexistent"     # sem pasta pessoal (a 1.1b cria a home)
+
+# Comandos do Samba sempre com a configuração do debkit (SMB_CONF)
+debkit_smbpasswd() { smbpasswd -c "$DEBKIT_SMB_CONF" "$@"; }
+debkit_pdbedit()   { pdbedit -s "$DEBKIT_SMB_CONF" "$@"; }
+
+# A conta existe no Samba?
+debkit_samba_conta_existe() { debkit_pdbedit -u "$1" >/dev/null 2>&1; }
+
+# Imprime o problema do nome de login (mensagem) e retorna 1; 0 = nome livre e válido
+debkit_usuario_nome_problema() {
+    local nome="$1" r
+    if [ -z "$nome" ]; then t usr.nome_vazio; return 1; fi
+    if [ "${#nome}" -lt 2 ] || [ "${#nome}" -gt 32 ]; then t usr.nome_tamanho "$nome" "${#nome}"; return 1; fi
+    local l="$DEBKIT_MINUSCULAS" ld="$DEBKIT_MINUSCULAS$DEBKIT_DIGITOS"   # sem intervalos: ver núcleo
+    if [[ ! "$nome" =~ ^[$l][$ld]*(_[$ld]+)*$ ]]; then t usr.nome_formato "$nome"; return 1; fi
+    for r in "${DEBKIT_USR_RESERVADOS[@]}"; do
+        if [ "$nome" == "$r" ]; then t usr.nome_reservado "$nome"; return 1; fi
+    done
+    if getent passwd "$nome" >/dev/null 2>&1; then t usr.nome_existe "$nome"; return 1; fi
+    if getent group "$nome" >/dev/null 2>&1; then t usr.nome_grupo_existe "$nome"; return 1; fi
+    if debkit_samba_conta_existe "$nome"; then t usr.nome_samba_existe "$nome"; return 1; fi
+    return 0
+}
+
+# Nome completo (campo GECOS do Linux): opcional; sem ":" "," "=" "\" (separam
+# campos no /etc/passwd e no chfn) nem caracteres de controle
+debkit_usuario_gecos_problema() {
+    local gecos="$1"
+    if [[ "$gecos" == *[:,=\\]* || "$gecos" =~ [[:cntrl:]] ]]; then t usr.gecos_invalido; return 1; fi
+    if [ "${#gecos}" -gt "$DEBKIT_USR_GECOS_MAX" ]; then t usr.gecos_tamanho "$DEBKIT_USR_GECOS_MAX"; return 1; fi
+    return 0
+}
+
+# Sugere um login a partir do nome completo: parte antes de " - ", sem
+# acentos, minúsculas, primeiro e último nome com "_" (ex: "Maria Conceição
+# Ávila - Financeiro" -> maria_avila). Não imprime nada se não der um nome
+# válido e livre.
+debkit_usuario_sugerir() {
+    local base sugestao
+    local -a partes
+    base="${1%% - *}"
+    base=$(printf '%s' "$base" | LC_ALL=C.UTF-8 iconv -f UTF-8 -t ASCII//TRANSLIT 2>/dev/null) || return 0
+    base="${base,,}"
+    base="${base//\'/}"                                  # O'Connor -> oconnor
+    base="${base//[^$DEBKIT_MINUSCULAS$DEBKIT_DIGITOS]/ }"
+    read -ra partes <<< "$base"
+    [ ${#partes[@]} -gt 0 ] || return 0
+    sugestao="${partes[0]}"
+    [ ${#partes[@]} -gt 1 ] && sugestao+="_${partes[-1]}"
+    debkit_usuario_nome_problema "$sugestao" >/dev/null && printf '%s' "$sugestao"
+    return 0
+}
+
+# Grupos comuns que podem receber usuários (um por linha, em ordem): GID na
+# faixa do login.defs, sem os grupos pessoais (mesmo nome de um usuário
+# que o tem como grupo principal) e sem o grupo de proteção do debkit
+debkit_samba_grupos_comuns() {
+    local nome gid
+    local -A pessoal=()
+    while IFS=: read -r nome _ _ gid _; do
+        pessoal["$nome:$gid"]=1
+    done < <(getent passwd)
+    while IFS=: read -r nome _ gid _; do
+        debkit_gid_comum "$gid" || continue
+        [ -n "${pessoal["$nome:$gid"]+x}" ] && continue
+        [ "$nome" == "$DEBKIT_GRUPO_USUARIOS" ] && continue
+        echo "$nome"
+    done < <(getent group) | sort -u
+}
+
+# Shell sem login (Debian: /usr/sbin/nologin)
+debkit_shell_nologin() {
+    local s
+    for s in /usr/sbin/nologin /sbin/nologin; do
+        [ -x "$s" ] && { echo "$s"; return 0; }
+    done
+    echo /usr/sbin/nologin
+}
+
+# O ambiente está pronto para criar usuários? (nada a preparar: grupo de
+# proteção, proteção SSH, Samba...)
+debkit_samba_ambiente_pronto() {
+    debkit_verificar_ambiente >/dev/null 2>&1
+    debkit_montar_plano
+    [ -z "$DEBKIT_PLANO_IMPOSSIVEL" ] && [ ${#DEBKIT_PLANO[@]} -eq 0 ]
+}
+
+# ── Usuários: criar ─────────────────────────────────────────────────────────
+# Entrada (variáveis, para a senha nunca ir para a linha de comando):
+#   DEBKIT_U_NOME, DEBKIT_U_GECOS, DEBKIT_U_TIPO (arquivos | servidor),
+#   DEBKIT_U_GRUPOS (array), DEBKIT_U_SENHA (Samba),
+#   DEBKIT_U_SENHA_LINUX (só tipo servidor)
+# Tudo ou nada: cria o usuário Linux (grupo pessoal, sem home; tipo
+# arquivos: shell nologin, senha Linux bloqueada e grupo de proteção SSH;
+# tipo servidor: /bin/bash e senha Linux própria), a conta Samba, confere
+# tudo e, se algo falhar, desfaz o que fez. Senhas só pela entrada padrão.
+debkit_usuario_criar() {
+    local nome="$DEBKIT_U_NOME" shell grupos estado uid gid g motivo=""
+    local -a membros=()
+    DEBKIT_U_FEITO_LINUX=0; DEBKIT_U_FEITO_SAMBA=0
+    if ! debkit_usuario_nome_problema "$nome" >/dev/null || ! debkit_usuario_gecos_problema "$DEBKIT_U_GECOS" >/dev/null; then
+        motivo=$(debkit_usuario_nome_problema "$nome"; debkit_usuario_gecos_problema "$DEBKIT_U_GECOS")
+        msg_erro "$(t usr.falhou "$nome" "$motivo")"
+        return 1
+    fi
+    membros=("${DEBKIT_U_GRUPOS[@]}")
+    case "$DEBKIT_U_TIPO" in
+        arquivos) shell=$(debkit_shell_nologin); membros+=("$DEBKIT_GRUPO_USUARIOS") ;;
+        servidor) shell="/bin/bash" ;;
+        *)        return 1 ;;
+    esac
+    grupos=$(IFS=,; echo "${membros[*]}")
+
+    msg_info "$(t usr.criando "$nome")"
+    # 1. Usuário Linux (useradd já deixa a senha bloqueada: "!")
+    if ! useradd -M -d "$DEBKIT_USR_HOME" -s "$shell" -U -c "$DEBKIT_U_GECOS" ${grupos:+-G "$grupos"} -- "$nome" >/dev/null 2>&1; then
+        debkit_usuario_falhou "$(t usr.f_useradd)"
+        return 1
+    fi
+    DEBKIT_U_FEITO_LINUX=1
+    IFS=: read -r _ _ uid gid _ < <(getent passwd "$nome")
+    if ! debkit_uid_comum "$uid"; then
+        debkit_usuario_falhou "$(t usr.f_uid "$uid")"
+        return 1
+    fi
+    # 2. Senha do Linux
+    if [ "$DEBKIT_U_TIPO" == "servidor" ]; then
+        if ! printf '%s:%s\n' "$nome" "$DEBKIT_U_SENHA_LINUX" | chpasswd >/dev/null 2>&1 \
+           || [ "$(passwd -S -- "$nome" 2>/dev/null | awk '{print $2}')" != "P" ]; then
+            debkit_usuario_falhou "$(t usr.f_senha_linux)"
+            return 1
+        fi
+    elif [ "$(passwd -S -- "$nome" 2>/dev/null | awk '{print $2}')" != "L" ]; then
+        debkit_usuario_falhou "$(t usr.f_bloqueio)"
+        return 1
+    fi
+    # 3. Conta Samba (o smbpasswd lê a senha duas vezes da entrada padrão)
+    if ! printf '%s\n%s\n' "$DEBKIT_U_SENHA" "$DEBKIT_U_SENHA" | debkit_smbpasswd -s -a -- "$nome" >/dev/null 2>&1; then
+        debkit_usuario_falhou "$(t usr.f_samba)"
+        return 1
+    fi
+    DEBKIT_U_FEITO_SAMBA=1
+    # 4. Conferência final (resultado real, não só o código de saída)
+    estado=$(getent passwd "$nome" | cut -d: -f6,7)
+    [ "$estado" == "$DEBKIT_USR_HOME:$shell" ] || motivo="home/shell"
+    [ "$(getent group "$nome" | cut -d: -f3)" == "$gid" ] || motivo="grupo pessoal"
+    for g in "${membros[@]}"; do
+        id -nG -- "$nome" 2>/dev/null | tr ' ' '\n' | grep -qxF "$g" || motivo="grupo $g"
+    done
+    if [ "$DEBKIT_U_TIPO" == "servidor" ] && id -nG -- "$nome" | tr ' ' '\n' | grep -qxF "$DEBKIT_GRUPO_USUARIOS"; then
+        motivo="grupo $DEBKIT_GRUPO_USUARIOS"
+    fi
+    # O Samba não pode ter mexido na senha do Linux (ex: "unix password sync")
+    if [ "$DEBKIT_U_TIPO" == "arquivos" ] && [ "$(passwd -S -- "$nome" 2>/dev/null | awk '{print $2}')" != "L" ]; then
+        motivo="senha do Linux não bloqueada"
+    fi
+    debkit_samba_conta_existe "$nome" || motivo="Samba"
+    if [ -d "$DEBKIT_USR_HOME" ]; then motivo="$DEBKIT_USR_HOME existe"; fi
+    if [ -n "$motivo" ]; then
+        debkit_usuario_falhou "$(t usr.f_conferencia "$motivo")"
+        return 1
+    fi
+    debkit_auditar usuario_criar "nome=$nome tipo=$DEBKIT_U_TIPO uid=$uid grupos=$(IFS=,; echo "${DEBKIT_U_GRUPOS[*]}") resultado=ok"
+    msg_ok "$(t usr.criado "$nome")"
+}
+
+# Falha no meio da criação: informa, desfaz o que foi feito e audita
+debkit_usuario_falhou() {
+    local nome="$DEBKIT_U_NOME"
+    msg_erro "$(t usr.falhou "$nome" "$1")"
+    debkit_auditar usuario_criar "nome=$nome tipo=$DEBKIT_U_TIPO resultado=falha motivo=$1"
+    local havia=$((DEBKIT_U_FEITO_LINUX + DEBKIT_U_FEITO_SAMBA))
+    if debkit_usuario_desfazer; then
+        [ "$havia" -eq 0 ] || msg_info "$(t usr.desfeito)"
+        debkit_auditar usuario_criar "nome=$nome resultado=desfeito"
+    else
+        msg_erro "$(t usr.desfazer_falhou "$nome")"
+    fi
+}
+
+# Desfaz só o que a criação fez (conta Samba, usuário Linux e o grupo
+# pessoal criado junto). NUNCA usa "userdel -r". Retorna 0 se nada sobrou.
+debkit_usuario_desfazer() {
+    local nome="$DEBKIT_U_NOME"
+    if [ "$DEBKIT_U_FEITO_SAMBA" -eq 1 ] || { [ "$DEBKIT_U_FEITO_LINUX" -eq 1 ] && debkit_samba_conta_existe "$nome"; }; then
+        debkit_smbpasswd -x -- "$nome" >/dev/null 2>&1
+    fi
+    if [ "$DEBKIT_U_FEITO_LINUX" -eq 1 ]; then
+        userdel -- "$nome" >/dev/null 2>&1
+        # O userdel tira o grupo pessoal (USERGROUPS_ENAB); se sobrou e está vazio, tira
+        if getent group "$nome" | awk -F: '$4 == "" {ok = 1} END {exit !ok}'; then
+            groupdel -- "$nome" >/dev/null 2>&1
+        fi
+        if getent passwd "$nome" >/dev/null || getent group "$nome" >/dev/null; then return 1; fi
+    fi
+    if [ $((DEBKIT_U_FEITO_LINUX + DEBKIT_U_FEITO_SAMBA)) -gt 0 ] && debkit_samba_conta_existe "$nome"; then return 1; fi
+    DEBKIT_U_FEITO_LINUX=0; DEBKIT_U_FEITO_SAMBA=0
+    return 0
+}
+
+# ── Usuários: tela ──────────────────────────────────────────────────────────
+# Lê uma linha para a variável indicada; fim da entrada = cancelar (retorna 1)
+debkit_ler() {
+    local -n _dest="$1"
+    read -rp "$2" _dest || { echo ""; return 1; }
+}
+
+# Lê uma senha sem eco, duas vezes, com SENHA_MIN e o máximo. Até 3
+# tentativas. Retorna 1 se desistir ou fim da entrada.
+debkit_ler_senha() {
+    local -n _senha="$1"
+    local prompt="$2" s1 s2 _tentativa
+    for _tentativa in 1 2 3; do
+        read -rsp "$prompt" s1 || { echo ""; return 1; }
+        echo ""
+        if [ "${#s1}" -lt "$DEBKIT_SENHA_MIN" ]; then
+            msg_erro "$(t usr.senha_curta "$DEBKIT_SENHA_MIN")"; continue
+        fi
+        if [ "${#s1}" -gt "$DEBKIT_USR_SENHA_MAX" ]; then
+            msg_erro "$(t usr.senha_longa "$DEBKIT_USR_SENHA_MAX")"; continue
+        fi
+        read -rsp "$(t usr.p_senha_repetir)" s2 || { echo ""; return 1; }
+        echo ""
+        if [ "$s1" != "$s2" ]; then
+            msg_erro "$(t usr.senha_diferente)"; continue
+        fi
+        _senha="$s1"
+        return 0
+    done
+    msg_erro "$(t usr.senha_desistiu)"
+    return 1
+}
+
+# Pergunta tudo, mostra o resumo, pede UMA confirmação e cria
+debkit_samba_tela_criar_usuario() {
+    local gecos nome sugestao problema tipo resp escolha n i mesma=1
+    local -a lista=() escolhidos=()
+    titulo "$(t usr.titulo_criar)"
+    if ! debkit_samba_ambiente_pronto; then
+        msg_erro "$(t usr.ambiente_nao_pronto)"
+        pausar; return 1
+    fi
+    # Nome completo e login
+    while true; do
+        debkit_ler gecos "$(t usr.p_gecos)" || { msg_aviso "$(t usr.cancelado)"; return 1; }
+        problema=$(debkit_usuario_gecos_problema "$gecos") && break
+        msg_erro "$problema"
+    done
+    sugestao=$(debkit_usuario_sugerir "$gecos")
+    msg_info "$(t usr.dica_login)"
+    while true; do
+        if [ -n "$sugestao" ]; then
+            debkit_ler nome "$(t usr.p_login_sugestao "$sugestao")" || { msg_aviso "$(t usr.cancelado)"; return 1; }
+            [ -z "$nome" ] && nome="$sugestao"
+        else
+            debkit_ler nome "$(t usr.p_login)" || { msg_aviso "$(t usr.cancelado)"; return 1; }
+            [ -z "$nome" ] && { msg_aviso "$(t usr.cancelado)"; return 1; }
+        fi
+        problema=$(debkit_usuario_nome_problema "$nome") && break
+        msg_erro "$problema"
+    done
+    # Tipo de conta
+    echo ""
+    echo "  $(t usr.titulo_tipo)"
+    echo "    1) $(t usr.tipo_arquivos)"
+    echo "    2) $(t usr.tipo_servidor)"
+    while true; do
+        debkit_ler resp "$(t usr.p_tipo)" || { msg_aviso "$(t usr.cancelado)"; return 1; }
+        case "$resp" in
+            ""|1) tipo=arquivos; break ;;
+            2)    msg_aviso "$(t usr.aviso_servidor)"
+                  if confirmar "$(t usr.confirma_servidor)"; then tipo=servidor; break; fi ;;
+            *)    msg_erro "$(t geral.opcao_invalida "$resp")" ;;
+        esac
+    done
+    # Grupos
+    mapfile -t lista < <(debkit_samba_grupos_comuns)
+    echo ""
+    echo "  $(t usr.titulo_grupos)"
+    if [ ${#lista[@]} -eq 0 ]; then
+        echo "    $(t usr.sem_grupos)"
+    else
+        for i in "${!lista[@]}"; do echo "    $((i + 1))) ${lista[$i]}"; done
+        while true; do
+            debkit_ler escolha "$(t usr.p_grupos)" || { msg_aviso "$(t usr.cancelado)"; return 1; }
+            escolhidos=(); problema=""
+            for n in ${escolha//,/ }; do
+                if [[ "$n" =~ ^[0-9]+$ ]] && [ "$((10#$n))" -ge 1 ] && [ "$((10#$n))" -le ${#lista[@]} ]; then
+                    [[ " ${escolhidos[*]} " == *" ${lista[$((10#$n - 1))]} "* ]] || escolhidos+=("${lista[$((10#$n - 1))]}")
+                else
+                    problema="$n"; break
+                fi
+            done
+            [ -z "$problema" ] && break
+            msg_erro "$(t usr.grupos_invalido "$problema")"
+        done
+    fi
+    # Senhas
+    echo ""
+    DEBKIT_U_SENHA=""; DEBKIT_U_SENHA_LINUX=""
+    debkit_ler_senha DEBKIT_U_SENHA "$(t usr.p_senha_samba)" || { msg_aviso "$(t usr.cancelado)"; return 1; }
+    if [ "$tipo" == "servidor" ]; then
+        if confirmar "$(t usr.p_mesma_senha)"; then
+            DEBKIT_U_SENHA_LINUX="$DEBKIT_U_SENHA"
+        else
+            mesma=0
+            debkit_ler_senha DEBKIT_U_SENHA_LINUX "$(t usr.p_senha_linux)" || { DEBKIT_U_SENHA=""; msg_aviso "$(t usr.cancelado)"; return 1; }
+        fi
+    fi
+    # Resumo e UMA confirmação
+    echo ""
+    echo "  $(t usr.titulo_resumo)"
+    echo "    $(t usr.r_login "$nome")"
+    [ -n "$gecos" ] && echo "    $(t usr.r_gecos "$gecos")"
+    if [ "$tipo" == "servidor" ]; then echo "    $(t usr.r_tipo "$(t usr.tipo_servidor)")"; else echo "    $(t usr.r_tipo "$(t usr.tipo_arquivos)")"; fi
+    if [ ${#escolhidos[@]} -gt 0 ]; then
+        local juntos; juntos=$(printf '%s, ' "${escolhidos[@]}")
+        echo "    $(t usr.r_grupos "${juntos%, }")"
+    else
+        echo "    $(t usr.r_grupos "$(t usr.r_nenhum)")"
+    fi
+    echo "    $(t usr.r_senha)"
+    if [ "$tipo" == "servidor" ]; then
+        if [ "$mesma" -eq 1 ]; then echo "    $(t usr.r_senha_linux_mesma)"; else echo "    $(t usr.r_senha_linux_outra)"; fi
+    fi
+    echo "    $(t usr.r_home)"
+    echo ""
+    if ! confirmar "$(t usr.p_confirmar)"; then
+        DEBKIT_U_SENHA=""; DEBKIT_U_SENHA_LINUX=""
+        msg_aviso "$(t usr.cancelado)"
+        pausar; return 1
+    fi
+    DEBKIT_U_NOME="$nome"; DEBKIT_U_GECOS="$gecos"; DEBKIT_U_TIPO="$tipo"; DEBKIT_U_GRUPOS=("${escolhidos[@]}")
+    debkit_usuario_criar; local rc=$?
+    DEBKIT_U_SENHA=""; DEBKIT_U_SENHA_LINUX=""
+    pausar
+    return "$rc"
+}
+
 # ── Menu ────────────────────────────────────────────────────────────────────
 debkit_samba_menu() {
     local opcao
     while true; do
         titulo "$(t samba.titulo)"
-        echo "  $(t geral.em_construcao)"
+        echo "  1) $(t samba.criar_usuario)"
         echo ""
         echo "  0) $(t geral.voltar)"
         echo ""
         ler_opcao opcao
         case "$opcao" in
             "") continue ;;
+            1)  debkit_samba_tela_criar_usuario ;;
             0)  return 0 ;;
             *)  msg_erro "$(t geral.opcao_invalida "$opcao")"; pausar ;;
         esac

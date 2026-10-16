@@ -75,6 +75,12 @@ declare -A DEBKIT_CONF_OBSOLETA=(
     [PREFIXO_GRUPO]="o debkit gerencia todos os grupos comuns"
 )
 
+# Classes de caracteres SEM intervalos: num idioma como pt_BR, [a-z] no
+# bash também aceita letras acentuadas (ã, é...). Usar sempre estas.
+DEBKIT_MINUSCULAS="abcdefghijklmnopqrstuvwxyz"
+DEBKIT_MAIUSCULAS="ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+DEBKIT_DIGITOS="0123456789"
+
 # Valida um valor conforme o tipo. Retorna 0 se válido.
 debkit_conf_valor_valido() {
     local tipo="$1" valor="$2"
@@ -82,8 +88,8 @@ debkit_conf_valor_valido() {
         idioma)         [[ "$valor" == "pt_BR" || "$valor" == "en" ]] ;;
         inteiro_1_128)  [[ "$valor" =~ ^[0-9]{1,3}$ ]] && [ "$valor" -ge 1 ] && [ "$valor" -le 128 ] ;;
         inteiro_1_9999) [[ "$valor" =~ ^[0-9]{1,4}$ ]] && [ "$valor" -ge 1 ] ;;
-        nome)           [[ "$valor" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] ;;
-        caminho)        [[ "$valor" == /* && "$valor" != *..* && "$valor" =~ ^[A-Za-z0-9/._-]+$ ]] ;;
+        nome)           [[ "$valor" =~ ^[${DEBKIT_MINUSCULAS}_][${DEBKIT_MINUSCULAS}${DEBKIT_DIGITOS}_-]{0,31}$ ]] ;;
+        caminho)        [[ "$valor" == /* && "$valor" != *..* && "$valor" =~ ^[${DEBKIT_MINUSCULAS}${DEBKIT_MAIUSCULAS}${DEBKIT_DIGITOS}/._-]+$ ]] ;;
         *)              return 1 ;;
     esac
 }

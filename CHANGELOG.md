@@ -27,6 +27,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   backup é 600).
 
 ### Corrigido
+- Validação de nomes e caminhos do `debkit.conf` aceitava letras
+  acentuadas (no bash, `[a-z]` em pt_BR casa com "ã", "é"...).
 - A mensagem de falha ao ativar o serviço do Samba mostrava
   "veja: systemctl status " sem o nome do serviço.
 - Projeto renomeado de **gsb** para **debkit** (kit de módulos para Debian;
@@ -42,6 +44,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   procura o `include` pelo caminho exato da areia.
 
 ### Adicionado
+- **Criar usuário (tarefa 1.1):** menu "1) Samba" → "1) Criar usuário".
+  Nome completo opcional (com acentos) e sugestão de login a partir dele;
+  login no padrão `nome_sobrenome` (minúsculas sem acento, números e `_`,
+  2 a 32 caracteres; recusa reservados e o que já existe no Linux/Samba);
+  tipo "usuário de arquivos" (padrão: só Samba, shell `nologin`, senha
+  Linux bloqueada, grupo de proteção SSH) ou "usuário com acesso ao
+  servidor" (confirmação explícita, `/bin/bash`, senha Linux igual ou
+  própria); grupos comuns (sem os de sistema e os pessoais); senha sem
+  eco, repetida, com `SENHA_MIN`, sempre pela entrada padrão; resumo e UMA
+  confirmação; conferência do resultado real e desfazer completo se algo
+  falhar; auditoria sem senhas. Só com o ambiente preparado. Sem pasta
+  pessoal por enquanto (tarefa 1.1b).
+- Comandos do Samba (`smbpasswd`, `pdbedit`) sempre com o `SMB_CONF` do
+  debkit; a base `tdbsam:<arquivo>` também é aceita na verificação.
 - Carregamento seguro dos arquivos do programa: núcleo, módulos e suas
   pastas só são carregados se pertencem ao root (ou a quem executa), sem
   escrita para grupo/outros e sem links.

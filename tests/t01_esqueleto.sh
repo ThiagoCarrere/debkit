@@ -64,6 +64,12 @@ saida=$(carregar '')
 contem "rc=1" "$saida" "rc=1"
 for n in 1 2 3 4 5 6 7; do contem "linha $n: valor inválido" "$saida" "linha $n"; done
 
+caso "letras acentuadas são recusadas em nomes e caminhos (o [a-z] do bash aceitaria em pt_BR)"
+conf 'GRUPO_USUARIOS=usuários\nLOG=/var/log/débkit.log\nGRUPO_USUARIOS=Grupo'
+saida=$(carregar '')
+contem "rc=1" "$saida"
+for n in 1 2 3; do contem "linha $n: valor inválido" "$saida" "linha $n"; done
+
 caso "tentativa de injetar comando NÃO é executada"
 rm -f /tmp/debkit_injecao_teste
 conf 'LOG=$(touch /tmp/debkit_injecao_teste)\nIDIOMA=en; touch /tmp/debkit_injecao_teste\n`touch /tmp/debkit_injecao_teste`'

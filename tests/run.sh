@@ -16,7 +16,7 @@ impressao_digital() {
     echo "smb.conf:        $(md5sum < /etc/samba/smb.conf 2>/dev/null)"
     echo "sshd -T:         $(sshd -T 2>/dev/null | md5sum)"
     echo "sshd_config.d:   $(ls -A /etc/ssh/sshd_config.d 2>/dev/null | tr '\n' ' ')"
-    echo "grupos debkit:      $(getent group | cut -d: -f1 | grep -E '^debkitt?_' | tr '\n' ' ')"
+    echo "grupos debkit:      $(getent group | cut -d: -f1 | grep -E '^(debkitt?|dkt)_' | tr '\n' ' ')"
     echo "usuários debkitt:   $(getent passwd | cut -d: -f1 | grep -E '^dkt_' | tr '\n' ' ')"
     echo "Samba debkitt:      $(pdbedit -L 2>/dev/null | cut -d: -f1 | grep -E '^dkt_' | tr '\n' ' ')"
     for p in /etc/debkit /var/backups/debkit /var/log/debkit.log /etc/samba/debkit-shares.conf /etc/samba/conf-bkp /run/debkit.lock; do

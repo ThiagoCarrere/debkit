@@ -9,7 +9,7 @@ e pastas pessoais de um **servidor de arquivos Samba**.
 > **Status:** em desenvolvimento — ainda não usar em produção.
 > Fundação (Fase 0) concluída: verificação e preparação do ambiente, proteção
 > SSH e firewall. Fase 1 (usuários e grupos) em andamento: estrutura em
-> núcleo + módulos pronta; próximo: criar usuário.
+> núcleo + módulos e criação de usuários prontas; próximo: pasta pessoal.
 > O planejamento está em [`docs/PLANEJAMENTO.md`](docs/PLANEJAMENTO.md).
 
 ## Destaques planejados

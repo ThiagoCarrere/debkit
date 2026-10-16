@@ -67,6 +67,14 @@ outro tipo de servidor; misturar os dois deixaria o debkit frágil.
   repetida para conferir e passada sempre pela entrada padrão.
 - Nenhum usuário acessa o servidor a não ser pelo Samba, salvo os liberados
   por um administrador (tipo acima) e os administradores (`sudo`).
+- *Em aberto (trocar senha):* o `smb.conf` padrão do Debian tem `unix
+  password sync = yes`. Se um usuário de arquivos trocar a senha pelo
+  Windows (Ctrl+Alt+Del), o Samba roda o `passwd` e a senha do Linux deixa
+  de estar bloqueada (o `nologin` e o DenyGroups continuam barrando o SSH).
+  O `smbpasswd` rodado pelo root (o que o debkit usa) NÃO sincroniza -
+  conferido na 1.1, que também confere ao final que a senha continua
+  bloqueada. Decidir na tarefa "trocar senha" (ex: desligar o sync ou
+  avisar na verificação).
 - *Em aberto:* oferecer ou não "dar `sudo`" no tipo com acesso ao servidor
   (por ora, não: virar administrador continua sendo feito à mão).
 
@@ -104,6 +112,26 @@ Nada de editar o `sshd` à mão:
 - Oferece criar o compartilhamento `[homes]` (cada usuário vê só a própria
   pasta no Windows).
 - Usuário existente: opção para criar/mover a home depois.
+
+### 3.5 Nome de login e nome completo
+
+Decisão de 16/10/2026:
+
+- **Login:** letras minúsculas sem acento e números, começando por letra;
+  nomes compostos no padrão `nome_sobrenome` ("_" entre as partes, sem "_"
+  no começo/fim nem repetido); sem pontos, hífens, espaços ou maiúsculas;
+  de 2 a 32 caracteres. Recusa nomes reservados (`root`, `admin`,
+  `administrator`, `administrador`, `guest`, `convidado`, `nobody`) e o que
+  já existe: usuário, grupo (o usuário novo ganha um grupo pessoal com o
+  mesmo nome) ou conta Samba sem usuário no Linux.
+- **Nome completo** (campo GECOS), opcional: aceita acentos ("Maria Souza -
+  Financeiro"); não aceita `:` `,` `=` `\` nem caracteres de controle;
+  até 100 caracteres. O debkit sugere o login a partir dele (primeiro e
+  último nome, sem acento: "Maria Conceição Ávila - Financeiro" →
+  `maria_avila`); Enter aceita a sugestão.
+- Validação sem intervalos como `[a-z]`: no bash, num idioma pt_BR, `[a-z]`
+  aceita letras acentuadas (encontrado nos testes da 1.1; corrigido também
+  na validação do `debkit.conf`).
 
 ### 3.4 Remover x desativar
 
@@ -252,7 +280,7 @@ debkit/
 | Fase | Conteúdo |
 |---|---|
 | 0. Fundação | 0.1 esqueleto ✔ · 0.2 detecção do ambiente ✔ · 0.3 preparação do ambiente e backups ✔ · 0.4 proteção SSH ✔ · 0.5 firewall ✔ |
-| 1. Usuários e grupos | 1.0 reestruturar ✔ (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário (tipos, home opcional) · listar · trocar senha · grupos (criar, remover, entrar/sair) · desativar/reativar · remover · consistência Linux x Samba |
+| 1. Usuários e grupos | 1.0 reestruturar ✔ (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário ✔ (tipos, nome completo, grupos; sem home) · 1.1b pasta pessoal (base no disco de dados, criar na criação ou depois) · listar · trocar senha · grupos (criar, remover, entrar/sair) · desativar/reativar · remover · consistência Linux x Samba |
 | 2. Compartilhamentos | criar, listar, permissões de pasta, remover (inclusive os já existentes); pastas pessoais e `[homes]`; avaliar acesso somente leitura por grupo |
 | 3. Diagnóstico | falhas de login, sessões ativas, saúde do Samba, consulta à auditoria |
 | 4. Publicação | comandos diretos completos, `install.sh`, **desinstalação**, README, mensagens em inglês, testes automáticos e CI |
@@ -326,6 +354,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | Tarefa | Commit |
 |---|---|
 | 1.0 Reestruturação | `361c996` |
+| 1.1 Criar usuário | (este commit) |
 
 **Próximos passos:**
 
@@ -339,13 +368,23 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
    mão, porque o debkit nunca as instala.
 3. ✔ Na VM: rodar a suíte completa (confere a renomeação).
 4. ✔ Tarefa 1.0 — reestruturar.
-5. Na VM: `./debkit --preparar` remove o `include` antigo e as chaves
-   antigas do `debkit.conf` (a VM foi preparada antes da 1.0) — é a prova
-   real dessa limpeza.
-6. **Tarefa 1.1 — criar usuário:** nome validado e inexistente; tipo de
-   conta (3.1); home opcional (3.3); grupos; resumo, UMA confirmação e
-   desfazer completo se algo falhar; só com o ambiente preparado; prova
-   real: login no Samba funciona e SSH é recusado (usuário de arquivos).
+5. ✔ Na VM: `./debkit --preparar` removeu o `include` antigo e as chaves
+   antigas do `debkit.conf` (prova real da limpeza, feita pelo Thiago).
+6. ✔ Tarefa 1.1 — criar usuário (sem home): regras de nome (3.5), tipo de
+   conta (3.1), grupos comuns, senha sem eco e conferida, resumo e UMA
+   confirmação, desfazer completo; só com o ambiente preparado. Prova real
+   (`t07b`): login no Samba funciona (senha errada é recusada), usuário de
+   arquivos recusado no SSH por DenyGroups, usuário com acesso ao servidor
+   entra com a senha do Linux.
+7. **Achado na prova real da 1.1 (decidir):** a preparação instalou o
+   Samba com os pacotes "recomendados" do apt: veio o `samba-ad-dc`
+   (controlador de domínio) e, com ele, `winbind`, `libpam-winbind` e
+   `libnss-winbind`. O `pam_winbind` entrou no PAM do sistema e aceita a
+   senha do Samba na fase de autenticação do SSH ("granted access"); só a
+   fase de conta barrou. Num servidor independente nada disso é necessário.
+   Correção proposta: instalar com `--no-install-recommends` e, na
+   verificação, detectar esses pacotes e oferecer removê-los.
+8. **Tarefa 1.1b — pasta pessoal** (3.3).
 
 **Como rodar os testes (só na VM):**
 
@@ -353,6 +392,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 tests/run.sh                                         # suíte normal (caixa de areia)
 DEBKIT_TESTE_REAL=1 tests/run.sh t04b_ssh_real.sh    # prova com o SSH real
 DEBKIT_TESTE_REAL=1 tests/run.sh t05b_ufw_real.sh    # prova com o ufw real (instalado e INATIVO)
+DEBKIT_TESTE_REAL=1 tests/run.sh t07b_usuario_real.sh  # login real no Samba e no SSH (ambiente real preparado)
 shellcheck -x debkit lib/*.sh modulos/*.sh           # cada arquivo (o -x sozinho não mostra os avisos dos carregados)
 ```
 
@@ -362,7 +402,11 @@ Fase 0: 320 verificações na suíte normal + 27 nas provas reais, todas
 passando; `shellcheck` sem avisos no `debkit.sh`. Na VM, com o servidor já
 preparado pelo debkit (16/10/2026): 316 + 26, todas passando. Ao fim da
 tarefa 1.0: 521 + 26, todas passando; `shellcheck` sem avisos nos três
-arquivos do programa.
+arquivos do programa. Ao fim da 1.1: 688 + 47 (provas reais: `t04b`,
+`t05b` e `t07b_usuario_real.sh`). Os testes da 1.1 criam usuários Linux
+`dkt_*` reais (removidos no fim); a base de senhas do Samba da areia é
+separada da real (`copiar_smb_conf` aponta `passdb backend` e as pastas
+de estado para a areia).
 
 Os testes funcionam com o servidor preparado ou não: em vez de exigir que
 os arquivos reais do debkit não existam, conferem que não mudaram
