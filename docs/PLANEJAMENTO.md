@@ -411,7 +411,7 @@ arquivos do programa. Ao fim da 1.1: 688 + 47 (provas reais: `t04b`,
 `t05b` e `t07b_usuario_real.sh`). Os testes da 1.1 criam usuários Linux
 `dkt_*` reais (removidos no fim); a base de senhas do Samba da areia é
 separada da real (`copiar_smb_conf` aponta `passdb backend` e as pastas
-de estado para a areia). Com a correção dos pacotes de domínio: 734 + 48
+de estado para a areia). Com a correção dos pacotes de domínio: 733 + 48
 (`t08_dominio.sh`).
 
 Os testes funcionam com o servidor preparado ou não: em vez de exigir que
