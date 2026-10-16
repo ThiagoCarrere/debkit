@@ -354,7 +354,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | Tarefa | Commit |
 |---|---|
 | 1.0 Reestruturação | `361c996` |
-| 1.1 Criar usuário | (este commit) |
+| 1.1 Criar usuário | `caa0774` |
 
 **Próximos passos:**
 
