@@ -54,6 +54,8 @@ MSG_pt_BR+=(
     [smb.gravar_falhou]="Não foi possível gravar o %s. Nada foi alterado."
     [smb.restaurado]="%s restaurado do backup %s."
     [smb.restaurar_falhou]="ATENÇÃO: não foi possível restaurar o %s do backup %s. Restaure à mão."
+    [amb.sync_ligado]="\"unix password sync\" ligado: trocar a senha pelo Windows também define a senha do Linux (a dos usuários de arquivos deve ficar bloqueada): a preparação vai desligar"
+    [prep.d_samba_sem_sync]="Desligar no %s a sincronização da senha do Linux (\"unix password sync = no\"; com backup e conferência de que só isso muda)"
     [amb.pacotes_dominio]="Pacotes de domínio instalados sem necessidade num servidor independente: %s. O winbind faz o Linux aceitar a senha do Samba em logins como o SSH: a preparação vai removê-los"
     [prep.d_samba_pacotes_dominio]="Remover os pacotes de domínio desnecessários: %s (apt-get purge; depois confere que o PAM e o NSS não usam mais o winbind e que o Samba continua funcionando)"
     [prep.dominio_removeria_mais]="O apt removeria também outros pacotes (%s): nada foi removido."
@@ -63,6 +65,35 @@ MSG_pt_BR+=(
     [prep.dominio_mantidos]="Os pacotes removidos não foram reinstalados: %s"
     [samba.criar_usuario]="Criar usuário"
     [samba.listar_usuarios]="Listar usuários"
+    [samba.trocar_senha]="Trocar senha"
+    [sen.titulo]="Trocar senha"
+    [sen.titulo_usuarios]="Usuários:"
+    [sen.sem_usuarios]="Nenhum usuário com senha que o debkit possa trocar."
+    [sen.p_usuario]="Usuário (número; Enter cancela): "
+    [sen.titulo_qual]="Qual senha?"
+    [sen.q_samba]="Samba (pastas)"
+    [sen.q_linux]="Linux (SSH/console)"
+    [sen.q_ambas]="As duas (a mesma senha)"
+    [sen.p_qual]="Opção [3]: "
+    [sen.p_nova_samba]="Nova senha do Samba: "
+    [sen.p_nova_linux]="Nova senha do Linux: "
+    [sen.p_nova_ambas]="Nova senha (Samba e Linux): "
+    [sen.so_samba_info]="%s é %s: só a senha do Samba é trocada (a do Linux continua bloqueada)."
+    [sen.admin_info]="%s é administrador: o debkit troca só a senha do Samba (a do Linux, troque à mão com passwd)."
+    [sen.nao_comum]="'%s' não é um usuário comum do servidor."
+    [sen.sem_samba]="%s não tem conta no Samba."
+    [sen.linux_nao_permitida]="%s não tem acesso ao servidor: a senha do Linux continua bloqueada (só a do Samba pode ser trocada)."
+    [sen.linux_admin]="%s é administrador: troque a senha do Linux à mão (passwd)."
+    [sen.alvo_invalido]="Opção de senha inválida: '%s'."
+    [sen.trocada]="Senha de %s trocada (%s)."
+    [sen.falhou]="Não foi possível trocar a senha de %s: %s"
+    [sen.f_linux]="o chpasswd falhou"
+    [sen.f_samba]="o smbpasswd falhou"
+    [sen.f_bloqueio]="a senha do Linux deixou de estar bloqueada (foi restaurada)"
+    [sen.linux_restaurada]="A senha do Linux voltou a ser a anterior: nada ficou pela metade."
+    [sen.a_samba]="Samba"
+    [sen.a_linux]="Linux"
+    [sen.a_ambas]="Samba e Linux"
     [lst.titulo]="Usuários do servidor"
     [lst.c_login]="Login"
     [lst.c_nome]="Nome completo"
@@ -185,7 +216,7 @@ MSG_pt_BR+=(
     [homes.p_criar]="Criar o compartilhamento [homes] no smb.conf (cada usuário vê só a própria pasta, com escrita)?"
     [homes.p_liberar]="Liberar a escrita no compartilhamento [homes] (\"read only = no\"; cada usuário continua vendo só a própria pasta)?"
     [homes.feito]="Compartilhamento [homes] pronto."
-    [homes.aviso_depois]="Para a pasta aparecer no Windows, ajuste o compartilhamento [homes] em \"4) Pastas pessoais\" no menu do Samba."
+    [homes.aviso_depois]="Para a pasta aparecer no Windows, ajuste o compartilhamento [homes] em \"5) Pastas pessoais\" no menu do Samba."
 )
 # shellcheck disable=SC2034  # catálogo do núcleo
 MSG_en+=(
@@ -213,6 +244,8 @@ MSG_en+=(
     [smb.gravar_falhou]="Could not write %s. Nothing was changed."
     [smb.restaurado]="%s restored from the backup %s."
     [smb.restaurar_falhou]="WARNING: could not restore %s from the backup %s. Restore it by hand."
+    [amb.sync_ligado]="\"unix password sync\" enabled: changing the password from Windows also sets the Linux password (file users must keep it locked): the setup will turn it off"
+    [prep.d_samba_sem_sync]="Turn off in %s the Linux password sync (\"unix password sync = no\"; with backup and a check that nothing else changes)"
     [amb.pacotes_dominio]="Domain packages installed without need on a standalone server: %s. winbind makes Linux accept the Samba password in logins such as SSH: the setup will remove them"
     [prep.d_samba_pacotes_dominio]="Remove the unneeded domain packages: %s (apt-get purge; then checks that PAM and NSS no longer use winbind and that Samba still works)"
     [prep.dominio_removeria_mais]="apt would also remove other packages (%s): nothing was removed."
@@ -222,6 +255,35 @@ MSG_en+=(
     [prep.dominio_mantidos]="The removed packages were not reinstalled: %s"
     [samba.criar_usuario]="Create user"
     [samba.listar_usuarios]="List users"
+    [samba.trocar_senha]="Change password"
+    [sen.titulo]="Change password"
+    [sen.titulo_usuarios]="Users:"
+    [sen.sem_usuarios]="No user with a password debkit can change."
+    [sen.p_usuario]="User (number; Enter cancels): "
+    [sen.titulo_qual]="Which password?"
+    [sen.q_samba]="Samba (folders)"
+    [sen.q_linux]="Linux (SSH/console)"
+    [sen.q_ambas]="Both (the same password)"
+    [sen.p_qual]="Option [3]: "
+    [sen.p_nova_samba]="New Samba password: "
+    [sen.p_nova_linux]="New Linux password: "
+    [sen.p_nova_ambas]="New password (Samba and Linux): "
+    [sen.so_samba_info]="%s is %s: only the Samba password is changed (the Linux one stays locked)."
+    [sen.admin_info]="%s is an administrator: debkit only changes the Samba password (change the Linux one by hand with passwd)."
+    [sen.nao_comum]="'%s' is not a regular server user."
+    [sen.sem_samba]="%s has no Samba account."
+    [sen.linux_nao_permitida]="%s has no server access: the Linux password stays locked (only the Samba one can be changed)."
+    [sen.linux_admin]="%s is an administrator: change the Linux password by hand (passwd)."
+    [sen.alvo_invalido]="Invalid password option: '%s'."
+    [sen.trocada]="Password of %s changed (%s)."
+    [sen.falhou]="Could not change the password of %s: %s"
+    [sen.f_linux]="chpasswd failed"
+    [sen.f_samba]="smbpasswd failed"
+    [sen.f_bloqueio]="the Linux password was no longer locked (it was restored)"
+    [sen.linux_restaurada]="The Linux password is back to the previous one: nothing was left half-done."
+    [sen.a_samba]="Samba"
+    [sen.a_linux]="Linux"
+    [sen.a_ambas]="Samba and Linux"
     [lst.titulo]="Server users"
     [lst.c_login]="Login"
     [lst.c_nome]="Full name"
@@ -537,7 +599,7 @@ debkit_desfazer_samba_pacotes_dominio() {
 #   DEBKIT_SAMBA_INCLUDE_VAZIO   1 se esse arquivo não tem compartilhamentos
 debkit_samba_verificar() {
     local papel backend
-    DEBKIT_SVC_SAMBA=""; DEBKIT_SAMBA_INCLUDE_ANTIGO=""; DEBKIT_SAMBA_INCLUDE_VAZIO=0; DEBKIT_SAMBA_DOMINIO=""
+    DEBKIT_SVC_SAMBA=""; DEBKIT_SAMBA_INCLUDE_ANTIGO=""; DEBKIT_SAMBA_INCLUDE_VAZIO=0; DEBKIT_SAMBA_DOMINIO=""; DEBKIT_SAMBA_SYNC=0
     if ! debkit_tem_comando smbd; then
         debkit_verif_add samba falta "$(t amb.samba_ausente)"
         return 0
@@ -577,6 +639,10 @@ debkit_samba_verificar() {
         else
             debkit_verif_manual samba "$(t amb.backend_outro "$backend")"
         fi
+        if [ "$(debkit_samba_param "unix password sync")" == "Yes" ]; then
+            DEBKIT_SAMBA_SYNC=1
+            debkit_verif_add samba aviso "$(t amb.sync_ligado)"
+        fi
         if DEBKIT_SAMBA_INCLUDE_ANTIGO=$(debkit_samba_include_antigo); then
             if debkit_samba_shares_vazio "$DEBKIT_SAMBA_INCLUDE_ANTIGO"; then
                 DEBKIT_SAMBA_INCLUDE_VAZIO=1
@@ -600,6 +666,9 @@ debkit_samba_plano() {
     fi
     if [ "${DEBKIT_SAMBA_INCLUDE_VAZIO:-0}" -eq 1 ]; then
         DEBKIT_PLANO+=(samba_include_antigo)
+    fi
+    if [ "${DEBKIT_SAMBA_SYNC:-0}" -eq 1 ]; then
+        DEBKIT_PLANO+=(samba_sem_sync)
     fi
     return 0
 }
@@ -654,6 +723,38 @@ debkit_desfazer_samba_include_antigo() {
     DEBKIT_SAMBA_SHARES_BACKUP=""
     debkit_smbconf_restaurar
 }
+
+# ── Sincronização da senha do Linux (unix password sync) ────────────────────
+# Decisão de 16/10/2026: desligada. Com ela ligada (padrão do smb.conf do
+# Debian), trocar a senha pelo Windows roda o "passwd program" e define a
+# senha do Linux - a do usuário de arquivos deve ficar sempre bloqueada.
+debkit_descrever_samba_sem_sync() { t prep.d_samba_sem_sync "$DEBKIT_SMB_CONF"; }
+
+# Filtro: no [global], troca o valor da(s) linha(s) "unix password sync"
+# por "no" (a primeira fica no lugar, as repetidas saem); se não houver a
+# linha (valor vindo de outro lugar), põe logo depois do [global]
+debkit_samba_filtro_sem_sync() {
+    awk '
+        /^[ \t]*\[/ { if (em && !feito) { print "   unix password sync = no"; feito = 1 }
+                      em = (tolower($0) ~ /^[ \t]*\[global\][ \t]*$/); print; next }
+        em && tolower($0) ~ /^[ \t]*unix[ \t]*password[ \t]*sync[ \t]*=/ {
+            if (!feito) { match($0, /^[ \t]*/); print substr($0, 1, RLENGTH) "unix password sync = no"; feito = 1 }
+            next }
+        { print }
+        END { if (em && !feito) print "   unix password sync = no" }'
+}
+
+# Conferência: a configuração em vigor depois = antes sem a linha do sync
+debkit_samba_conferir_sem_sync() {
+    cmp -s <(grep -vxF $'\tunix password sync = Yes' "$1") "$2" && ! grep -qxF $'\tunix password sync = Yes' "$2"
+}
+
+debkit_acao_samba_sem_sync() {
+    debkit_smbconf_editar debkit_samba_filtro_sem_sync debkit_samba_conferir_sem_sync || return 1
+    [ "$(debkit_samba_param "unix password sync")" == "No" ]
+}
+
+debkit_desfazer_samba_sem_sync() { debkit_smbconf_restaurar; }
 
 # ── smb.conf: backup e edição segura ────────────────────────────────────────
 # Backup do smb.conf em SMB_BACKUP_DIR (smb.conf.dd-mm-aaaa-hh-mm-ss, com a
@@ -1268,11 +1369,7 @@ debkit_samba_usuarios_dados() {
     while IFS=: read -r nome _ uid _ gecos home shell; do
         debkit_uid_comum "$uid" || continue
         linux["$nome"]=1
-        if [[ "$sudo" == *",$nome,"* ]]; then tipo="admin"
-        elif [[ "$protecao" == *",$nome,"* ]]; then tipo="arquivos"
-        else
-            case "$shell" in */nologin|*/false) tipo=nologin ;; *) tipo=servidor ;; esac
-        fi
+        tipo=$(debkit_samba_tipo_de "$nome" "$shell" "$sudo" "$protecao")
         if [ -z "${contas[$nome]+x}" ]; then samba=nao
         elif [[ "${contas[$nome]}" == *D* ]]; then samba=desativada
         else samba=ativa
@@ -1293,6 +1390,24 @@ debkit_samba_usuarios_dados() {
         getent passwd "$nome" >/dev/null 2>&1 && continue     # usuário de sistema com conta Samba: não lista
         printf '%s||||||so_samba\n' "$nome"
     done
+}
+
+# Tipo de um usuário (admin | arquivos | servidor | nologin), a partir do
+# shell e das listas ",membros," do sudo e do grupo de proteção
+debkit_samba_tipo_de() {
+    local nome="$1" shell="$2" sudo="$3" protecao="$4"
+    if [[ "$sudo" == *",$nome,"* ]]; then echo admin
+    elif [[ "$protecao" == *",$nome,"* ]]; then echo arquivos
+    else
+        case "$shell" in */nologin|*/false) echo nologin ;; *) echo servidor ;; esac
+    fi
+}
+
+# Tipo de um usuário pelo nome (consulta o sistema)
+debkit_usuario_tipo() {
+    local shell
+    shell=$(getent passwd "$1" | cut -d: -f7)
+    debkit_samba_tipo_de "$1" "$shell" ",$(getent group sudo | cut -d: -f4)," ",$(getent group "$DEBKIT_GRUPO_USUARIOS" | cut -d: -f4),"
 }
 
 # Completa com espaços até <largura> caracteres (conta caracteres, não
@@ -1351,6 +1466,126 @@ debkit_samba_tela_listar_usuarios() {
     titulo "$(t lst.titulo)"
     debkit_samba_listar_usuarios
     pausar
+}
+
+# ── Usuários: trocar senha ──────────────────────────────────────────────────
+# debkit_usuario_trocar_senha <login> <samba | linux | ambas>
+# Nova senha em DEBKIT_U_SENHA (nunca na linha de comando). Regras:
+#   - senha do Linux só para usuário com acesso ao servidor (o de arquivos
+#     a mantém bloqueada; a de admin é trocada à mão com passwd);
+#   - "ambas": Linux primeiro; se o Samba falhar, a do Linux volta a ser a
+#     anterior (hash antigo pela entrada padrão do chpasswd -e);
+#   - depois de trocar só a do Samba, confere que a do Linux não mudou.
+debkit_usuario_trocar_senha() {
+    local nome="$1" alvo="$2" uid tipo shadow_antes motivo=""
+    if ! IFS=: read -r _ _ uid _ < <(getent passwd "$nome") || ! debkit_uid_comum "$uid"; then
+        msg_erro "$(t sen.nao_comum "$nome")"; return 1
+    fi
+    tipo=$(debkit_usuario_tipo "$nome")
+    case "$alvo" in
+        samba|linux|ambas) ;;
+        *) msg_erro "$(t sen.alvo_invalido "$alvo")"; return 1 ;;
+    esac
+    if [ "$alvo" != "samba" ]; then
+        if [ "$tipo" == "admin" ]; then msg_erro "$(t sen.linux_admin "$nome")"; return 1; fi
+        if [ "$tipo" != "servidor" ]; then msg_erro "$(t sen.linux_nao_permitida "$nome")"; return 1; fi
+    fi
+    if [ "$alvo" != "linux" ] && ! debkit_samba_conta_existe "$nome"; then
+        msg_erro "$(t sen.sem_samba "$nome")"; return 1
+    fi
+    if [ "${#DEBKIT_U_SENHA}" -lt "$DEBKIT_SENHA_MIN" ]; then msg_erro "$(t usr.senha_curta "$DEBKIT_SENHA_MIN")"; return 1; fi
+    if [ "${#DEBKIT_U_SENHA}" -gt "$DEBKIT_USR_SENHA_MAX" ]; then msg_erro "$(t usr.senha_longa "$DEBKIT_USR_SENHA_MAX")"; return 1; fi
+    shadow_antes=$(getent shadow "$nome" | cut -d: -f2)
+
+    # 1. Linux
+    if [ "$alvo" != "samba" ]; then
+        if ! printf '%s:%s\n' "$nome" "$DEBKIT_U_SENHA" | chpasswd >/dev/null 2>&1 \
+           || [ "$(passwd -S -- "$nome" 2>/dev/null | awk '{print $2}')" != "P" ]; then
+            debkit_senha_linux_restaurar "$nome" "$shadow_antes"
+            msg_erro "$(t sen.falhou "$nome" "$(t sen.f_linux)")"
+            debkit_auditar senha_trocar "nome=$nome alvo=$alvo resultado=falha motivo=linux"
+            return 1
+        fi
+    fi
+    # 2. Samba
+    if [ "$alvo" != "linux" ]; then
+        if ! printf '%s\n%s\n' "$DEBKIT_U_SENHA" "$DEBKIT_U_SENHA" | debkit_smbpasswd -s -- "$nome" >/dev/null 2>&1; then
+            msg_erro "$(t sen.falhou "$nome" "$(t sen.f_samba)")"
+            if [ "$alvo" == "ambas" ] && debkit_senha_linux_restaurar "$nome" "$shadow_antes"; then
+                msg_info "$(t sen.linux_restaurada)"
+            fi
+            debkit_auditar senha_trocar "nome=$nome alvo=$alvo resultado=falha motivo=samba"
+            return 1
+        fi
+    fi
+    # 3. Só o Samba: a senha do Linux não pode ter mudado
+    if [ "$alvo" == "samba" ] && [ "$(getent shadow "$nome" | cut -d: -f2)" != "$shadow_antes" ]; then
+        debkit_senha_linux_restaurar "$nome" "$shadow_antes"
+        motivo="$(t sen.f_bloqueio)"
+        msg_aviso "$(t sen.falhou "$nome" "$motivo")"
+        debkit_auditar senha_trocar "nome=$nome alvo=$alvo resultado=falha motivo=linux_mudou"
+        return 1
+    fi
+    debkit_auditar senha_trocar "nome=$nome alvo=$alvo resultado=ok"
+    msg_ok "$(t sen.trocada "$nome" "$(t "sen.a_$alvo")")"
+}
+
+# Volta o campo de senha do shadow ao valor anterior (hash ou "!"), pela
+# entrada padrão do chpasswd -e. Retorna 0 se ficou igual ao anterior.
+debkit_senha_linux_restaurar() {
+    local nome="$1" antes="$2"
+    [ "$(getent shadow "$nome" | cut -d: -f2)" == "$antes" ] && return 0
+    printf '%s:%s\n' "$nome" "$antes" | chpasswd -e >/dev/null 2>&1
+    [ "$(getent shadow "$nome" | cut -d: -f2)" == "$antes" ]
+}
+
+# Tela: escolhe o usuário, qual senha (se tiver acesso ao servidor) e lê a nova
+debkit_samba_tela_trocar_senha() {
+    local escolha nome tipo samba alvo prompt i l rc
+    local -a nomes=() tipos=() sambas=()
+    titulo "$(t sen.titulo)"
+    if ! debkit_samba_ambiente_pronto; then msg_erro "$(t usr.ambiente_nao_pronto)"; pausar; return 1; fi
+    while IFS='|' read -r nome _ tipo samba _ _ _; do
+        [ -n "$tipo" ] || continue                                    # só no Samba
+        [ "$samba" != "nao" ] || [ "$tipo" == "servidor" ] || continue  # nada a trocar
+        nomes+=("$nome"); tipos+=("$tipo"); sambas+=("$samba")
+    done < <(debkit_samba_usuarios_dados)
+    if [ ${#nomes[@]} -eq 0 ]; then msg_info "$(t sen.sem_usuarios)"; pausar; return 0; fi
+    echo "  $(t sen.titulo_usuarios)"
+    for i in "${!nomes[@]}"; do echo "    $((i + 1))) $(debkit_pad "${nomes[$i]}" 20) $(t "lst.t_${tipos[$i]}")"; done
+    while true; do
+        debkit_ler escolha "$(t sen.p_usuario)" || { msg_aviso "$(t usr.cancelado)"; return 1; }
+        [ -z "$escolha" ] && { msg_aviso "$(t usr.cancelado)"; return 1; }
+        if [[ "$escolha" =~ ^[0-9]+$ ]] && [ "$((10#$escolha))" -ge 1 ] && [ "$((10#$escolha))" -le ${#nomes[@]} ]; then
+            i=$((10#$escolha - 1)); break
+        fi
+        msg_erro "$(t geral.opcao_invalida "$escolha")"
+    done
+    nome="${nomes[$i]}"; tipo="${tipos[$i]}"; samba="${sambas[$i]}"
+    echo ""
+    case "$tipo" in
+        servidor)
+            if [ "$samba" == "nao" ]; then
+                alvo=linux
+            else
+                echo "  $(t sen.titulo_qual)"
+                echo "    1) $(t sen.q_samba)"; echo "    2) $(t sen.q_linux)"; echo "    3) $(t sen.q_ambas)"
+                while true; do
+                    debkit_ler l "$(t sen.p_qual)" || { msg_aviso "$(t usr.cancelado)"; return 1; }
+                    case "$l" in 1) alvo=samba; break ;; 2) alvo=linux; break ;; ""|3) alvo=ambas; break ;;
+                                 *) msg_erro "$(t geral.opcao_invalida "$l")" ;; esac
+                done
+            fi ;;
+        admin) alvo=samba; msg_info "$(t sen.admin_info "$nome")" ;;
+        *)     alvo=samba; msg_info "$(t sen.so_samba_info "$nome" "$(t "lst.t_$tipo")")" ;;
+    esac
+    case "$alvo" in samba) prompt="$(t sen.p_nova_samba)" ;; linux) prompt="$(t sen.p_nova_linux)" ;; *) prompt="$(t sen.p_nova_ambas)" ;; esac
+    DEBKIT_U_SENHA=""
+    debkit_ler_senha DEBKIT_U_SENHA "$prompt" || { msg_aviso "$(t usr.cancelado)"; return 1; }
+    debkit_usuario_trocar_senha "$nome" "$alvo"; rc=$?
+    DEBKIT_U_SENHA=""
+    pausar
+    return "$rc"
 }
 
 # ── Usuários: tela ──────────────────────────────────────────────────────────
@@ -1553,8 +1788,9 @@ debkit_samba_menu() {
         titulo "$(t samba.titulo)"
         echo "  1) $(t samba.listar_usuarios)"
         echo "  2) $(t samba.criar_usuario)"
-        echo "  3) $(t samba.criar_home)"
-        echo "  4) $(t samba.pastas_pessoais)"
+        echo "  3) $(t samba.trocar_senha)"
+        echo "  4) $(t samba.criar_home)"
+        echo "  5) $(t samba.pastas_pessoais)"
         echo ""
         echo "  0) $(t geral.voltar)"
         echo ""
@@ -1563,8 +1799,9 @@ debkit_samba_menu() {
             "") continue ;;
             1)  debkit_samba_tela_listar_usuarios ;;
             2)  debkit_samba_tela_criar_usuario ;;
-            3)  debkit_samba_tela_home_existente ;;
-            4)  debkit_samba_tela_pastas_pessoais ;;
+            3)  debkit_samba_tela_trocar_senha ;;
+            4)  debkit_samba_tela_home_existente ;;
+            5)  debkit_samba_tela_pastas_pessoais ;;
             0)  return 0 ;;
             *)  msg_erro "$(t geral.opcao_invalida "$opcao")"; pausar ;;
         esac

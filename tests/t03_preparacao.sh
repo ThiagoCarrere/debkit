@@ -14,6 +14,9 @@ getent group "$GRUPO_T" >/dev/null && { echo "grupo $GRUPO_T já existe - aborta
 prep_env() {
     rm -rf "${AREIA:?}/etc" "${AREIA:?}/backups" "${AREIA:?}/conf-bkp" "${AREIA:?}/debkit.log"
     copiar_smb_conf "$AREIA/smb.conf"
+    # o plano destes testes não depende do "unix password sync" do servidor
+    # real (o item que o desliga tem testes próprios, em t12)
+    sed -i -E 's/^([[:space:]]*unix[[:space:]]+password[[:space:]]+sync[[:space:]]*=[[:space:]]*).*/\1no/I' "$AREIA/smb.conf"
     getent group "$GRUPO_T" >/dev/null && groupdel "$GRUPO_T"
     : > "$AREIA/reloads"
 }

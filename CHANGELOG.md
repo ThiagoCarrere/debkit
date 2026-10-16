@@ -55,6 +55,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   procura o `include` pelo caminho exato da areia.
 
 ### Adicionado
+- **Trocar senha** (menu Samba, opção 3; as opções seguintes passaram a 4
+  e 5): usuário de arquivos só a do Samba (a do Linux continua bloqueada e
+  é conferida); com acesso ao servidor: Samba, Linux ou as duas, tudo ou
+  nada (a do Linux volta se o Samba falhar); admin: só a do Samba. Senha
+  sempre pela entrada padrão; auditoria sem senha.
+- Preparação: desliga o `unix password sync` do smb.conf (com ele, trocar
+  a senha pelo Windows definia a senha do Linux), pela edição segura com
+  conferência de que só essa linha muda.
 - **Listar usuários** (menu Samba, opção 1; as demais opções passaram a 2-4):
   só contas comuns, com nome completo, tipo (arquivos, servidor, admin =
   membro do sudo, nologin fora do grupo de proteção), estado no Samba

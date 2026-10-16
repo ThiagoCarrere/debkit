@@ -88,10 +88,26 @@ nao_contem "RC=0" "$saida" "login recusado"
 contem "Failed password for $SRV" "$(journalctl -u ssh --since "$INICIO" --no-pager 2>/dev/null)" "falha registrada no log do SSH"
 nao_contem "user '$SRV' granted access" "$(journalctl --since "$INICIO" --no-pager 2>/dev/null)" "o PAM NÃO aceita a senha do Samba (sem pam_winbind)"
 
+# ── Trocar senha (pelo debkit) ───────────────────────────────────────────────
+NOVA_SAMBA="Samba#Nova3"; NOVA_AMBAS="Ambas#Nova4"
+caso "trocar senha: usuário de arquivos (Samba) - a nova entra, a antiga não"
+contem "RC=0" "$(s "DEBKIT_U_SENHA='$NOVA_SAMBA'; debkit_usuario_trocar_senha $ARQ samba; echo RC=\$?")"
+contem "RC=0" "$(smb_login "$ARQ" "$NOVA_SAMBA")" "senha nova no Samba"
+contem "NT_STATUS_LOGON_FAILURE" "$(smb_login "$ARQ" "$SENHA_SAMBA")" "senha antiga recusada"
+igual "L" "$(passwd -S "$ARQ" | awk '{print $2}')" "Linux continua bloqueada"
+caso "trocar senha: acesso ao servidor (as duas) - Samba e SSH com a nova"
+contem "RC=0" "$(s "DEBKIT_U_SENHA='$NOVA_AMBAS'; debkit_usuario_trocar_senha $SRV ambas; echo RC=\$?")"
+contem "RC=0" "$(smb_login "$SRV" "$NOVA_AMBAS")" "Samba"
+saida=$(ssh_tentar "$SRV" "$NOVA_AMBAS"); nao_contem "Permission denied" "$saida"; contem "RC=0" "$saida" "SSH com a nova"
+nao_contem "RC=0" "$(ssh_tentar "$SRV" "$SENHA_LINUX")" "SSH com a antiga não entra"
+caso "unix password sync desligado no Samba real"
+igual "No" "$(testparm -s --parameter-name='unix password sync' 2>/dev/null)"
+
 caso "auditoria (log da areia) sem senhas"
 log=$(cat "$AREIA/debkit.log")
 contem "usuario_criar nome=$ARQ tipo=arquivos" "$log"; contem "usuario_criar nome=$SRV tipo=servidor" "$log"
-nao_contem "Teste1" "$log"; nao_contem "Teste2" "$log"
+nao_contem "Teste1" "$log"; nao_contem "Teste2" "$log"; nao_contem "Nova3" "$log"; nao_contem "Nova4" "$log"
+contem "senha_trocar nome=$ARQ alvo=samba resultado=ok" "$log"
 
 # ── Limpeza ──────────────────────────────────────────────────────────────────
 limpar_real; trap - EXIT

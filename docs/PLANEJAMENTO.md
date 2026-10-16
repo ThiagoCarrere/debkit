@@ -302,7 +302,7 @@ debkit/
 | Fase | Conteúdo |
 |---|---|
 | 0. Fundação | 0.1 esqueleto ✔ · 0.2 detecção do ambiente ✔ · 0.3 preparação do ambiente e backups ✔ · 0.4 proteção SSH ✔ · 0.5 firewall ✔ |
-| 1. Usuários e grupos | 1.0 reestruturar ✔ (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário ✔ (tipos, nome completo, grupos; sem home) · 1.1b pasta pessoal ✔ (base no disco de dados, na criação ou depois, `[homes]`) · listar ✔ · trocar senha · grupos (criar, remover, entrar/sair) · desativar/reativar · remover · consistência Linux x Samba |
+| 1. Usuários e grupos | 1.0 reestruturar ✔ (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário ✔ (tipos, nome completo, grupos; sem home) · 1.1b pasta pessoal ✔ (base no disco de dados, na criação ou depois, `[homes]`) · listar ✔ · trocar senha ✔ · grupos (criar, remover, entrar/sair) · desativar/reativar · remover · consistência Linux x Samba |
 | 2. Compartilhamentos | criar, listar, permissões de pasta, remover (inclusive os já existentes); pastas pessoais e `[homes]`; avaliar acesso somente leitura por grupo |
 | 3. Diagnóstico | falhas de login, sessões ativas, saúde do Samba, consulta à auditoria |
 | 4. Publicação | comandos diretos completos, `install.sh`, **desinstalação**, README, mensagens em inglês, testes automáticos e CI |
@@ -381,6 +381,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | 1.1b Pasta pessoal | `df06673` |
 | Scripts da VM de desenvolvimento | `7e20a14` |
 | Listar usuários | `8ff61b1` |
+| Trocar senha (+ unix password sync desligado) | (este commit) |
 
 **Próximos passos:**
 
@@ -435,8 +436,21 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
     mostrou). Colunas alinhadas por caracteres (acentos). O menu do Samba
     passou a ser: 1 listar, 2 criar usuário, 3 pasta pessoal de usuário
     existente, 4 pastas pessoais.
-12. **Próxima tarefa:** trocar senha, começando pelo item da preparação
-    que desliga o `unix password sync` (decidido, ver 3.1).
+12. ✔ Trocar senha (menu Samba, opção 3; criar pasta pessoal e pastas
+    pessoais passaram a 4 e 5). Usuário de arquivos (e nologin): só a do
+    Samba, conferindo depois que a do Linux não mudou (se mudou, volta);
+    com acesso ao servidor: Samba, Linux ou as duas (Linux primeiro; se o
+    Samba falhar, a do Linux volta ao hash anterior pela entrada padrão do
+    `chpasswd -e`); admin: só a do Samba (a do Linux, à mão com `passwd`).
+    A preparação desliga o `unix password sync` (edição segura: troca o
+    valor na própria linha do `[global]`; conferência: a configuração em
+    vigor perde só essa linha). Prova real na VM: `--preparar` mudou uma
+    única linha do smb.conf; `t07b` confirma a senha nova no Samba e no
+    SSH e a antiga recusada.
+13. **Pendente (pedido do Thiago):** repaginar o README do GitHub - está
+    simples demais para o projeto (apresentação, destaques, telas/exemplos,
+    instalação, segurança, status). Não é urgente, mas precisa ser feito.
+14. **Próxima tarefa:** grupos (criar, remover, entrar/sair).
 
 **VM limpa de novo:** `dev/vmnova.sh` → (reinicia) → `dev/vmprepara.sh` →
 `./debkit --preparar` → testes.
@@ -467,7 +481,7 @@ de estado para a areia). Com a correção dos pacotes de domínio: 733 + 48
 de teste de verdade - arquivos ext4 em loop, um somente leitura e um tmpfs
 - em `/mnt/dkt-teste.*` e desmonta no fim; a impressão digital do `run.sh`
 confere que nenhuma montagem sobrou). Com os scripts da VM e a listagem:
-994 + 65.
+994 + 65. Com trocar senha: 1082 + 78.
 
 Os testes funcionam com o servidor preparado ou não: em vez de exigir que
 os arquivos reais do debkit não existam, conferem que não mudaram
