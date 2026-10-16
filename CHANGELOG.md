@@ -55,6 +55,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   procura o `include` pelo caminho exato da areia.
 
 ### Adicionado
+- **Listar usuários** (menu Samba, opção 1; as demais opções passaram a 2-4):
+  só contas comuns, com nome completo, tipo (arquivos, servidor, admin =
+  membro do sudo, nologin fora do grupo de proteção), estado no Samba
+  (ativa, desativada, sem conta, só no Samba), pasta pessoal e grupos
+  comuns; total por tipo e alertas de consistência e de segurança (shell
+  sem login fora do grupo de proteção ainda permite túnel SSH). Colunas
+  alinhadas mesmo com acentos.
 - Scripts da VM de desenvolvimento: `dev/vmnova.sh` (volta ao snapshot
   "limpa" do Timeshift e reinicia; só em máquina virtual, com repositório
   commitado, enviado e fora dos snapshots; confirmação digitando RESTAURAR;

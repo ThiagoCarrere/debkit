@@ -250,8 +250,8 @@ caso "tela: ambiente não preparado - recusa antes de perguntar"
 saida=$(printf '\n' | u "debkit_samba_ambiente_pronto() { return 1; }; debkit_samba_tela_criar_usuario; echo RC=\$?")
 contem "ainda não está preparado" "$saida"; nao_contem "Nome completo" "$saida"; contem "RC=1" "$saida"
 
-caso "menu do Samba: 1) Criar usuário, no terminal (perguntas, sugestão, senha sem eco)"
-saida=$(pty 0.7 "bash $DEBKIT" 1 1 "Dkt Pty" "" "" "" n "SenhaPty1" "SenhaPty1" n "" 0 0)
+caso "menu do Samba: 2) Criar usuário, no terminal (perguntas, sugestão, senha sem eco)"
+saida=$(pty 0.7 "bash $DEBKIT" 1 2 "Dkt Pty" "" "" "" n "SenhaPty1" "SenhaPty1" n "" 0 0)
 contem "Nome completo (opcional; Enter para pular):" "$saida"
 contem "Nome de login [dkt_pty]:" "$saida" "sugestão mostrada"
 contem "Senha do Samba (pastas):" "$saida"; contem "Repita a senha:" "$saida"

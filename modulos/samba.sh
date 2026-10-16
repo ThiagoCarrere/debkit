@@ -62,6 +62,28 @@ MSG_pt_BR+=(
     [prep.dominio_conferencia]="Depois da remoção: %s"
     [prep.dominio_mantidos]="Os pacotes removidos não foram reinstalados: %s"
     [samba.criar_usuario]="Criar usuário"
+    [samba.listar_usuarios]="Listar usuários"
+    [lst.titulo]="Usuários do servidor"
+    [lst.c_login]="Login"
+    [lst.c_nome]="Nome completo"
+    [lst.c_tipo]="Tipo"
+    [lst.c_samba]="Samba"
+    [lst.c_home]="Pasta pessoal"
+    [lst.c_grupos]="Grupos"
+    [lst.t_arquivos]="arquivos"
+    [lst.t_servidor]="servidor"
+    [lst.t_admin]="admin"
+    [lst.t_nologin]="nologin"
+    [lst.s_ativa]="ativa"
+    [lst.s_desativada]="desativada"
+    [lst.s_so_samba]="só Samba"
+    [lst.nenhum]="Nenhum usuário comum no servidor."
+    [lst.total]="%d usuário(s): %d de arquivos, %d com acesso ao servidor, %d admin, %d outro(s)."
+    [lst.legenda]="arquivos = só Samba, SSH recusado · servidor = Samba e SSH/console · admin = membro do sudo (o debkit não remove nem desativa)"
+    [lst.a_so_samba]="%s: conta só no Samba, sem usuário no Linux"
+    [lst.a_so_linux]="%s: sem conta no Samba (não acessa as pastas)"
+    [lst.a_tunel]="%s: shell sem login, mas fora do grupo de proteção %s: o SSH ainda aceita a senha e permite túnel"
+    [lst.titulo_alertas]="Atenção:"
     [usr.titulo_criar]="Criar usuário"
     [usr.ambiente_nao_pronto]="O ambiente ainda não está preparado para criar usuários. Use \"9) Ambiente: verificar e preparar\" no menu principal."
     [usr.cancelado]="Cancelado. Nada foi feito."
@@ -163,7 +185,7 @@ MSG_pt_BR+=(
     [homes.p_criar]="Criar o compartilhamento [homes] no smb.conf (cada usuário vê só a própria pasta, com escrita)?"
     [homes.p_liberar]="Liberar a escrita no compartilhamento [homes] (\"read only = no\"; cada usuário continua vendo só a própria pasta)?"
     [homes.feito]="Compartilhamento [homes] pronto."
-    [homes.aviso_depois]="Para a pasta aparecer no Windows, ajuste o compartilhamento [homes] em \"Pastas pessoais\" no menu do Samba."
+    [homes.aviso_depois]="Para a pasta aparecer no Windows, ajuste o compartilhamento [homes] em \"4) Pastas pessoais\" no menu do Samba."
 )
 # shellcheck disable=SC2034  # catálogo do núcleo
 MSG_en+=(
@@ -199,6 +221,28 @@ MSG_en+=(
     [prep.dominio_conferencia]="After the removal: %s"
     [prep.dominio_mantidos]="The removed packages were not reinstalled: %s"
     [samba.criar_usuario]="Create user"
+    [samba.listar_usuarios]="List users"
+    [lst.titulo]="Server users"
+    [lst.c_login]="Login"
+    [lst.c_nome]="Full name"
+    [lst.c_tipo]="Type"
+    [lst.c_samba]="Samba"
+    [lst.c_home]="Home folder"
+    [lst.c_grupos]="Groups"
+    [lst.t_arquivos]="files"
+    [lst.t_servidor]="server"
+    [lst.t_admin]="admin"
+    [lst.t_nologin]="nologin"
+    [lst.s_ativa]="active"
+    [lst.s_desativada]="disabled"
+    [lst.s_so_samba]="Samba only"
+    [lst.nenhum]="No regular users on the server."
+    [lst.total]="%d user(s): %d file users, %d with server access, %d admin, %d other(s)."
+    [lst.legenda]="files = Samba only, SSH denied · server = Samba and SSH/console · admin = sudo member (debkit does not remove or disable them)"
+    [lst.a_so_samba]="%s: account only in Samba, no Linux user"
+    [lst.a_so_linux]="%s: no Samba account (cannot access the folders)"
+    [lst.a_tunel]="%s: no-login shell, but outside the protection group %s: SSH still accepts the password and allows tunnels"
+    [lst.titulo_alertas]="Attention:"
     [usr.titulo_criar]="Create user"
     [usr.ambiente_nao_pronto]="The environment is not set up for creating users yet. Use \"9) Environment: check and set up\" in the main menu."
     [usr.cancelado]="Cancelled. Nothing was done."
@@ -1202,6 +1246,113 @@ debkit_samba_oferecer_homes() {
     debkit_samba_ajustar_homes
 }
 
+# ── Usuários: listar ────────────────────────────────────────────────────────
+# Uma linha por usuário comum (ordem do login), campos separados por "|":
+#   login|nome completo|tipo|samba|pasta pessoal|grupos (vírgula)|alerta
+#   tipo:   admin (membro do sudo) | arquivos (no grupo de proteção SSH) |
+#           servidor (shell de login) | nologin (shell sem login, fora do
+#           grupo de proteção: o SSH ainda autentica e abre túnel)
+#   samba:  ativa | desativada (flag D) | nao (sem conta)
+#   alerta: tunel | so_linux | "" ; contas só no Samba vêm no fim com
+#           tipo "" e samba so_samba
+# Grupos: só os comuns (sem o pessoal, o de proteção e o sudo).
+debkit_samba_usuarios_dados() {
+    local nome uid gecos home shell tipo samba pasta alerta g grupos sudo protecao
+    local -A contas=() comuns=() linux=()
+    if debkit_tem_comando pdbedit; then
+        while IFS=: read -r nome _ _ _ g _; do contas["$nome"]="$g"; done < <(debkit_pdbedit -L -w 2>/dev/null)
+    fi
+    while read -r g; do comuns["$g"]=1; done < <(debkit_samba_grupos_comuns)
+    sudo=",$(getent group sudo | cut -d: -f4),"
+    protecao=",$(getent group "$DEBKIT_GRUPO_USUARIOS" | cut -d: -f4),"
+    while IFS=: read -r nome _ uid _ gecos home shell; do
+        debkit_uid_comum "$uid" || continue
+        linux["$nome"]=1
+        if [[ "$sudo" == *",$nome,"* ]]; then tipo="admin"
+        elif [[ "$protecao" == *",$nome,"* ]]; then tipo="arquivos"
+        else
+            case "$shell" in */nologin|*/false) tipo=nologin ;; *) tipo=servidor ;; esac
+        fi
+        if [ -z "${contas[$nome]+x}" ]; then samba=nao
+        elif [[ "${contas[$nome]}" == *D* ]]; then samba=desativada
+        else samba=ativa
+        fi
+        pasta=""
+        [ "$home" != "$DEBKIT_USR_HOME" ] && [ -d "$home" ] && pasta="$home"
+        grupos=""
+        for g in $(id -nG -- "$nome" 2>/dev/null); do
+            [ -n "${comuns[$g]+x}" ] && grupos+="${grupos:+,}$g"
+        done
+        alerta=""
+        [ "$tipo" == "nologin" ] && alerta=tunel
+        [ -z "$alerta" ] && [ "$samba" == "nao" ] && alerta=so_linux
+        printf '%s|%s|%s|%s|%s|%s|%s\n' "$nome" "${gecos%%,*}" "$tipo" "$samba" "$pasta" "$grupos" "$alerta"
+    done < <(getent passwd | sort -t: -k1,1)
+    for nome in $(printf '%s\n' "${!contas[@]}" | sort); do
+        [ -n "${linux[$nome]+x}" ] && continue
+        getent passwd "$nome" >/dev/null 2>&1 && continue     # usuário de sistema com conta Samba: não lista
+        printf '%s||||||so_samba\n' "$nome"
+    done
+}
+
+# Completa com espaços até <largura> caracteres (conta caracteres, não
+# bytes: o printf %-Ns erra com acentos)
+debkit_pad() {
+    local texto="$1" largura="$2"
+    [ "${#texto}" -gt "$largura" ] && texto="${texto:0:$((largura - 1))}…"
+    printf '%s%*s' "$texto" "$((largura - ${#texto}))" ""
+}
+
+# Mostra a tabela, o total e os alertas
+debkit_samba_listar_usuarios() {
+    local l nome gecos tipo samba pasta grupos alerta n_arq=0 n_srv=0 n_adm=0 n_out=0 total=0
+    local -a linhas=() alertas=()
+    local wl=5 wn=13 wt=8 ws=10 wh=13
+    mapfile -t linhas < <(debkit_samba_usuarios_dados)
+    if [ ${#linhas[@]} -eq 0 ]; then msg_info "$(t lst.nenhum)"; return 0; fi
+    for l in "${linhas[@]}"; do
+        IFS='|' read -r nome gecos _ _ pasta _ _ <<< "$l"
+        [ "${#nome}" -gt "$wl" ] && wl=${#nome}
+        [ "${#gecos}" -gt "$wn" ] && wn=${#gecos}
+        [ "${#pasta}" -gt "$wh" ] && wh=${#pasta}
+    done
+    [ "$wn" -gt 30 ] && wn=30
+    [ "$wh" -gt 40 ] && wh=40
+    printf '  %s%s  %s  %s  %s  %s  %s%s\n' "$C_NEGRITO" "$(debkit_pad "$(t lst.c_login)" "$wl")" "$(debkit_pad "$(t lst.c_nome)" "$wn")" \
+        "$(debkit_pad "$(t lst.c_tipo)" "$wt")" "$(debkit_pad "$(t lst.c_samba)" "$ws")" "$(debkit_pad "$(t lst.c_home)" "$wh")" "$(t lst.c_grupos)" "$C_RESET"
+    for l in "${linhas[@]}"; do
+        IFS='|' read -r nome gecos tipo samba pasta grupos alerta <<< "$l"
+        case "$samba" in
+            ativa) samba="$(t lst.s_ativa)" ;; desativada) samba="$(t lst.s_desativada)" ;; nao) samba="—" ;;
+        esac
+        case "$alerta" in
+            so_samba) samba="$(t lst.s_so_samba)"; alertas+=("$(t lst.a_so_samba "$nome")") ;;
+            so_linux) alertas+=("$(t lst.a_so_linux "$nome")") ;;
+            tunel)    alertas+=("$(t lst.a_tunel "$nome" "$DEBKIT_GRUPO_USUARIOS")") ;;
+        esac
+        case "$tipo" in
+            arquivos) n_arq=$((n_arq + 1)) ;; servidor) n_srv=$((n_srv + 1)) ;; admin) n_adm=$((n_adm + 1)) ;; nologin) n_out=$((n_out + 1)) ;;
+        esac
+        [ -n "$tipo" ] && { total=$((total + 1)); tipo="$(t "lst.t_$tipo")"; }
+        printf '  %s  %s  %s  %s  %s  %s\n' "$(debkit_pad "$nome" "$wl")" "$(debkit_pad "${gecos:-—}" "$wn")" "$(debkit_pad "${tipo:-—}" "$wt")" \
+            "$(debkit_pad "$samba" "$ws")" "$(debkit_pad "${pasta:-—}" "$wh")" "${grupos//,/, }"
+    done
+    echo ""
+    echo "  $(t lst.total "$total" "$n_arq" "$n_srv" "$n_adm" "$n_out")"
+    printf '  %s%s%s\n' "$C_CINZA" "$(t lst.legenda)" "$C_RESET"
+    if [ ${#alertas[@]} -gt 0 ]; then
+        echo ""
+        printf '  %s%s%s\n' "$C_AMARELO" "$(t lst.titulo_alertas)" "$C_RESET"
+        for l in "${alertas[@]}"; do echo "    ! $l"; done
+    fi
+}
+
+debkit_samba_tela_listar_usuarios() {
+    titulo "$(t lst.titulo)"
+    debkit_samba_listar_usuarios
+    pausar
+}
+
 # ── Usuários: tela ──────────────────────────────────────────────────────────
 # Lê uma linha para a variável indicada; fim da entrada = cancelar (retorna 1)
 debkit_ler() {
@@ -1400,18 +1551,20 @@ debkit_samba_menu() {
     local opcao
     while true; do
         titulo "$(t samba.titulo)"
-        echo "  1) $(t samba.criar_usuario)"
-        echo "  2) $(t samba.criar_home)"
-        echo "  3) $(t samba.pastas_pessoais)"
+        echo "  1) $(t samba.listar_usuarios)"
+        echo "  2) $(t samba.criar_usuario)"
+        echo "  3) $(t samba.criar_home)"
+        echo "  4) $(t samba.pastas_pessoais)"
         echo ""
         echo "  0) $(t geral.voltar)"
         echo ""
         ler_opcao opcao
         case "$opcao" in
             "") continue ;;
-            1)  debkit_samba_tela_criar_usuario ;;
-            2)  debkit_samba_tela_home_existente ;;
-            3)  debkit_samba_tela_pastas_pessoais ;;
+            1)  debkit_samba_tela_listar_usuarios ;;
+            2)  debkit_samba_tela_criar_usuario ;;
+            3)  debkit_samba_tela_home_existente ;;
+            4)  debkit_samba_tela_pastas_pessoais ;;
             0)  return 0 ;;
             *)  msg_erro "$(t geral.opcao_invalida "$opcao")"; pausar ;;
         esac

@@ -296,7 +296,7 @@ debkit/
 | Fase | Conteúdo |
 |---|---|
 | 0. Fundação | 0.1 esqueleto ✔ · 0.2 detecção do ambiente ✔ · 0.3 preparação do ambiente e backups ✔ · 0.4 proteção SSH ✔ · 0.5 firewall ✔ |
-| 1. Usuários e grupos | 1.0 reestruturar ✔ (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário ✔ (tipos, nome completo, grupos; sem home) · 1.1b pasta pessoal ✔ (base no disco de dados, na criação ou depois, `[homes]`) · listar · trocar senha · grupos (criar, remover, entrar/sair) · desativar/reativar · remover · consistência Linux x Samba |
+| 1. Usuários e grupos | 1.0 reestruturar ✔ (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário ✔ (tipos, nome completo, grupos; sem home) · 1.1b pasta pessoal ✔ (base no disco de dados, na criação ou depois, `[homes]`) · listar ✔ · trocar senha · grupos (criar, remover, entrar/sair) · desativar/reativar · remover · consistência Linux x Samba |
 | 2. Compartilhamentos | criar, listar, permissões de pasta, remover (inclusive os já existentes); pastas pessoais e `[homes]`; avaliar acesso somente leitura por grupo |
 | 3. Diagnóstico | falhas de login, sessões ativas, saúde do Samba, consulta à auditoria |
 | 4. Publicação | comandos diretos completos, `install.sh`, **desinstalação**, README, mensagens em inglês, testes automáticos e CI |
@@ -373,6 +373,8 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | 1.1 Criar usuário | `caa0774` |
 | Correção: pacotes de domínio (winbind) | `3e16425` |
 | 1.1b Pasta pessoal | `df06673` |
+| Scripts da VM de desenvolvimento | `7e20a14` |
+| Listar usuários | (este commit) |
 
 **Próximos passos:**
 
@@ -418,7 +420,17 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
     enviado e fora dos snapshots, digitar RESTAURAR, `--simular`) e
     `dev/vmprepara.sh` (instala shellcheck, smbclient e ufw inativo; não
     instala o Samba). Testes em `t10_dev.sh` com Timeshift e apt falsos.
-11. **Próxima tarefa:** listar usuários (Fase 1).
+11. ✔ Listar usuários (menu Samba, opção 1): só contas comuns; login, nome
+    completo, tipo (arquivos / servidor / admin = membro do sudo / nologin =
+    shell sem login FORA do grupo de proteção), Samba (ativa / desativada /
+    sem conta / só no Samba), pasta pessoal e grupos comuns; total por
+    tipo e alertas (conta só no Samba, só no Linux, e nologin fora do grupo
+    de proteção - o SSH ainda autentica e abre túnel, como a prova da 0.4
+    mostrou). Colunas alinhadas por caracteres (acentos). O menu do Samba
+    passou a ser: 1 listar, 2 criar usuário, 3 pasta pessoal de usuário
+    existente, 4 pastas pessoais.
+12. **Próxima tarefa:** trocar senha (decidir antes o `unix password sync`,
+    ver 3.1).
 
 **VM limpa de novo:** `dev/vmnova.sh` → (reinicia) → `dev/vmprepara.sh` →
 `./debkit --preparar` → testes.
@@ -448,7 +460,8 @@ de estado para a areia). Com a correção dos pacotes de domínio: 733 + 48
 (`t08_dominio.sh`). Ao fim da 1.1b: 898 + 65 (`t09_home.sh` monta discos
 de teste de verdade - arquivos ext4 em loop, um somente leitura e um tmpfs
 - em `/mnt/dkt-teste.*` e desmonta no fim; a impressão digital do `run.sh`
-confere que nenhuma montagem sobrou).
+confere que nenhuma montagem sobrou). Com os scripts da VM e a listagem:
+994 + 65.
 
 Os testes funcionam com o servidor preparado ou não: em vez de exigir que
 os arquivos reais do debkit não existam, conferem que não mudaram
