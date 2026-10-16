@@ -381,7 +381,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | 1.1b Pasta pessoal | `df06673` |
 | Scripts da VM de desenvolvimento | `7e20a14` |
 | Listar usuários | `8ff61b1` |
-| Trocar senha (+ unix password sync desligado) | (este commit) |
+| Trocar senha (+ unix password sync desligado) | `64ab68c` |
 
 **Próximos passos:**
 
