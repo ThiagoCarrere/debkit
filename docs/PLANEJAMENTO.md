@@ -292,7 +292,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | 0.2 Detecção do ambiente | `a7748d0` |
 | 0.3 Preparação do ambiente | `95abea3` |
 | 0.4 Proteção SSH | `345f64d` |
-| 0.5 Firewall | `9d68faa` |
+| 0.5 Firewall | `18e39fc` |
 
 **Próximos passos:**
 
