@@ -60,12 +60,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 ### Adicionado
 - **Compartilhamentos: listar e criar** (Samba → Compartilhamentos → 1 e
   2). Criar: nome só em minúsculas, descrição opcional, pasta só dentro de
-  `/mnt` ou `/srv` (base `SHARES_BASE` definida na primeira vez), grupos
-  com escrita e grupos somente leitura; pasta `root:<grupo>` `2770` e
-  seção no smb.conf pela edição segura, tudo ou nada. Listar: todos os
-  compartilhamentos (inclusive os feitos à mão), com quem escreve e quem
-  só lê, e alertas (pasta inexistente, aberto para convidado, sem
-  `valid users`).
+  `/mnt` ou `/srv` (base `SHARES_BASE` definida na primeira vez) e um
+  grupo, cujos membros têm acesso total (dar acesso = pôr a pessoa no
+  grupo); pasta `root:<grupo>` `2770` e seção no smb.conf pela edição
+  segura, tudo ou nada. Listar: todos os compartilhamentos (inclusive os
+  feitos à mão), com quem acessa, e alertas (pasta inexistente, aberto
+  para convidado, sem `valid users`, fora do padrão do debkit).
 - Preparação: muda o `map to guest` do smb.conf para `never` (com `bad
   user`, padrão do Debian, quem entra com um nome que não existe - ex.: um
   usuário excluído - vira convidado em vez de ser recusado), pela edição

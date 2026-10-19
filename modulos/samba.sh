@@ -426,8 +426,8 @@ MSG_pt_BR+=(
     [shr.titulo_criar]="Criar compartilhamento"
     [shr.c_nome]="Nome"
     [shr.c_pasta]="Pasta"
-    [shr.c_escrita]="Escrita"
-    [shr.c_leitura]="Somente leitura"
+    [shr.c_grupo]="Grupo (acesso total)"
+    [shr.so_leitura]="somente leitura"
     [shr.todos]="qualquer usuário"
     [shr.usuario]="usuário"
     [shr.total]="%d compartilhamento(s)."
@@ -435,13 +435,13 @@ MSG_pt_BR+=(
     [shr.a_sem_pasta]="%s: a pasta %s não existe"
     [shr.a_convidado]="%s: aberto para convidado (guest ok): qualquer pessoa na rede acessa sem senha"
     [shr.a_todos]="%s: sem \"valid users\": qualquer usuário do Samba acessa"
+    [shr.a_fora_padrao]="%s: fora do padrão do debkit (um grupo só, com acesso total)"
     [shr.crie_grupo]="Nenhum grupo para dar acesso: crie um grupo antes (Samba > Grupos)."
     [shr.dica_nome]="Nome: letras minúsculas sem acento, números, - e _, começando por letra (ex: financeiro, ti-docs). Enter vazio cancela."
     [shr.p_nome]="Nome do compartilhamento: "
     [shr.p_comentario]="Descrição (opcional; aparece no Windows; Enter para pular): "
     [shr.p_pasta]="Pasta [%s]: "
-    [shr.p_escrita]="Grupos com ESCRITA (números separados por vírgula ou espaço; Enter para nenhum): "
-    [shr.p_leitura]="Grupos SOMENTE LEITURA (números; Enter para nenhum): "
+    [shr.p_grupo]="Grupo do compartilhamento (número; Enter cancela): "
     [shr.p_confirmar]="Criar o compartilhamento?"
     [shr.p_confirma_base]="Usar %s como base dos compartilhamentos?"
     [shr.base_intro]="Os compartilhamentos ficam numa base dentro de /mnt ou /srv (ex: um disco de dados). Isso é definido uma vez e gravado na configuração; cada compartilhamento pode usar outra pasta dentro de /mnt ou /srv."
@@ -459,14 +459,13 @@ MSG_pt_BR+=(
     [shr.pai_nao_existe]="'%s': a pasta de cima (%s) não existe."
     [shr.mistura_homes]="'%s' se mistura com a base das pastas pessoais (%s)."
     [shr.mistura_outro]="'%s' se mistura com a pasta de outro compartilhamento (%s)."
-    [shr.sem_grupos]="Escolha pelo menos um grupo (com escrita ou somente leitura)."
-    [shr.grupo_repetido]="O grupo %s foi escolhido duas vezes: escolha escrita OU somente leitura."
+    [shr.sem_grupo]="Informe o grupo do compartilhamento."
+    [shr.dica_grupo]="Os membros do grupo têm acesso total à pasta. Para dar acesso a mais alguém, adicione a pessoa ao grupo (Samba > Grupos)."
     [shr.r_nome]="Compartilhamento: %s"
     [shr.r_comentario]="Descrição: %s"
     [shr.r_pasta_nova]="Pasta: %s (será criada)"
     [shr.r_pasta_existe]="Pasta: %s (já existe; dono e permissões da pasta serão ajustados)"
-    [shr.r_escrita]="Escrita: %s"
-    [shr.r_leitura]="Somente leitura: %s"
+    [shr.r_grupo]="Grupo (acesso total): %s"
     [shr.aviso_conteudo]="%s já tem arquivos: eles mantêm as permissões atuais (o ajuste do conteúdo vem na função de permissões)."
     [shr.criando]="Criando o compartilhamento %s..."
     [shr.criado]="Compartilhamento %s criado (%s)."
@@ -620,8 +619,8 @@ MSG_en+=(
     [shr.titulo_criar]="Create share"
     [shr.c_nome]="Name"
     [shr.c_pasta]="Folder"
-    [shr.c_escrita]="Write"
-    [shr.c_leitura]="Read only"
+    [shr.c_grupo]="Group (full access)"
+    [shr.so_leitura]="read only"
     [shr.todos]="any user"
     [shr.usuario]="user"
     [shr.total]="%d share(s)."
@@ -629,13 +628,13 @@ MSG_en+=(
     [shr.a_sem_pasta]="%s: folder %s does not exist"
     [shr.a_convidado]="%s: open to guests (guest ok): anyone on the network gets in without a password"
     [shr.a_todos]="%s: no \"valid users\": any Samba user gets in"
+    [shr.a_fora_padrao]="%s: not in the debkit pattern (a single group, with full access)"
     [shr.crie_grupo]="No group to give access to: create a group first (Samba > Groups)."
     [shr.dica_nome]="Name: lowercase letters without accents, digits, - and _, starting with a letter (e.g. finance, it-docs). Empty Enter cancels."
     [shr.p_nome]="Share name: "
     [shr.p_comentario]="Description (optional; shows in Windows; Enter to skip): "
     [shr.p_pasta]="Folder [%s]: "
-    [shr.p_escrita]="Groups with WRITE access (numbers separated by commas or spaces; Enter for none): "
-    [shr.p_leitura]="READ-ONLY groups (numbers; Enter for none): "
+    [shr.p_grupo]="Share group (number; Enter cancels): "
     [shr.p_confirmar]="Create the share?"
     [shr.p_confirma_base]="Use %s as the shares base?"
     [shr.base_intro]="Shares live in a base inside /mnt or /srv (e.g. a data disk). This is set once and saved in the configuration; each share may use another folder inside /mnt or /srv."
@@ -653,14 +652,13 @@ MSG_en+=(
     [shr.pai_nao_existe]="'%s': the parent folder (%s) does not exist."
     [shr.mistura_homes]="'%s' overlaps the home folders base (%s)."
     [shr.mistura_outro]="'%s' overlaps the folder of another share (%s)."
-    [shr.sem_grupos]="Choose at least one group (write or read only)."
-    [shr.grupo_repetido]="Group %s was chosen twice: choose write OR read only."
+    [shr.sem_grupo]="Enter the share group."
+    [shr.dica_grupo]="Group members have full access to the folder. To give someone else access, add them to the group (Samba > Groups)."
     [shr.r_nome]="Share: %s"
     [shr.r_comentario]="Description: %s"
     [shr.r_pasta_nova]="Folder: %s (will be created)"
     [shr.r_pasta_existe]="Folder: %s (already exists; the folder owner and permissions will be adjusted)"
-    [shr.r_escrita]="Write: %s"
-    [shr.r_leitura]="Read only: %s"
+    [shr.r_grupo]="Group (full access): %s"
     [shr.aviso_conteudo]="%s already has files: they keep their current permissions (adjusting the content comes with the permissions feature)."
     [shr.criando]="Creating share %s..."
     [shr.criado]="Share %s created (%s)."
@@ -2553,8 +2551,9 @@ debkit_grupo_remover() {
 }
 
 # ── Compartilhamentos: regras ───────────────────────────────────────────────
-# Decisão de 19/10/2026 (seção 3.7): acesso por grupo (escrita ou somente
-# leitura), pastas só dentro de /mnt ou /srv, nome só em minúsculas.
+# Decisões de 19/10/2026 (seção 3.7): cada compartilhamento tem UM grupo,
+# com acesso total (dar acesso = pôr a pessoa no grupo); pastas só dentro de
+# /mnt ou /srv; nome só em minúsculas.
 DEBKIT_SHR_RESERVADOS=(global homes printers 'print$' 'ipc$')
 DEBKIT_SHR_RAIZES=(/mnt /srv)
 DEBKIT_SHR_COMENTARIO_MAX=100
@@ -2695,14 +2694,11 @@ debkit_shr_garantir_base() {
 # ── Compartilhamentos: criar ────────────────────────────────────────────────
 # Bloco do smb.conf (sem a linha de comentário do debkit)
 debkit_shr_bloco() {
-    local nome="$1" comentario="$2" pasta="$3" principal="$4" g valid="" write=""
-    for g in "${DEBKIT_S_ESCRITA[@]}"; do valid+="${valid:+ }@$g"; write+="${write:+ }@$g"; done
-    for g in "${DEBKIT_S_LEITURA[@]}"; do valid+="${valid:+ }@$g"; done
+    local nome="$1" comentario="$2" pasta="$3" grupo="$4"
     printf '[%s]\n' "$nome"
     [ -n "$comentario" ] && printf '   comment = %s\n' "$comentario"
-    printf '   path = %s\n   valid users = %s\n' "$pasta" "$valid"
-    [ -n "$write" ] && printf '   write list = %s\n' "$write"
-    printf '   read only = yes\n   force group = %s\n   create mask = 0660\n   directory mask = 2770\n' "$principal"
+    printf '   path = %s\n   valid users = @%s\n   read only = no\n' "$pasta" "$grupo"
+    printf '   force group = %s\n   create mask = 0660\n   directory mask = 2770\n' "$grupo"
 }
 
 # Uma seção da saída do testparm -s (sem o cabeçalho e as linhas vazias)
@@ -2734,30 +2730,22 @@ debkit_shr_conferir_criar() {
         && cmp -s <(debkit_shr_secao_efetiva "$esperado" "$DEBKIT_S_NOME") <(debkit_shr_secao_efetiva "$2" "$DEBKIT_S_NOME")
 }
 
-# Entrada: DEBKIT_S_NOME, DEBKIT_S_COMENTARIO, DEBKIT_S_PASTA e os arrays
-# DEBKIT_S_ESCRITA e DEBKIT_S_LEITURA (grupos gerenciados; pelo menos um).
-# Tudo ou nada: cria (ou ajusta) a pasta root:<grupo principal> 2770 e a
-# seção no smb.conf (edição segura); confere e, se algo falhar, desfaz.
+# Entrada: DEBKIT_S_NOME, DEBKIT_S_COMENTARIO, DEBKIT_S_PASTA e
+# DEBKIT_S_GRUPO (grupo gerenciado; acesso total). Tudo ou nada: cria (ou
+# ajusta) a pasta root:<grupo> 2770 e a seção no smb.conf (edição segura);
+# confere e, se algo falhar, desfaz.
 debkit_shr_criar() {
-    local nome="$DEBKIT_S_NOME" pasta="$DEBKIT_S_PASTA" motivo g principal gid antes="" criada=0 todos
+    local nome="$DEBKIT_S_NOME" pasta="$DEBKIT_S_PASTA" grupo="$DEBKIT_S_GRUPO" motivo gid antes="" criada=0
     if ! motivo=$(debkit_shr_nome_problema "$nome") || ! motivo=$(debkit_shr_comentario_problema "$DEBKIT_S_COMENTARIO") \
        || ! motivo=$(debkit_shr_pasta_problema "$pasta"); then
         msg_erro "$(t shr.falhou "$nome" "$motivo")"; return 1
     fi
-    if [ $((${#DEBKIT_S_ESCRITA[@]} + ${#DEBKIT_S_LEITURA[@]})) -eq 0 ]; then
-        msg_erro "$(t shr.falhou "$nome" "$(t shr.sem_grupos)")"; return 1
+    if [ -z "$grupo" ]; then msg_erro "$(t shr.falhou "$nome" "$(t shr.sem_grupo)")"; return 1; fi
+    if ! debkit_grupo_gerenciado "$grupo" || [[ ! "$grupo" =~ ^[^[:space:],@+\&\"]+$ ]]; then
+        msg_erro "$(t shr.falhou "$nome" "$(t grp.nao_gerenciado "$grupo")")"; return 1
     fi
-    todos=" "
-    for g in "${DEBKIT_S_ESCRITA[@]}" "${DEBKIT_S_LEITURA[@]}"; do
-        if ! debkit_grupo_gerenciado "$g" || [[ ! "$g" =~ ^[^[:space:],@+\&\"]+$ ]]; then
-            msg_erro "$(t shr.falhou "$nome" "$(t grp.nao_gerenciado "$g")")"; return 1
-        fi
-        if [[ "$todos" == *" $g "* ]]; then msg_erro "$(t shr.falhou "$nome" "$(t shr.grupo_repetido "$g")")"; return 1; fi
-        todos+="$g "
-    done
-    principal="${DEBKIT_S_ESCRITA[0]:-${DEBKIT_S_LEITURA[0]}}"
-    gid=$(getent group "$principal" | cut -d: -f3)
-    DEBKIT_S_BLOCO=$(debkit_shr_bloco "$nome" "$DEBKIT_S_COMENTARIO" "$pasta" "$principal")
+    gid=$(getent group "$grupo" | cut -d: -f3)
+    DEBKIT_S_BLOCO=$(debkit_shr_bloco "$nome" "$DEBKIT_S_COMENTARIO" "$pasta" "$grupo")
     msg_info "$(t shr.criando "$nome")"
     # 1. Pasta: nova, ou a que já existe (guarda dono e permissões para desfazer)
     if [ -d "$pasta" ]; then
@@ -2780,7 +2768,7 @@ debkit_shr_criar() {
         debkit_smbconf_restaurar
         debkit_shr_falhou "$(t usr.f_conferencia "pasta/smb.conf")" "$criada" "$antes"; return 1
     fi
-    debkit_auditar shr_criar "nome=$nome pasta=$pasta escrita=$(IFS=,; echo "${DEBKIT_S_ESCRITA[*]}") leitura=$(IFS=,; echo "${DEBKIT_S_LEITURA[*]}") resultado=ok"
+    debkit_auditar shr_criar "nome=$nome pasta=$pasta grupo=$grupo resultado=ok"
     msg_ok "$(t shr.criado "$nome" "$pasta")"
 }
 
@@ -2803,7 +2791,8 @@ debkit_shr_falhou() {
 # ── Compartilhamentos: listar ───────────────────────────────────────────────
 # Um por linha: nome|pasta|escrita|leitura|alertas (listas separadas por
 # vírgula; "@g" = grupo, sem @ = usuário; "*" = qualquer usuário do Samba;
-# alertas: sem_pasta, convidado, todos). Inclui os feitos à mão; fora
+# alertas: sem_pasta, convidado, todos, fora_padrao = não é um grupo só com
+# acesso total, o padrão do debkit). Inclui os feitos à mão; fora
 # [global], [homes], [printers] e [print$].
 debkit_shr_dados() {
     testparm -s "$DEBKIT_SMB_CONF" 2>/dev/null | awk -v fora="$DEBKIT_SHR_FORA" '
@@ -2839,7 +2828,8 @@ debkit_shr_dados() {
         }
         END { fim() }' | while IFS='|' read -r nome pasta esc lei alerta; do
             [ -n "$pasta" ] && [ ! -d "$pasta" ] && alerta="${alerta:+$alerta,}sem_pasta"
-            [[ ",$esc,$lei," == *",*,"* ]] && alerta="${alerta:+$alerta,}todos"
+            if [[ ",$esc,$lei," == *",*,"* ]]; then alerta="${alerta:+$alerta,}todos"
+            elif [[ ! "$esc" =~ ^@[^,]+$ ]] || [ -n "$lei" ]; then alerta="${alerta:+$alerta,}fora_padrao"; fi
             printf '%s|%s|%s|%s|%s\n' "$nome" "$pasta" "$esc" "$lei" "$alerta"
         done
 }
@@ -2859,7 +2849,7 @@ debkit_shr_rotulo() {
 }
 
 debkit_shr_listar() {
-    local l nome pasta esc lei alerta wn=4 wp=5 a
+    local l nome pasta esc lei alerta acesso wn=4 wp=5 a
     local -a linhas=() alertas=()
     mapfile -t linhas < <(debkit_shr_dados)
     if [ ${#linhas[@]} -eq 0 ]; then msg_info "$(t shr.nenhum)"; return 0; fi
@@ -2869,12 +2859,13 @@ debkit_shr_listar() {
         [ "${#pasta}" -gt "$wp" ] && wp=${#pasta}
     done
     [ "$wp" -gt 40 ] && wp=40
-    printf '  %s%s  %s  %s  %s%s\n' "$C_NEGRITO" "$(debkit_pad "$(t shr.c_nome)" "$wn")" "$(debkit_pad "$(t shr.c_pasta)" "$wp")" \
-        "$(debkit_pad "$(t shr.c_escrita)" 24)" "$(t shr.c_leitura)" "$C_RESET"
+    printf '  %s%s  %s  %s%s\n' "$C_NEGRITO" "$(debkit_pad "$(t shr.c_nome)" "$wn")" "$(debkit_pad "$(t shr.c_pasta)" "$wp")" \
+        "$(t shr.c_grupo)" "$C_RESET"
     for l in "${linhas[@]}"; do
         IFS='|' read -r nome pasta esc lei alerta <<< "$l"
-        printf '  %s  %s  %s  %s\n' "$(debkit_pad "$nome" "$wn")" "$(debkit_pad "${pasta:-—}" "$wp")" \
-            "$(debkit_pad "$(debkit_shr_rotulo "$esc")" 24)" "$(debkit_shr_rotulo "$lei")"
+        acesso=$(debkit_shr_rotulo "$esc")
+        [ -n "$lei" ] && acesso="${esc:+$acesso, }$(debkit_shr_rotulo "$lei" | sed "s/, / ($(t shr.so_leitura)), /g; s/\$/ ($(t shr.so_leitura))/")"
+        printf '  %s  %s  %s\n' "$(debkit_pad "$nome" "$wn")" "$(debkit_pad "${pasta:-—}" "$wp")" "$acesso"
         for a in ${alerta//,/ }; do alertas+=("$(t "shr.a_$a" "$nome" "$pasta")"); done
     done
     echo ""
@@ -3161,11 +3152,11 @@ debkit_shr_tela_listar() {
     pausar
 }
 
-# Tela: nome, descrição, pasta, grupos (escrita / somente leitura), resumo e
+# Tela: nome, descrição, pasta, o grupo (acesso total), resumo e
 # UMA confirmação
 debkit_shr_tela_criar() {
-    local nome comentario pasta sugestao problema rc g
-    local -a grupos=() escrita=() leitura=()
+    local nome comentario pasta sugestao problema rc grupo
+    local -a grupos=()
     titulo "$(t shr.titulo_criar)"
     if ! debkit_samba_ambiente_pronto; then msg_erro "$(t usr.ambiente_nao_pronto)"; pausar; return 1; fi
     mapfile -t grupos < <(debkit_samba_grupos_comuns)
@@ -3192,29 +3183,21 @@ debkit_shr_tela_criar() {
         msg_erro "$problema"
     done
     echo ""
+    msg_info "$(t shr.dica_grupo)"
     echo "  $(t grp.titulo_grupos)"
     debkit_numerar "${grupos[@]}"
-    while true; do
-        debkit_escolher_varios escrita "$(t shr.p_escrita)" "${grupos[@]}" || { msg_aviso "$(t usr.cancelado)"; return 1; }
-        debkit_escolher_varios leitura "$(t shr.p_leitura)" "${grupos[@]}" || { msg_aviso "$(t usr.cancelado)"; return 1; }
-        problema=""
-        for g in "${leitura[@]}"; do [[ " ${escrita[*]} " == *" $g "* ]] && problema="$g"; done
-        if [ -n "$problema" ]; then msg_erro "$(t shr.grupo_repetido "$problema")"; continue; fi
-        [ $((${#escrita[@]} + ${#leitura[@]})) -gt 0 ] && break
-        msg_erro "$(t shr.sem_grupos)"
-    done
+    debkit_escolher_um grupo "$(t shr.p_grupo)" "${grupos[@]}" || { msg_aviso "$(t usr.cancelado)"; return 1; }
     echo ""
     echo "  $(t usr.titulo_resumo)"
     echo "    $(t shr.r_nome "$nome")"
     [ -n "$comentario" ] && echo "    $(t shr.r_comentario "$comentario")"
     if [ -d "$pasta" ]; then echo "    $(t shr.r_pasta_existe "$pasta")"; else echo "    $(t shr.r_pasta_nova "$pasta")"; fi
-    echo "    $(t shr.r_escrita "$(debkit_juntar "${escrita[@]}")")"
-    echo "    $(t shr.r_leitura "$(debkit_juntar "${leitura[@]}")")"
+    echo "    $(t shr.r_grupo "$grupo")"
     if [ -d "$pasta" ] && [ -n "$(ls -A -- "$pasta" 2>/dev/null)" ]; then msg_aviso "$(t shr.aviso_conteudo "$pasta")"; fi
     echo ""
     if ! confirmar "$(t shr.p_confirmar)"; then msg_aviso "$(t usr.cancelado)"; pausar; return 1; fi
     DEBKIT_S_NOME="$nome"; DEBKIT_S_COMENTARIO="$comentario"; DEBKIT_S_PASTA="$pasta"
-    DEBKIT_S_ESCRITA=("${escrita[@]}"); DEBKIT_S_LEITURA=("${leitura[@]}")
+    DEBKIT_S_GRUPO="$grupo"
     debkit_shr_criar; rc=$?
     pausar
     return "$rc"

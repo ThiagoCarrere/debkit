@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Testes de criar e listar compartilhamentos (Fase 2, tarefa 2.1; decisões
-# na seção 3.7): nome, descrição, pasta só em /mnt ou /srv, base, acesso por
-# grupo (escrita / somente leitura), criação tudo ou nada e listagem
+# na seção 3.7): nome, descrição, pasta só em /mnt ou /srv, base, um grupo
+# com acesso total, criação tudo ou nada e listagem
 # (inclusive dos feitos à mão). smb.conf e base do Samba da areia; pastas em
 # /srv/dkt-teste.* (apagadas no fim). A prova com o Samba de verdade está
 # em t17b_compartilhar_real.sh.
@@ -20,6 +20,10 @@ limpar_tudo() {
 trap limpar_tudo EXIT
 
 copiar_smb_conf "$AREIA/smb.conf"
+# Só as seções padrão: os compartilhamentos que já existam na VM (ex: os de
+# demonstração) não interferem nos nomes nem na contagem
+awk '/^[ \t]*\[/ { s = tolower($0); gsub(/[ \t\[\]]/, "", s); fora = (s != "global" && s != "homes" && s != "printers" && s != "print$") } !fora' \
+    "$AREIA/smb.conf" > "$AREIA/smb.conf.novo" && cat "$AREIA/smb.conf.novo" > "$AREIA/smb.conf" && rm -f "$AREIA/smb.conf.novo"
 preparar_areia
 CFG="debkit_conf_carregar \"\$DEBKIT_CONF_ARQUIVO\" >/dev/null; debkit_ler_login_defs;
      debkit_samba_recarregar() { echo reload >> '$AREIA/reloads'; };"
@@ -87,56 +91,54 @@ contem "dentro de /mnt ou /srv" "$(p "debkit_shr_definir_base /home/base")"
 # ════════════════════════════════════════════════════════════════════════════
 # Criar
 # ════════════════════════════════════════════════════════════════════════════
-criar() {  # criar <nome> <pasta> <escrita> <leitura> [prefixo]
-    p "${5:-} DEBKIT_S_NOME='$1'; DEBKIT_S_COMENTARIO='${COMENT:-}'; DEBKIT_S_PASTA='$2';
-       DEBKIT_S_ESCRITA=($3); DEBKIT_S_LEITURA=($4); debkit_shr_criar; echo RC=\$?"
+criar() {  # criar <nome> <pasta> <grupo> [prefixo]
+    p "${4:-} DEBKIT_S_NOME='$1'; DEBKIT_S_COMENTARIO='${COMENT:-}'; DEBKIT_S_PASTA='$2';
+       DEBKIT_S_GRUPO='$3'; debkit_shr_criar; echo RC=\$?"
 }
-caso "criar: pasta nova, escrita e somente leitura"
+caso "criar: pasta nova, um grupo com acesso total"
 antes=$(efetivo); : > "$AREIA/reloads"
-COMENT="Setor Financeiro" saida=$(COMENT="Setor Financeiro" criar financeiro "$T/base/financeiro" "dkt_fin" "dkt_dir")
+saida=$(COMENT="Setor Financeiro" criar financeiro "$T/base/financeiro" "dkt_fin")
 contem "RC=0" "$saida"; contem "Compartilhamento financeiro criado" "$saida"
 igual "0 $GFIN 2770" "$(stat -c '%u %g %a' "$T/base/financeiro")" "pasta root:grupo 2770"
 igual "$T/base/financeiro" "$(param financeiro path)"
-igual "@dkt_fin @dkt_dir" "$(param financeiro 'valid users')"
-igual "@dkt_fin" "$(param financeiro 'write list')"
-igual "Yes" "$(param financeiro 'read only')"; igual "dkt_fin" "$(param financeiro 'force group')"
+igual "@dkt_fin" "$(param financeiro 'valid users')"
+igual "" "$(param financeiro 'write list')"; igual "No" "$(param financeiro 'read only')"
+igual "dkt_fin" "$(param financeiro 'force group')"
 igual "0660" "$(param financeiro 'create mask')"; igual "02770" "$(param financeiro 'directory mask')"
 igual "Setor Financeiro" "$(param financeiro comment)"
 igual "$(sem_secao financeiro <<< "$antes")" "$(efetivo | sem_secao financeiro)" "o resto do smb.conf não mudou"
 contem "# debkit: compartilhamento criado em" "$(cat "$AREIA/smb.conf")"
 igual 1 "$(grep -c reload "$AREIA/reloads")" "Samba recarregado"
 verdadeiro "backup do smb.conf" test -n "$(find "$AREIA/conf-bkp" -name 'smb.conf.*')"
-contem "shr_criar nome=financeiro pasta=$T/base/financeiro escrita=dkt_fin leitura=dkt_dir resultado=ok" "$(LOG)"
-caso "criar: só somente leitura (sem write list; o grupo de leitura é o principal)"
-contem "RC=0" "$(criar consulta "$T/base/consulta" "" "dkt_ti")"
-igual "" "$(param consulta 'write list')"; igual "dkt_ti" "$(param consulta 'force group')"
-igual "$(getent group dkt_ti | cut -d: -f3)" "$(stat -c %g "$T/base/consulta")"
+contem "shr_criar nome=financeiro pasta=$T/base/financeiro grupo=dkt_fin resultado=ok" "$(LOG)"
+caso "criar: o mesmo grupo pode ter mais de um compartilhamento"
+contem "RC=0" "$(criar consulta "$T/base/consulta" "dkt_fin")"
+igual "@dkt_fin" "$(param consulta 'valid users')"; igual "$GFIN" "$(stat -c %g "$T/base/consulta")"
 caso "criar: pasta que já existe (vazia) tem dono e permissões ajustados"
 mkdir "$T/existente"; chown dkt_u1:dkt_u1 "$T/existente"; chmod 755 "$T/existente"
-contem "RC=0" "$(criar existente "$T/existente" "dkt_ti" "")"
+contem "RC=0" "$(criar existente "$T/existente" "dkt_ti")"
 igual "0 $(getent group dkt_ti | cut -d: -f3) 2770" "$(stat -c '%u %g %a' "$T/existente")"
 
 caso "criar: recusas antes de mexer em qualquer coisa"
 md5=$(md5sum < "$AREIA/smb.conf")
-contem "Escolha pelo menos um grupo" "$(criar r1 "$T/r1" "" "")"
-for g in sudo users daemon dkt_u1 "$GRUPO_TESTE" dkt_nao_existe; do
-    contem "não é um grupo comum que o debkit gerencia" "$(criar r1 "$T/r1" "$g" "")" "$g"
+contem "Informe o grupo" "$(criar r1 "$T/r1" "")"
+for g in sudo users daemon dkt_u1 "$GRUPO_TESTE" dkt_nao_existe "dkt_fin dkt_ti"; do
+    contem "não é um grupo comum que o debkit gerencia" "$(criar r1 "$T/r1" "$g")" "$g"
 done
-contem "escolhido duas vezes" "$(criar r1 "$T/r1" "dkt_fin" "dkt_fin")"
-contem "Já existe um compartilhamento" "$(criar financeiro "$T/r1" "dkt_fin" "")"
-contem "Nome inválido" "$(criar R1 "$T/r1" "dkt_fin" "")"
-contem "dentro de /mnt ou /srv" "$(criar r1 /home/r1 "dkt_fin" "")"
-contem "pasta de outro compartilhamento" "$(criar r1 "$T/base/financeiro/sub" "dkt_fin" "")"
-contem "Descrição inválida" "$(COMENT='50%' criar r1 "$T/r1" "dkt_fin" "")"
+contem "Já existe um compartilhamento" "$(criar financeiro "$T/r1" "dkt_fin")"
+contem "Nome inválido" "$(criar R1 "$T/r1" "dkt_fin")"
+contem "dentro de /mnt ou /srv" "$(criar r1 /home/r1 "dkt_fin")"
+contem "pasta de outro compartilhamento" "$(criar r1 "$T/base/financeiro/sub" "dkt_fin")"
+contem "Descrição inválida" "$(COMENT='50%' criar r1 "$T/r1" "dkt_fin")"
 igual "$md5" "$(md5sum < "$AREIA/smb.conf")" "smb.conf intacto"; verdadeiro "nenhuma pasta criada" test ! -e "$T/r1"
 caso "criar: conferência do smb.conf falha - nada fica (pasta nova apagada)"
-saida=$(criar r2 "$T/r2" "dkt_fin" "" "debkit_shr_conferir_criar() { return 1; };")
+saida=$(criar r2 "$T/r2" "dkt_fin" "debkit_shr_conferir_criar() { return 1; };")
 contem "RC=1" "$saida"; contem "mais do que o pretendido" "$saida"
 verdadeiro "pasta apagada" test ! -e "$T/r2"; igual "$md5" "$(md5sum < "$AREIA/smb.conf")" "smb.conf intacto"
 contem "shr_criar nome=r2 resultado=falha" "$(LOG)"
 caso "criar: reload falha - smb.conf restaurado e pasta já existente volta como era"
 mkdir "$T/r3"; chown dkt_u1:dkt_u1 "$T/r3"; chmod 750 "$T/r3"
-saida=$(criar r3 "$T/r3" "dkt_fin" "" "debkit_samba_recarregar() { return 1; };")
+saida=$(criar r3 "$T/r3" "dkt_fin" "debkit_samba_recarregar() { return 1; };")
 contem "RC=1" "$saida"; contem "restaurado do backup" "$saida"
 igual "$md5" "$(md5sum < "$AREIA/smb.conf")" "smb.conf de volta"
 igual "$(id -u dkt_u1) $(id -g dkt_u1) 750" "$(stat -c '%u %g %a' "$T/r3")" "dono e permissões de antes"
@@ -159,21 +161,29 @@ cat >> "$AREIA/smb.conf" <<EOF
    valid users = @dkt_fin, +dkt_dir
    read list = @dkt_dir
    read only = no
+[manual4]
+   path = $T/base
+   valid users = @dkt_fin @dkt_ti
+   read only = no
 EOF
 dados() { p "debkit_shr_dados" | grep "^$1|"; }
 caso "dados: escrita e leitura calculadas como o Samba faz"
-igual "financeiro|$T/base/financeiro|@dkt_fin|@dkt_dir|" "$(dados financeiro)"
-igual "consulta|$T/base/consulta||@dkt_ti|" "$(dados consulta)"
-igual "manual1|$T/existente|dkt_u1|@dkt_ti|" "$(dados manual1)" "usuário no write list escreve; o resto só lê"
+igual "financeiro|$T/base/financeiro|@dkt_fin||" "$(dados financeiro)" "padrão do debkit: sem alerta"
+igual "consulta|$T/base/consulta|@dkt_fin||" "$(dados consulta)"
+igual "manual1|$T/existente|dkt_u1|@dkt_ti|fora_padrao" "$(dados manual1)" "usuário no write list escreve; o resto só lê"
 igual "manual2|$T/nao_existe|*||convidado,sem_pasta,todos" "$(dados manual2)" "sem valid users, read only = no, guest ok, pasta inexistente"
-igual "manual3|$T/base|@dkt_fin|@dkt_dir|" "$(dados manual3)" "read list vence o read only = no; + vira grupo"
+igual "manual3|$T/base|@dkt_fin|@dkt_dir|fora_padrao" "$(dados manual3)" "read list vence o read only = no; + vira grupo"
+igual "manual4|$T/base|@dkt_fin,@dkt_ti||fora_padrao" "$(dados manual4)" "dois grupos com escrita"
 nao_contem "global|" "$(p debkit_shr_dados)"; nao_contem "homes|" "$(p debkit_shr_dados)"; nao_contem "printers|" "$(p debkit_shr_dados)"
 caso "listar: tabela e alertas"
 saida=$(p debkit_shr_listar)
-contem "financeiro" "$saida"; contem "dkt_fin" "$saida"; contem "dkt_u1 (usuário)" "$saida"; contem "qualquer usuário" "$saida"
+contem "Grupo (acesso total)" "$saida"; contem "financeiro" "$saida"; contem "dkt_fin" "$saida"; contem "qualquer usuário" "$saida"
+contem "dkt_u1 (usuário), dkt_ti (somente leitura)" "$saida"; contem "dkt_fin, dkt_dir (somente leitura)" "$saida"
+contem "manual1: fora do padrão do debkit" "$saida"; contem "manual4: fora do padrão do debkit" "$saida"
+nao_contem "financeiro: fora do padrão" "$saida"; nao_contem "manual2: fora do padrão" "$saida"
 contem "manual2: aberto para convidado" "$saida"; contem "manual2: a pasta $T/nao_existe não existe" "$saida"
 contem "manual2: sem \"valid users\"" "$saida"
-contem "6 compartilhamento(s)" "$saida"
+contem "7 compartilhamento(s)" "$saida"
 sed -i "/^\[manual1\]/,\$d" "$AREIA/smb.conf"
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -181,22 +191,25 @@ sed -i "/^\[manual1\]/,\$d" "$AREIA/smb.conf"
 # ════════════════════════════════════════════════════════════════════════════
 tela() { printf '%s\n' "$@" | p "${PRE:-} debkit_shr_tela_criar; echo RC=\$?"; }
 idx_g() { p "debkit_samba_grupos_comuns" | grep -nx "$1" | cut -d: -f1; }
-caso "tela: base já definida, pasta sugerida (Enter), escrita e leitura, confirmação"
-saida=$(tela "TI" "ti" "Equipe de TI" "" "$(idx_g dkt_ti)" "$(idx_g dkt_dir)" s "")
+caso "tela: base já definida, pasta sugerida (Enter), um grupo, confirmação"
+saida=$(tela "TI" "ti" "Equipe de TI" "" "$(idx_g dkt_ti)" s "")
 contem "Nome inválido: 'TI'" "$saida"; contem "Compartilhamento: ti" "$saida"; contem "Descrição: Equipe de TI" "$saida"
-contem "Pasta: $T/base/ti (será criada)" "$saida"; contem "Escrita: dkt_ti" "$saida"; contem "Somente leitura: dkt_dir" "$saida"
+contem "acesso total à pasta" "$saida"
+contem "Pasta: $T/base/ti (será criada)" "$saida"; contem "Grupo (acesso total): dkt_ti" "$saida"
 contem "Compartilhamento ti criado" "$saida"; verdadeiro "pasta criada" test -d "$T/base/ti"
-caso "tela: grupo nas duas listas e nenhum grupo repetem a pergunta; 'n' cancela"
-saida=$(tela "rh" "" "" "$(idx_g dkt_fin)" "$(idx_g dkt_fin)" "" "" "$(idx_g dkt_fin)" "" n "")
-contem "escolhido duas vezes" "$saida"; contem "Escolha pelo menos um grupo" "$saida"; contem "Cancelado" "$saida"
+igual "@dkt_ti" "$(param ti 'valid users')"
+caso "tela: número inválido repete a pergunta; 'n' cancela; Enter no grupo cancela"
+saida=$(tela "rh" "" "" "99" "x" "$(idx_g dkt_fin)" n "")
+contem "Opção inválida" "$saida"; contem "Cancelado" "$saida"
+contem "Cancelado" "$(tela "rh" "" "" "")"
 verdadeiro "nada criado" bash -c "! testparm -s '$AREIA/smb.conf' 2>/dev/null | grep -qx '\[rh\]' && test ! -e '$T/base/rh'"
 caso "tela: pasta que já tem arquivos avisa"
 mkdir "$T/cheia"; touch "$T/cheia/x"
-saida=$(tela "cheia" "" "$T/cheia" "$(idx_g dkt_fin)" "" n "")
+saida=$(tela "cheia" "" "$T/cheia" "$(idx_g dkt_fin)" n "")
 contem "já existe; dono e permissões da pasta serão ajustados" "$saida"; contem "já tem arquivos" "$saida"
 caso "tela: primeira vez pergunta a base e grava"
 sed -i '/^SHARES_BASE=/d' "$AREIA/debkit.conf"
-saida=$(tela "doc" "" "$T/base2" s "" "$(idx_g dkt_fin)" "" s "")
+saida=$(tela "doc" "" "$T/base2" s "" "$(idx_g dkt_fin)" s "")
 contem "Os compartilhamentos ficam numa base dentro de /mnt ou /srv" "$saida"
 contem "Base dos compartilhamentos: $T/base2" "$saida"; contem "Compartilhamento doc criado ($T/base2/doc)" "$saida"
 contem "SHARES_BASE=$T/base2" "$(cat "$AREIA/debkit.conf")"
@@ -206,7 +219,7 @@ caso "menu Samba > Compartilhamentos > 1) Listar"
 saida=$(pty 0.6 "bash $DEBKIT" 1 3 1 "" 0 0 0)
 contem "2) Criar compartilhamento" "$saida"; contem "3) Pastas pessoais" "$saida"; contem "Compartilhamentos do servidor" "$saida"
 caso "inglês"
-contem "Share en1 created" "$(p "DEBKIT_IDIOMA=en; DEBKIT_S_NOME=en1; DEBKIT_S_COMENTARIO=''; DEBKIT_S_PASTA='$T/base/en1'; DEBKIT_S_ESCRITA=(dkt_fin); DEBKIT_S_LEITURA=(); debkit_shr_criar")"
+contem "Share en1 created" "$(p "DEBKIT_IDIOMA=en; DEBKIT_S_NOME=en1; DEBKIT_S_COMENTARIO=''; DEBKIT_S_PASTA='$T/base/en1'; DEBKIT_S_GRUPO=dkt_fin; debkit_shr_criar")"
 
 limpar_tudo; trap - EXIT
 caso "limpeza"

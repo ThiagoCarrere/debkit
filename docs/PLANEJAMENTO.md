@@ -257,22 +257,28 @@ Decisão de 19/10/2026 (Thiago):
    do Debian, `bad user`, faz quem não existe - ex.: um usuário excluído -
    virar convidado em vez de ser recusado). O debkit não cria
    compartilhamento para convidado (`guest ok`). ✔ (tarefa 2.0)
-2. **Acesso por grupo:** cada compartilhamento recebe 1 ou mais grupos, cada
-   um com **escrita** ou **somente leitura** (o fluxo: o usuário entra no
-   grupo e ganha a pasta). Pasta `root:<grupo principal>` `2770`; o Samba
-   controla quem lê e quem escreve (`valid users`, `write list`,
-   `force group`). Sem pacote extra (ACL).
+2. **Acesso por grupo (revisto no mesmo dia):** cada compartilhamento é
+   vinculado a **um único grupo**, cujos membros têm **acesso total** (ex.:
+   `compras` → `gp_compras`). Não existe compartilhamento sem grupo. Para
+   dar acesso a alguém, a pessoa entra no grupo; não há permissão por
+   usuário nem somente leitura (na prática, todos do setor precisam de acesso total aos
+   arquivos do setor; era assim no script de partida). Um grupo pode ter
+   mais de um compartilhamento. Pasta `root:<grupo>` `2770`; no smb.conf,
+   `valid users = @<grupo>`, `read only = no`, `force group`. Sem pacote
+   extra (ACL).
 3. **Onde ficam as pastas:** só dentro de **`/mnt` ou `/srv`** (os lugares
    usuais para dados), numa base configurável ou numa pasta já existente,
    nunca pasta do sistema.
 4. **Nome:** **só minúsculas** sem acento, números, `-` e `_`, começando
    por letra, de 2 a 32 caracteres; recusa os reservados (`global`,
    `homes`, `printers`, `print$`, `ipc$`) e os que já existem.
-5. **Remover:** tira só do `smb.conf`; a pasta e os arquivos ficam (o
-   debkit mostra onde). Apagar dados não faz parte da função.
-6. **Já existentes (feitos à mão):** aparecem na listagem, podem ter os
-   grupos ajustados ou ser removidos; o debkit só mexe nas linhas que
-   gerencia e mantém o resto da seção.
+5. **Remover:** tira do `smb.conf`; a pasta e os arquivos ficam (o debkit
+   mostra onde), mas a pasta volta para `root:root`: só o root acessa.
+   Apagar dados não faz parte da função.
+6. **Já existentes (feitos à mão):** aparecem na listagem; os que não
+   seguem o padrão (um grupo com acesso total) têm alerta. Na 2.4, o
+   debkit oferece trazer para o padrão ou removê-los, mexendo só nas
+   linhas que gerencia e mantendo o resto da seção.
 7. **Efeito na hora:** como nos grupos (prova real com sessão aberta).
 
 Ordem: 2.0 convidado → 2.1 criar + listar → 2.2 permissões → 2.3 remover
@@ -283,18 +289,17 @@ primeira criação; sugestão `<disco de dados em /mnt>/compartilhamentos` ou
 `/srv/samba`); pasta padrão `<base>/<nome>` ou outra dentro de `/mnt`/`/srv`
 (real, sem link, a de cima existindo, sem se misturar com a base das
 pastas pessoais nem com a pasta de outro compartilhamento). Bloco no
-smb.conf: `valid users` (todos os grupos), `write list` (os de escrita),
-`read only = yes`, `force group` (o primeiro de escrita, ou o de leitura),
+smb.conf: `valid users = @<grupo>`, `read only = no`, `force group`,
 `create mask = 0660`, `directory mask = 2770`. Conferência: fora a seção
 nova nada muda, e a seção em vigor é igual ao `testparm` do bloco sozinho.
 Pasta que já existe tem dono e permissões ajustados (o conteúdo, só na
 2.2); se algo falhar, a pasta nova é apagada ou a existente volta como era
 (`chmod` com 5 dígitos: em pasta, `755` manteria o setgid). A listagem
-mostra todos (inclusive os feitos à mão), com quem escreve e quem só lê
-calculados como o Samba faz, e alerta pasta inexistente, `guest ok` e
-falta de `valid users`. Prova real (`t17b`): escrita grava (e o colega do
-mesmo grupo altera e apaga), somente leitura lê e não grava, fora dos
-grupos é recusado.
+mostra todos (inclusive os feitos à mão), com quem acessa calculado como o
+Samba faz (quem só lê aparece marcado), e alerta pasta inexistente,
+`guest ok`, falta de `valid users` e o que está fora do padrão. Prova real
+(`t17b`): os membros do grupo gravam (e um altera e apaga o arquivo do
+outro), e quem está fora do grupo é recusado.
 
 ## 4. O que o debkit gerencia
 
@@ -429,7 +434,7 @@ debkit/
 |---|---|
 | 0. Fundação | 0.1 esqueleto ✔ · 0.2 detecção do ambiente ✔ · 0.3 preparação do ambiente e backups ✔ · 0.4 proteção SSH ✔ · 0.5 firewall ✔ |
 | 1. Usuários e grupos | 1.0 reestruturar ✔ (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário ✔ (tipos, nome completo, grupos; sem home) · 1.1b pasta pessoal ✔ (base no disco de dados, na criação ou depois, `[homes]`) · listar ✔ · trocar senha ✔ · grupos ✔ (criar, remover, entrar/sair) · menu em submenus ✔ · excluir usuário ✔ · consistência Linux x Samba ✔ · ~~desativar/reativar~~ (adiado, 3.4) |
-| 2. Compartilhamentos | decisões na seção 3.7 · 2.0 `map to guest = never` ✔ · 2.1 criar + listar ✔ · 2.2 permissões (grupos com escrita / somente leitura) · 2.3 remover · 2.4 os já existentes |
+| 2. Compartilhamentos | decisões na seção 3.7 · 2.0 `map to guest = never` ✔ · 2.1 criar + listar ✔ · 2.2 grupo e permissões (trocar o grupo, ajustar o conteúdo) · 2.3 remover · 2.4 os já existentes |
 | 3. Diagnóstico | falhas de login, sessões ativas, saúde do Samba, consulta à auditoria |
 | 4. Publicação | comandos diretos completos, `install.sh`, **desinstalação**, README, mensagens em inglês, testes automáticos e CI |
 
@@ -607,9 +612,12 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
     inexistente e usuário excluído recusados.
 20. ✔ 2.1 criar + listar compartilhamentos (Samba → Compartilhamentos → 1
     e 2; detalhes na seção 3.7).
-21. **Próxima tarefa:** 2.2 permissões (adicionar/remover grupos de um
-    compartilhamento, trocar escrita/somente leitura, ajustar o conteúdo
-    de uma pasta que já existia).
+21. ✔ Revisão do modelo (decisão do Thiago): um grupo só por
+    compartilhamento, com acesso total; sem somente leitura (seção 3.7).
+    A tela Criar pergunta um grupo.
+22. **Próxima tarefa:** 2.2 grupo e permissões (trocar o grupo vinculado,
+    passando o conteúdo para o novo grupo; ajustar as permissões do
+    conteúdo de uma pasta que já existia).
 
 **VM limpa de novo:** `dev/vmnova.sh` → (reinicia) → `dev/vmprepara.sh` →
 `./debkit --preparar` → testes.
