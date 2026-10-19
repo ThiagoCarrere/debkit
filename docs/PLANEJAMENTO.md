@@ -188,8 +188,17 @@ abaixo para o caso de um dia fazer falta. A próxima tarefa é **remover**.
     (`nobody`) em vez de ser recusado. Sem compartilhamento `guest ok` não
     dá acesso a nada; **decidir na Fase 2** (ex.: a preparação mudar para
     `map to guest = Never`).
-- **Consistência:** contas só no Linux ou só no Samba aparecem marcadas,
-  com opção de corrigir (criar a senha Samba / limpar a conta Samba órfã).
+- **Consistência** (feito em 19/10/2026; Samba → Usuários → 6): lista o
+  que está fora do padrão e corrige um a um, com s/n em cada:
+  - conta só no Samba → apaga a conta Samba órfã;
+  - usuário só no Linux → cria a conta Samba (pede a senha; a do Linux não
+    muda - se mudar junto, volta);
+  - shell sem login fora do grupo de proteção (o SSH ainda autentica e abre
+    túnel, regra 3.2) → põe no `debkit_usuarios`;
+  - usuário de arquivos com senha do Linux utilizável (regra 3.1) →
+    bloqueia (`!`, como na criação).
+  Prova real (`t15b`): o `nologin` fora do grupo abria sessão SSH; depois
+  da correção, o SSH recusa.
 
 ### 3.6 Grupos
 
@@ -372,7 +381,7 @@ debkit/
 | Fase | Conteúdo |
 |---|---|
 | 0. Fundação | 0.1 esqueleto ✔ · 0.2 detecção do ambiente ✔ · 0.3 preparação do ambiente e backups ✔ · 0.4 proteção SSH ✔ · 0.5 firewall ✔ |
-| 1. Usuários e grupos | 1.0 reestruturar ✔ (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário ✔ (tipos, nome completo, grupos; sem home) · 1.1b pasta pessoal ✔ (base no disco de dados, na criação ou depois, `[homes]`) · listar ✔ · trocar senha ✔ · grupos ✔ (criar, remover, entrar/sair) · menu em submenus ✔ · excluir usuário ✔ · consistência Linux x Samba · ~~desativar/reativar~~ (adiado, 3.4) |
+| 1. Usuários e grupos | 1.0 reestruturar ✔ (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário ✔ (tipos, nome completo, grupos; sem home) · 1.1b pasta pessoal ✔ (base no disco de dados, na criação ou depois, `[homes]`) · listar ✔ · trocar senha ✔ · grupos ✔ (criar, remover, entrar/sair) · menu em submenus ✔ · excluir usuário ✔ · consistência Linux x Samba ✔ · ~~desativar/reativar~~ (adiado, 3.4) |
 | 2. Compartilhamentos | criar, listar, permissões de pasta, remover (inclusive os já existentes); pastas pessoais e `[homes]`; avaliar acesso somente leitura por grupo |
 | 3. Diagnóstico | falhas de login, sessões ativas, saúde do Samba, consulta à auditoria |
 | 4. Publicação | comandos diretos completos, `install.sh`, **desinstalação**, README, mensagens em inglês, testes automáticos e CI |
@@ -539,8 +548,10 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
     Prova real (`t14b`): a sessão aberta no Samba é encerrada e o usuário
     some do Linux e da base real; com SSH aberto a exclusão é recusada.
 17. **Pendente para a Fase 2:** `map to guest = Bad User` (seção 3.4).
-18. **Próxima tarefa:** consistência Linux x Samba (contas só no Linux ou
-    só no Samba, seção 3.4) - última da Fase 1.
+18. ✔ Consistência Linux x Samba (Samba → Usuários → 6; seção 3.4).
+    **Fase 1 concluída.**
+19. **Próximo:** Fase 2 (compartilhamentos), começando pela decisão do
+    `map to guest` (item 17); o README (item 13) continua pendente.
 
 **VM limpa de novo:** `dev/vmnova.sh` → (reinicia) → `dev/vmprepara.sh` →
 `./debkit --preparar` → testes.
@@ -578,7 +589,8 @@ automática: 1303 + 116, com usuários e grupos de demonstração na VM (o
 pode guardar dados de demonstração (nomes sem `dkt_`); os testes não
 dependem de o servidor estar sem grupos (o `t09` cria o próprio). Com excluir
 usuário: 1412 + 139 (`t14_excluir.sh` e a prova real `t14b_excluir_real.sh`).
-Os testes também acusam se alguém usar o debkit na VM enquanto rodam (o
+Com a consistência: 1474 + 154 (`t15_consistencia.sh` e
+`t15b_consistencia_real.sh`). Os testes também acusam se alguém usar o debkit na VM enquanto rodam (o
 log e a trava reais mudam): não usar o debkit durante a suíte.
 
 Os testes funcionam com o servidor preparado ou não: em vez de exigir que

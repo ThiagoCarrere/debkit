@@ -414,6 +414,31 @@ MSG_en+=(
 MSG_pt_BR+=(
     [samba.grupos]="Grupos"
     [samba.usuarios]="Usuários"
+    [samba.consistencia]="Verificar e corrigir contas (Linux x Samba)"
+    [cns.titulo]="Verificar e corrigir contas"
+    [cns.tudo_ok]="Tudo certo: todas as contas estão no Linux e no Samba, protegidas como o tipo pede."
+    [cns.encontrados]="%d item(ns) fora do padrão:"
+    [cns.p_so_samba]="%s: conta no Samba sem usuário no Linux"
+    [cns.p_so_linux]="%s: usuário no Linux sem conta no Samba (não acessa as pastas)"
+    [cns.p_tunel]="%s: shell sem login, mas fora do grupo de proteção %s (o SSH ainda aceita a senha e abre túnel)"
+    [cns.p_senha_linux]="%s: usuário de arquivos com senha do Linux utilizável (devia estar bloqueada)"
+    [cns.q_so_samba]="Apagar a conta Samba de %s?"
+    [cns.q_so_linux]="Criar a conta Samba de %s (com uma senha nova)?"
+    [cns.q_tunel]="Pôr %s no grupo de proteção %s (o SSH passa a recusar)?"
+    [cns.q_senha_linux]="Bloquear a senha do Linux de %s (a do Samba não muda)?"
+    [cns.p_senha]="Senha do Samba para %s: "
+    [cns.pulado]="Mantido como está."
+    [cns.resumo]="%d de %d item(ns) corrigido(s)."
+    [cns.nao_se_aplica]="%s: a situação mudou, nada a corrigir."
+    [cns.falhou]="Não foi possível corrigir %s: %s"
+    [cns.f_pdbedit]="o pdbedit falhou"
+    [cns.f_grupo]="não entrou no grupo %s"
+    [cns.f_bloqueio]="a senha não ficou bloqueada"
+    [cns.linux_restaurada]="%s: a senha do Linux tinha mudado junto e voltou a ser a anterior."
+    [cns.ok_so_samba]="Conta Samba de %s apagada."
+    [cns.ok_so_linux]="Conta Samba de %s criada."
+    [cns.ok_tunel]="%s agora está no grupo de proteção %s (SSH recusado)."
+    [cns.ok_senha_linux]="Senha do Linux de %s bloqueada."
     [samba.excluir_usuario]="Excluir usuário"
     [rmu.titulo]="Excluir usuário"
     [rmu.sem_usuarios]="Nenhum usuário que o debkit possa excluir (administradores e quem roda o debkit não são excluídos)."
@@ -530,6 +555,31 @@ MSG_pt_BR+=(
 MSG_en+=(
     [samba.grupos]="Groups"
     [samba.usuarios]="Users"
+    [samba.consistencia]="Check and fix accounts (Linux x Samba)"
+    [cns.titulo]="Check and fix accounts"
+    [cns.tudo_ok]="All good: every account is in Linux and in Samba, protected as its type requires."
+    [cns.encontrados]="%d item(s) out of standard:"
+    [cns.p_so_samba]="%s: Samba account without a Linux user"
+    [cns.p_so_linux]="%s: Linux user without a Samba account (cannot access the folders)"
+    [cns.p_tunel]="%s: no-login shell, but outside the protection group %s (SSH still accepts the password and opens tunnels)"
+    [cns.p_senha_linux]="%s: file user with a usable Linux password (should be locked)"
+    [cns.q_so_samba]="Delete the Samba account of %s?"
+    [cns.q_so_linux]="Create the Samba account of %s (with a new password)?"
+    [cns.q_tunel]="Put %s in the protection group %s (SSH will refuse)?"
+    [cns.q_senha_linux]="Lock the Linux password of %s (the Samba one does not change)?"
+    [cns.p_senha]="Samba password for %s: "
+    [cns.pulado]="Left as is."
+    [cns.resumo]="%d of %d item(s) fixed."
+    [cns.nao_se_aplica]="%s: the situation changed, nothing to fix."
+    [cns.falhou]="Could not fix %s: %s"
+    [cns.f_pdbedit]="pdbedit failed"
+    [cns.f_grupo]="did not join group %s"
+    [cns.f_bloqueio]="the password was not locked"
+    [cns.linux_restaurada]="%s: the Linux password had changed too and was restored."
+    [cns.ok_so_samba]="Samba account of %s deleted."
+    [cns.ok_so_linux]="Samba account of %s created."
+    [cns.ok_tunel]="%s is now in the protection group %s (SSH refused)."
+    [cns.ok_senha_linux]="Linux password of %s locked."
     [samba.excluir_usuario]="Delete user"
     [rmu.titulo]="Delete user"
     [rmu.sem_usuarios]="No users that debkit can delete (administrators and whoever runs debkit are not deleted)."
@@ -1834,6 +1884,91 @@ debkit_samba_tela_trocar_senha() {
     return "$rc"
 }
 
+# ── Usuários: consistência ──────────────────────────────────────────────────
+# Seção 3.4 (e as regras 3.1/3.2): acha e corrige, uma a uma e com
+# confirmação, as contas fora do padrão. Uma por linha "tipo|login":
+#   so_samba    conta Samba sem usuário no Linux       -> apagar a conta Samba
+#   so_linux    usuário comum sem conta no Samba       -> criar a senha do Samba
+#   tunel       shell sem login fora do grupo de proteção (SSH ainda autentica
+#               e abre túnel)                          -> pôr no grupo de proteção
+#   senha_linux usuário de arquivos com senha do Linux utilizável -> bloquear
+debkit_samba_inconsistencias() {
+    local nome tipo samba alerta
+    while IFS='|' read -r nome _ tipo samba _ _ alerta; do
+        if [ "$alerta" == "so_samba" ]; then echo "so_samba|$nome"; continue; fi
+        [ "$samba" == "nao" ] && echo "so_linux|$nome"
+        [ "$tipo" == "nologin" ] && echo "tunel|$nome"
+        if [ "$tipo" == "arquivos" ] && [ "$(passwd -S -- "$nome" 2>/dev/null | awk '{print $2}')" != "L" ]; then
+            echo "senha_linux|$nome"
+        fi
+    done < <(debkit_samba_usuarios_dados)
+    return 0
+}
+
+# so_samba: apaga a conta Samba órfã (só se não há usuário com esse nome)
+debkit_consist_so_samba() {
+    local nome="$1"
+    if getent passwd "$nome" >/dev/null 2>&1 || ! debkit_samba_conta_existe "$nome"; then
+        msg_erro "$(t cns.nao_se_aplica "$nome")"; return 1
+    fi
+    if ! debkit_pdbedit -x -u "$nome" >/dev/null 2>&1 || debkit_samba_conta_existe "$nome"; then
+        msg_erro "$(t cns.falhou "$nome" "$(t cns.f_pdbedit)")"
+        debkit_auditar consistencia "acao=so_samba nome=$nome resultado=falha"; return 1
+    fi
+    debkit_auditar consistencia "acao=so_samba nome=$nome resultado=ok"
+    msg_ok "$(t cns.ok_so_samba "$nome")"
+}
+
+# so_linux: cria a conta Samba com a senha em DEBKIT_U_SENHA (usuário de
+# arquivos: confere depois que a senha do Linux continua como estava)
+debkit_consist_so_linux() {
+    local nome="$1" uid shadow_antes
+    if ! IFS=: read -r _ _ uid _ < <(getent passwd "$nome") || ! debkit_uid_comum "$uid" || debkit_samba_conta_existe "$nome"; then
+        msg_erro "$(t cns.nao_se_aplica "$nome")"; return 1
+    fi
+    if [ "${#DEBKIT_U_SENHA}" -lt "$DEBKIT_SENHA_MIN" ]; then msg_erro "$(t usr.senha_curta "$DEBKIT_SENHA_MIN")"; return 1; fi
+    if [ "${#DEBKIT_U_SENHA}" -gt "$DEBKIT_USR_SENHA_MAX" ]; then msg_erro "$(t usr.senha_longa "$DEBKIT_USR_SENHA_MAX")"; return 1; fi
+    shadow_antes=$(getent shadow "$nome" | cut -d: -f2)
+    if ! printf '%s\n%s\n' "$DEBKIT_U_SENHA" "$DEBKIT_U_SENHA" | debkit_smbpasswd -s -a -- "$nome" >/dev/null 2>&1 \
+       || ! debkit_samba_conta_existe "$nome"; then
+        msg_erro "$(t cns.falhou "$nome" "$(t usr.f_samba)")"
+        debkit_auditar consistencia "acao=so_linux nome=$nome resultado=falha"; return 1
+    fi
+    if [ "$(getent shadow "$nome" | cut -d: -f2)" != "$shadow_antes" ]; then
+        debkit_senha_linux_restaurar "$nome" "$shadow_antes"
+        msg_aviso "$(t cns.linux_restaurada "$nome")"
+    fi
+    debkit_auditar consistencia "acao=so_linux nome=$nome resultado=ok"
+    msg_ok "$(t cns.ok_so_linux "$nome")"
+}
+
+# tunel: põe no grupo de proteção (o SSH passa a recusar; sessões SSH já
+# abertas continuam até sair)
+debkit_consist_tunel() {
+    local nome="$1"
+    if [ "$(debkit_usuario_tipo "$nome")" != "nologin" ]; then msg_erro "$(t cns.nao_se_aplica "$nome")"; return 1; fi
+    if ! gpasswd -a "$nome" "$DEBKIT_GRUPO_USUARIOS" >/dev/null 2>&1 \
+       || ! id -nG -- "$nome" 2>/dev/null | tr ' ' '\n' | grep -qxF "$DEBKIT_GRUPO_USUARIOS"; then
+        msg_erro "$(t cns.falhou "$nome" "$(t cns.f_grupo "$DEBKIT_GRUPO_USUARIOS")")"
+        debkit_auditar consistencia "acao=tunel nome=$nome resultado=falha"; return 1
+    fi
+    debkit_auditar consistencia "acao=tunel nome=$nome resultado=ok"
+    msg_ok "$(t cns.ok_tunel "$nome" "$DEBKIT_GRUPO_USUARIOS")"
+}
+
+# senha_linux: bloqueia a senha do Linux do usuário de arquivos ("!", como
+# na criação; a do Samba não muda)
+debkit_consist_senha_linux() {
+    local nome="$1"
+    if [ "$(debkit_usuario_tipo "$nome")" != "arquivos" ]; then msg_erro "$(t cns.nao_se_aplica "$nome")"; return 1; fi
+    if ! usermod -p '!' -- "$nome" >/dev/null 2>&1 || [ "$(passwd -S -- "$nome" 2>/dev/null | awk '{print $2}')" != "L" ]; then
+        msg_erro "$(t cns.falhou "$nome" "$(t cns.f_bloqueio)")"
+        debkit_auditar consistencia "acao=senha_linux nome=$nome resultado=falha"; return 1
+    fi
+    debkit_auditar consistencia "acao=senha_linux nome=$nome resultado=ok"
+    msg_ok "$(t cns.ok_senha_linux "$nome")"
+}
+
 # ── Usuários: excluir ───────────────────────────────────────────────────────
 # Decisão de 19/10/2026 (seção 3.4): apaga do Linux, do Samba e a pasta
 # pessoal, com UMA confirmação (s/n) depois de mostrar o que será perdido.
@@ -2501,6 +2636,36 @@ debkit_samba_tela_excluir_usuario() {
     return "$rc"
 }
 
+# Tela: lista o que está fora do padrão e corrige um a um (s/n em cada)
+debkit_samba_tela_consistencia() {
+    local l tipo nome feitos=0
+    local -a itens=()
+    titulo "$(t cns.titulo)"
+    if ! debkit_samba_ambiente_pronto; then msg_erro "$(t usr.ambiente_nao_pronto)"; pausar; return 1; fi
+    mapfile -t itens < <(debkit_samba_inconsistencias)
+    if [ ${#itens[@]} -eq 0 ]; then msg_ok "$(t cns.tudo_ok)"; pausar; return 0; fi
+    echo "  $(t cns.encontrados "${#itens[@]}")"
+    for l in "${itens[@]}"; do
+        IFS='|' read -r tipo nome <<< "$l"
+        echo "    - $(t "cns.p_$tipo" "$nome" "$DEBKIT_GRUPO_USUARIOS")"
+    done
+    for l in "${itens[@]}"; do
+        IFS='|' read -r tipo nome <<< "$l"
+        echo ""
+        echo "  $(t "cns.p_$tipo" "$nome" "$DEBKIT_GRUPO_USUARIOS")"
+        confirmar "  $(t "cns.q_$tipo" "$nome" "$DEBKIT_GRUPO_USUARIOS")" || { msg_info "$(t cns.pulado)"; continue; }
+        if [ "$tipo" == "so_linux" ]; then
+            DEBKIT_U_SENHA=""
+            debkit_ler_senha DEBKIT_U_SENHA "$(t cns.p_senha "$nome")" || { msg_info "$(t cns.pulado)"; continue; }
+        fi
+        "debkit_consist_$tipo" "$nome" && feitos=$((feitos + 1))
+        DEBKIT_U_SENHA=""
+    done
+    echo ""
+    msg_info "$(t cns.resumo "$feitos" "${#itens[@]}")"
+    pausar
+}
+
 # ── Grupos: telas ───────────────────────────────────────────────────────────
 # Escolhe UM item numerado: debkit_escolher_um <variável> <prompt> <itens...>.
 # Retorna 1 se cancelar (Enter vazio ou fim da entrada).
@@ -2787,6 +2952,7 @@ debkit_samba_menu_usuarios() {
         echo "  3) $(t samba.trocar_senha)"
         echo "  4) $(t samba.criar_home)"
         echo "  5) $(t samba.excluir_usuario)"
+        echo "  6) $(t samba.consistencia)"
         echo ""
         echo "  0) $(t geral.voltar)"
         echo ""
@@ -2798,6 +2964,7 @@ debkit_samba_menu_usuarios() {
             3)  debkit_samba_tela_trocar_senha ;;
             4)  debkit_samba_tela_home_existente ;;
             5)  debkit_samba_tela_excluir_usuario ;;
+            6)  debkit_samba_tela_consistencia ;;
             0)  return 0 ;;
             *)  msg_erro "$(t geral.opcao_invalida "$opcao")"; pausar ;;
         esac

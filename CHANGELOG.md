@@ -58,6 +58,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   procura o `include` pelo caminho exato da areia.
 
 ### Adicionado
+- **Verificar e corrigir contas** (Samba → Usuários → 6): lista e corrige,
+  uma a uma com s/n, conta só no Samba (apaga a órfã), usuário só no Linux
+  (cria a conta Samba), shell sem login fora do grupo de proteção (põe no
+  grupo: o SSH passa a recusar) e usuário de arquivos com senha do Linux
+  utilizável (bloqueia).
 - **Excluir usuário** (Samba → Usuários → 5): apaga do Linux, do Samba e
   a pasta pessoal (só se for da base das pastas pessoais ou de `/home`, do
   próprio usuário), com uma confirmação s/n depois de mostrar o que será
