@@ -495,6 +495,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | Menu do Samba em submenus | `32fda5b` |
 | Excluir usuário; grupos com s/n e "adicionar/remover" | `8842b1e` |
 | Verificar e corrigir contas (consistência) | `bef38c8` |
+| 2.0 map to guest = never (+ decisões da Fase 2) | `01658d6` |
 
 **Próximos passos:**
 
