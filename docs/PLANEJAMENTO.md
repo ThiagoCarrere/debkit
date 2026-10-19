@@ -249,6 +249,35 @@ Decisão de 19/10/2026 (Thiago):
   - pede UMA confirmação **s/n** (decisão do Thiago em 19/10/2026: digitar
     o nome ficaria cansativo; o mesmo vale para excluir usuário).
 
+### 3.7 Compartilhamentos (Fase 2)
+
+Decisão de 19/10/2026 (Thiago):
+
+1. **Convidado:** a preparação muda para `map to guest = never` (o padrão
+   do Debian, `bad user`, faz quem não existe - ex.: um usuário excluído -
+   virar convidado em vez de ser recusado). O debkit não cria
+   compartilhamento para convidado (`guest ok`). ✔ (tarefa 2.0)
+2. **Acesso por grupo:** cada compartilhamento recebe 1 ou mais grupos, cada
+   um com **escrita** ou **somente leitura** (o fluxo: o usuário entra no
+   grupo e ganha a pasta). Pasta `root:<grupo principal>` `2770`; o Samba
+   controla quem lê e quem escreve (`valid users`, `write list`,
+   `force group`). Sem pacote extra (ACL).
+3. **Onde ficam as pastas:** só dentro de **`/mnt` ou `/srv`** (os lugares
+   usuais para dados), numa base configurável ou numa pasta já existente,
+   nunca pasta do sistema.
+4. **Nome:** **só minúsculas** sem acento, números, `-` e `_`, começando
+   por letra, de 2 a 32 caracteres; recusa os reservados (`global`,
+   `homes`, `printers`, `print$`, `ipc$`) e os que já existem.
+5. **Remover:** tira só do `smb.conf`; a pasta e os arquivos ficam (o
+   debkit mostra onde). Apagar dados não faz parte da função.
+6. **Já existentes (feitos à mão):** aparecem na listagem, podem ter os
+   grupos ajustados ou ser removidos; o debkit só mexe nas linhas que
+   gerencia e mantém o resto da seção.
+7. **Efeito na hora:** como nos grupos (prova real com sessão aberta).
+
+Ordem: 2.0 convidado → 2.1 criar + listar → 2.2 permissões → 2.3 remover
+→ 2.4 existentes.
+
 ## 4. O que o debkit gerencia
 
 Decisão de 15/10/2026 (substitui a regra anterior "só gerencia o que ele
@@ -382,7 +411,7 @@ debkit/
 |---|---|
 | 0. Fundação | 0.1 esqueleto ✔ · 0.2 detecção do ambiente ✔ · 0.3 preparação do ambiente e backups ✔ · 0.4 proteção SSH ✔ · 0.5 firewall ✔ |
 | 1. Usuários e grupos | 1.0 reestruturar ✔ (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário ✔ (tipos, nome completo, grupos; sem home) · 1.1b pasta pessoal ✔ (base no disco de dados, na criação ou depois, `[homes]`) · listar ✔ · trocar senha ✔ · grupos ✔ (criar, remover, entrar/sair) · menu em submenus ✔ · excluir usuário ✔ · consistência Linux x Samba ✔ · ~~desativar/reativar~~ (adiado, 3.4) |
-| 2. Compartilhamentos | criar, listar, permissões de pasta, remover (inclusive os já existentes); pastas pessoais e `[homes]`; avaliar acesso somente leitura por grupo |
+| 2. Compartilhamentos | decisões na seção 3.7 · 2.0 `map to guest = never` ✔ · 2.1 criar + listar · 2.2 permissões (grupos com escrita / somente leitura) · 2.3 remover · 2.4 os já existentes |
 | 3. Diagnóstico | falhas de login, sessões ativas, saúde do Samba, consulta à auditoria |
 | 4. Publicação | comandos diretos completos, `install.sh`, **desinstalação**, README, mensagens em inglês, testes automáticos e CI |
 
@@ -548,11 +577,15 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 16. ✔ Excluir usuário (Samba → Usuários → 5; regras na seção 3.4).
     Prova real (`t14b`): a sessão aberta no Samba é encerrada e o usuário
     some do Linux e da base real; com SSH aberto a exclusão é recusada.
-17. **Pendente para a Fase 2:** `map to guest = Bad User` (seção 3.4).
+17. ✔ `map to guest`: decidido e feito na tarefa 2.0 (seção 3.7).
 18. ✔ Consistência Linux x Samba (Samba → Usuários → 6; seção 3.4).
     **Fase 1 concluída.**
-19. **Próximo:** Fase 2 (compartilhamentos), começando pela decisão do
-    `map to guest` (item 17).
+19. ✔ Fase 2 decidida (seção 3.7). Tarefa 2.0: a preparação muda para
+    `map to guest = never` (filtro genérico de parâmetro do `[global]`,
+    também usado pelo `unix password sync`). Prova real na VM: o
+    `--preparar` mudou uma única linha do smb.conf; `t16b` confirma nome
+    inexistente e usuário excluído recusados.
+20. **Próxima tarefa:** 2.1 criar + listar compartilhamentos.
 
 **VM limpa de novo:** `dev/vmnova.sh` → (reinicia) → `dev/vmprepara.sh` →
 `./debkit --preparar` → testes.
@@ -591,7 +624,8 @@ pode guardar dados de demonstração (nomes sem `dkt_`); os testes não
 dependem de o servidor estar sem grupos (o `t09` cria o próprio). Com excluir
 usuário: 1412 + 139 (`t14_excluir.sh` e a prova real `t14b_excluir_real.sh`).
 Com a consistência: 1474 + 154 (`t15_consistencia.sh` e
-`t15b_consistencia_real.sh`). Os testes também acusam se alguém usar o debkit na VM enquanto rodam (o
+`t15b_consistencia_real.sh`). Com a tarefa 2.0: 1505 + 162 (`t16_convidado.sh` e
+`t16b_convidado_real.sh`). Os testes também acusam se alguém usar o debkit na VM enquanto rodam (o
 log e a trava reais mudam): não usar o debkit durante a suíte.
 
 Os testes funcionam com o servidor preparado ou não: em vez de exigir que

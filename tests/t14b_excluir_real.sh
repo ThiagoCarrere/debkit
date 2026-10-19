@@ -48,9 +48,10 @@ smb_login() {
 }
 SSH_OPCOES=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PubkeyAuthentication=no
             -o PreferredAuthentications=password -o NumberOfPasswordPrompts=1 -o ConnectTimeout=5 -o LogLevel=ERROR)
-# Com quem o Samba abre a sessão quando se entra com <usuário>? (o smb.conf
-# padrão do Debian tem "map to guest = Bad User": usuário que não existe
-# vira convidado, nobody). Imprime os usuários das sessões abertas.
+# Com quem o Samba abre a sessão quando se entra com <usuário>? Imprime os
+# usuários das sessões abertas (com "map to guest = bad user", padrão do
+# Debian, quem não existe viraria convidado, nobody; a preparação do debkit
+# muda para "never" e o login é recusado).
 quem_entra() {
     printf 'username = %s\npassword = %s\n' "$1" "$SENHA" > "$AREIA/auth"; chmod 600 "$AREIA/auth"
     rm -f "$AREIA/q"; mkfifo "$AREIA/q"
@@ -88,7 +89,8 @@ contem "RC=0" "$saida"; contem "1 sessão(ões) do Samba encerrada(s)" "$saida";
 verdadeiro "o smbd da sessão acabou" bash -c "! kill -0 $SMBD"
 exec 3>&-; wait "$PID_SESSAO" 2>/dev/null; PID_SESSAO=""
 saida=$(quem_entra "$ARQ")
-nao_contem "$ARQ" "$saida" "o Samba não autentica mais o usuário"; contem "nobody" "$saida" "vira convidado (map to guest = Bad User)"
+nao_contem "$ARQ" "$saida" "o Samba não autentica mais o usuário"
+contem "NT_STATUS_LOGON_FAILURE" "$(smb_login "$ARQ")" "login recusado (map to guest = never, preparado pelo debkit; ver t16b)"
 verdadeiro "sumiu do Linux e da base REAL do Samba" bash -c "! getent passwd $ARQ && ! pdbedit -u $ARQ && ! getent group $ARQ"
 nao_contem "$ARQ" "$(getent group debkit_usuarios)" "saiu do grupo de proteção real"
 

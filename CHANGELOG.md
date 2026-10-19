@@ -58,6 +58,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   procura o `include` pelo caminho exato da areia.
 
 ### Adicionado
+- Preparação: muda o `map to guest` do smb.conf para `never` (com `bad
+  user`, padrão do Debian, quem entra com um nome que não existe - ex.: um
+  usuário excluído - vira convidado em vez de ser recusado), pela edição
+  segura com conferência de que só essa linha muda.
 - **Verificar e corrigir contas** (Samba → Usuários → 6): lista e corrige,
   uma a uma com s/n, conta só no Samba (apaga a órfã), usuário só no Linux
   (cria a conta Samba), shell sem login fora do grupo de proteção (põe no

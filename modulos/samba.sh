@@ -57,6 +57,8 @@ MSG_pt_BR+=(
     [smb.restaurar_falhou]="ATENÇÃO: não foi possível restaurar o %s do backup %s. Restaure à mão."
     [amb.sync_ligado]="\"unix password sync\" ligado: trocar a senha pelo Windows também define a senha do Linux (a dos usuários de arquivos deve ficar bloqueada): a preparação vai desligar"
     [prep.d_samba_sem_sync]="Desligar no %s a sincronização da senha do Linux (\"unix password sync = no\"; com backup e conferência de que só isso muda)"
+    [amb.convidado]="\"map to guest = %s\": quem entra com um nome que não existe (ex: um usuário excluído) vira convidado em vez de ser recusado: a preparação vai mudar para \"never\""
+    [prep.d_samba_sem_convidado]="Recusar no %s o login de quem não existe, em vez de virar convidado (\"map to guest = never\"; com backup e conferência de que só isso muda)"
     [amb.pacotes_dominio]="Pacotes de domínio instalados sem necessidade num servidor independente: %s. O winbind faz o Linux aceitar a senha do Samba em logins como o SSH: a preparação vai removê-los"
     [prep.d_samba_pacotes_dominio]="Remover os pacotes de domínio desnecessários: %s (apt-get purge; depois confere que o PAM e o NSS não usam mais o winbind e que o Samba continua funcionando)"
     [prep.dominio_removeria_mais]="O apt removeria também outros pacotes (%s): nada foi removido."
@@ -247,6 +249,8 @@ MSG_en+=(
     [smb.restaurar_falhou]="WARNING: could not restore %s from the backup %s. Restore it by hand."
     [amb.sync_ligado]="\"unix password sync\" enabled: changing the password from Windows also sets the Linux password (file users must keep it locked): the setup will turn it off"
     [prep.d_samba_sem_sync]="Turn off in %s the Linux password sync (\"unix password sync = no\"; with backup and a check that nothing else changes)"
+    [amb.convidado]="\"map to guest = %s\": logging in with a name that does not exist (e.g. a deleted user) becomes a guest instead of being refused: the preparation will change it to \"never\""
+    [prep.d_samba_sem_convidado]="Refuse in %s the login of users that do not exist, instead of becoming a guest (\"map to guest = never\"; with backup and a check that nothing else changes)"
     [amb.pacotes_dominio]="Domain packages installed without need on a standalone server: %s. winbind makes Linux accept the Samba password in logins such as SSH: the setup will remove them"
     [prep.d_samba_pacotes_dominio]="Remove the unneeded domain packages: %s (apt-get purge; then checks that PAM and NSS no longer use winbind and that Samba still works)"
     [prep.dominio_removeria_mais]="apt would also remove other packages (%s): nothing was removed."
@@ -883,6 +887,7 @@ debkit_desfazer_samba_pacotes_dominio() {
 debkit_samba_verificar() {
     local papel backend
     DEBKIT_SVC_SAMBA=""; DEBKIT_SAMBA_INCLUDE_ANTIGO=""; DEBKIT_SAMBA_INCLUDE_VAZIO=0; DEBKIT_SAMBA_DOMINIO=""; DEBKIT_SAMBA_SYNC=0
+    DEBKIT_SAMBA_CONVIDADO=""
     if ! debkit_tem_comando smbd; then
         debkit_verif_add samba falta "$(t amb.samba_ausente)"
         return 0
@@ -926,6 +931,12 @@ debkit_samba_verificar() {
             DEBKIT_SAMBA_SYNC=1
             debkit_verif_add samba aviso "$(t amb.sync_ligado)"
         fi
+        DEBKIT_SAMBA_CONVIDADO=$(debkit_samba_param "map to guest")
+        if [ -n "$DEBKIT_SAMBA_CONVIDADO" ] && [ "$DEBKIT_SAMBA_CONVIDADO" != "Never" ]; then
+            debkit_verif_add samba aviso "$(t amb.convidado "$DEBKIT_SAMBA_CONVIDADO")"
+        else
+            DEBKIT_SAMBA_CONVIDADO=""
+        fi
         if DEBKIT_SAMBA_INCLUDE_ANTIGO=$(debkit_samba_include_antigo); then
             if debkit_samba_shares_vazio "$DEBKIT_SAMBA_INCLUDE_ANTIGO"; then
                 DEBKIT_SAMBA_INCLUDE_VAZIO=1
@@ -952,6 +963,9 @@ debkit_samba_plano() {
     fi
     if [ "${DEBKIT_SAMBA_SYNC:-0}" -eq 1 ]; then
         DEBKIT_PLANO+=(samba_sem_sync)
+    fi
+    if [ -n "${DEBKIT_SAMBA_CONVIDADO:-}" ]; then
+        DEBKIT_PLANO+=(samba_sem_convidado)
     fi
     return 0
 }
@@ -1013,19 +1027,29 @@ debkit_desfazer_samba_include_antigo() {
 # senha do Linux - a do usuário de arquivos deve ficar sempre bloqueada.
 debkit_descrever_samba_sem_sync() { t prep.d_samba_sem_sync "$DEBKIT_SMB_CONF"; }
 
-# Filtro: no [global], troca o valor da(s) linha(s) "unix password sync"
-# por "no" (a primeira fica no lugar, as repetidas saem); se não houver a
-# linha (valor vindo de outro lugar), põe logo depois do [global]
-debkit_samba_filtro_sem_sync() {
-    awk '
-        /^[ \t]*\[/ { if (em && !feito) { print "   unix password sync = no"; feito = 1 }
+# Filtro: debkit_samba_filtro_global <parâmetro> <valor>. No [global],
+# troca o valor da(s) linha(s) do parâmetro (o nome é comparado sem espaços
+# e sem maiúsculas, como o Samba faz: "MapToGuest" = "map to guest"); a
+# primeira fica no lugar, com o mesmo recuo, e as repetidas saem. Se não
+# houver a linha (valor vindo do padrão), põe no fim do [global].
+debkit_samba_filtro_global() {
+    awk -v nome="$1" -v valor="$2" '
+        BEGIN { alvo = tolower(nome); gsub(/[ \t]/, "", alvo); linha = nome " = " valor }
+        /^[ \t]*\[/ { if (em && !feito) { print "   " linha; feito = 1 }
                       em = (tolower($0) ~ /^[ \t]*\[global\][ \t]*$/); print; next }
-        em && tolower($0) ~ /^[ \t]*unix[ \t]*password[ \t]*sync[ \t]*=/ {
-            if (!feito) { match($0, /^[ \t]*/); print substr($0, 1, RLENGTH) "unix password sync = no"; feito = 1 }
-            next }
+        em && /^[ \t]*[^#;[ \t][^=]*=/ {
+            k = $0; sub(/=.*/, "", k); gsub(/[ \t]/, "", k)
+            if (tolower(k) == alvo) {
+                if (!feito) { match($0, /^[ \t]*/); print substr($0, 1, RLENGTH) linha; feito = 1 }
+                next
+            }
+        }
         { print }
-        END { if (em && !feito) print "   unix password sync = no" }'
+        END { if (em && !feito) print "   " linha }'
 }
+
+# Filtro: "unix password sync = no" no [global]
+debkit_samba_filtro_sem_sync() { debkit_samba_filtro_global "unix password sync" no; }
 
 # Conferência: a configuração em vigor depois = antes sem a linha do sync
 debkit_samba_conferir_sem_sync() {
@@ -1038,6 +1062,28 @@ debkit_acao_samba_sem_sync() {
 }
 
 debkit_desfazer_samba_sem_sync() { debkit_smbconf_restaurar; }
+
+# ── Preparação: login de usuário inexistente não vira convidado ─────────────
+# Decisão de 19/10/2026 (Fase 2): o smb.conf padrão do Debian tem "map to
+# guest = bad user" - quem entra com um nome que não existe (ex: um usuário
+# excluído) vira convidado (nobody) em vez de ser recusado. A preparação
+# muda para "never" (o padrão do Samba). O debkit não cria compartilhamento
+# para convidado (guest ok).
+debkit_descrever_samba_sem_convidado() { t prep.d_samba_sem_convidado "$DEBKIT_SMB_CONF"; }
+debkit_samba_filtro_sem_convidado() { debkit_samba_filtro_global "map to guest" never; }
+
+# Conferência: a configuração em vigor depois = antes sem a linha do "map
+# to guest" (o testparm não mostra o valor padrão, Never)
+debkit_samba_conferir_sem_convidado() {
+    cmp -s <(grep -v $'^\tmap to guest = ' "$1") "$2" && ! grep -q $'^\tmap to guest = ' "$2"
+}
+
+debkit_acao_samba_sem_convidado() {
+    debkit_smbconf_editar debkit_samba_filtro_sem_convidado debkit_samba_conferir_sem_convidado || return 1
+    [ "$(debkit_samba_param "map to guest")" == "Never" ]
+}
+
+debkit_desfazer_samba_sem_convidado() { debkit_smbconf_restaurar; }
 
 # ── smb.conf: backup e edição segura ────────────────────────────────────────
 # Backup do smb.conf em SMB_BACKUP_DIR (smb.conf.dd-mm-aaaa-hh-mm-ss, com a
