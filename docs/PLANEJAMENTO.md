@@ -520,6 +520,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | Verificar e corrigir contas (consistência) | `bef38c8` |
 | 2.0 map to guest = never (+ decisões da Fase 2) | `01658d6` |
 | 2.1 Compartilhamentos: criar e listar | `b976033` |
+| Compartilhamentos: um grupo só, com acesso total | `92ebf2f` |
 
 **Próximos passos:**
 
@@ -659,7 +660,10 @@ Com a consistência: 1474 + 154 (`t15_consistencia.sh` e
 `t15b_consistencia_real.sh`). Com a tarefa 2.0: 1505 + 162 (`t16_convidado.sh` e
 `t16b_convidado_real.sh`). Com a tarefa 2.1: 1651 + 194 (`t17_compartilhar.sh` e
 `t17b_compartilhar_real.sh`; pastas de teste em `/srv/dkt-teste.*`, que a
-impressão digital do `run.sh` confere). Os testes também acusam se alguém usar o debkit na VM enquanto rodam (o
+impressão digital do `run.sh` confere). Com um grupo só por
+compartilhamento: 1658 + 188 (sem os casos de somente leitura; o `t17` usa
+só as seções padrão da cópia do smb.conf, para os compartilhamentos de
+demonstração não interferirem). Os testes também acusam se alguém usar o debkit na VM enquanto rodam (o
 log e a trava reais mudam): não usar o debkit durante a suíte.
 
 Os testes funcionam com o servidor preparado ou não: em vez de exigir que
