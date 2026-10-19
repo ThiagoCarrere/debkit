@@ -531,9 +531,9 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
     vigor perde só essa linha). Prova real na VM: `--preparar` mudou uma
     única linha do smb.conf; `t07b` confirma a senha nova no Samba e no
     SSH e a antiga recusada.
-13. **Pendente (pedido do Thiago):** repaginar o README do GitHub - está
-    simples demais para o projeto (apresentação, destaques, telas/exemplos,
-    instalação, segurança, status). Não é urgente, mas precisa ser feito.
+13. ✔ README do GitHub repaginado (19/10/2026): apresentação, tabela dos
+    tipos de conta, destaques, telas com dados fictícios, o que já faz,
+    instalação para teste, qualidade (testes), roteiro e compatibilidade.
 14. ✔ Grupos (menu Samba, opção 6: listar, criar, membros, remover;
     decisões na seção 3.6). Prova real na VM (`t13b`): o grupo dá o acesso
     a um compartilhamento `valid users = @grupo`; entrar, sair e remover
@@ -552,7 +552,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 18. ✔ Consistência Linux x Samba (Samba → Usuários → 6; seção 3.4).
     **Fase 1 concluída.**
 19. **Próximo:** Fase 2 (compartilhamentos), começando pela decisão do
-    `map to guest` (item 17); o README (item 13) continua pendente.
+    `map to guest` (item 17).
 
 **VM limpa de novo:** `dev/vmnova.sh` → (reinicia) → `dev/vmprepara.sh` →
 `./debkit --preparar` → testes.
