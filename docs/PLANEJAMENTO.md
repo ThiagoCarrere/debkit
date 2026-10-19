@@ -170,6 +170,41 @@ Decisão de 16/10/2026:
 - **Consistência:** contas só no Linux ou só no Samba aparecem marcadas,
   com opção de corrigir (criar a senha Samba / limpar a conta Samba órfã).
 
+### 3.6 Grupos
+
+Decisão de 19/10/2026 (Thiago):
+
+- **Ao criar um usuário:** grupo pessoal (mesmo nome, grupo principal;
+  padrão do Debian com `USERGROUPS_ENAB yes` - ninguém entra no `users`),
+  `debkit_usuarios` só se for usuário de arquivos, e os grupos escolhidos.
+- **Nome do grupo:** as mesmas regras do login (3.5), recusando os nomes
+  reservados, o que já existe como grupo ou usuário e nomes começando por
+  `debkit`. O `groupadd` sozinho aceita `Dkt.G` (testado): quem controla o
+  nome é o debkit.
+- **Criar:** confere o nome, cria o grupo comum (GID na faixa do
+  `login.defs`), oferece colocar membros, resumo e UMA confirmação; confere
+  no fim o grupo e os membros (se algo falhar, desfaz).
+- **Grupos gerenciados:** só os comuns (GID na faixa), sem os grupos
+  pessoais, o `debkit_usuarios` (depende do tipo da conta: mexer nele
+  liberaria ou trancaria o SSH), os grupos de sistema (`sudo`, `users`...)
+  e os grupos citados no sudoers (`%grupo`, `%#gid`, também no
+  `sudoers.d`): entrar neles daria sudo. Também não cria grupo com nome já
+  citado no sudoers. (Achado na revisão da tarefa.)
+- **Entrar e sair:** tela por grupo (escolhe o grupo, vê os membros,
+  adiciona ou tira). Membros: os usuários comuns, inclusive admins. A lista
+  é trocada de uma vez (`gpasswd -M`, que recusa tudo se um nome não
+  existe) e conferida; se não conferir, volta a anterior. Quem está
+  conectado ao Samba só ganha/perde o acesso ao reconectar.
+- **Remover:** o `groupdel` apaga grupo com membros sem avisar e recusa o
+  grupo principal de um usuário (testado). O debkit:
+  - recusa se for o grupo principal de algum usuário;
+  - mostra os membros (perdem o acesso);
+  - **avisa** se o grupo é usado no `smb.conf` (mostra os compartilhamentos)
+    e se há arquivos do grupo na base das pastas pessoais e nos caminhos
+    dos compartilhamentos (mostra quantos: o GID pode ser reaproveitado por
+    um grupo novo, que herdaria o acesso);
+  - pede UMA confirmação digitando o nome do grupo.
+
 ## 4. O que o debkit gerencia
 
 Decisão de 15/10/2026 (substitui a regra anterior "só gerencia o que ele

@@ -4,10 +4,11 @@
 # ╚══════════════════════════════════════════════════════════════════════════╝
 #
 # Servidor de arquivos Samba (modo standalone, base de senhas tdbsam).
-# Nesta etapa: dependências, verificação e preparação do Samba, backups do
-# smb.conf (SMB_BACKUP_DIR, com rotação) e a edição segura do smb.conf
-# (debkit_smbconf_editar). Usuários, grupos e compartilhamentos vêm nas
-# próximas tarefas (ver docs/PLANEJAMENTO.md, seções 3, 4 e 6).
+# Dependências, verificação e preparação do Samba, backups do smb.conf
+# (SMB_BACKUP_DIR, com rotação), a edição segura do smb.conf
+# (debkit_smbconf_editar), usuários (criar, listar, trocar senha, pasta
+# pessoal) e grupos (criar, membros, remover). Compartilhamentos vêm na
+# Fase 2 (ver docs/PLANEJAMENTO.md, seções 3, 4 e 6).
 #
 # Carregado pelo programa debkit depois do núcleo (lib/nucleo.sh).
 #
@@ -409,6 +410,154 @@ MSG_en+=(
     [homes.aviso_depois]="For the folder to show up in Windows, adjust the [homes] share in \"Home folders\" in the Samba menu."
 )
 
+# shellcheck disable=SC2034  # catálogo do núcleo
+MSG_pt_BR+=(
+    [samba.grupos]="Grupos: criar, membros e remover"
+    [grp.titulo]="Grupos"
+    [grp.listar]="Listar grupos"
+    [grp.criar]="Criar grupo"
+    [grp.membros]="Membros: colocar ou tirar usuários"
+    [grp.remover]="Remover grupo"
+    [grp.titulo_listar]="Grupos do servidor"
+    [grp.titulo_criar]="Criar grupo"
+    [grp.titulo_membros]="Membros de um grupo"
+    [grp.titulo_remover]="Remover grupo"
+    [grp.titulo_grupos]="Grupos:"
+    [grp.titulo_usuarios]="Usuários:"
+    [grp.c_grupo]="Grupo"
+    [grp.c_membros]="Membros"
+    [grp.marca_principal]="(principal)"
+    [grp.usado_em]="usado no Samba: %s"
+    [grp.total]="%d grupo(s)."
+    [grp.nenhum]="Nenhum grupo comum no servidor."
+    [grp.sem_usuarios]="(nenhum usuário comum no servidor ainda)"
+    [grp.dica_nome]="Nome: letras minúsculas sem acento e números, começando por letra, com _ entre as partes (ex: gp_rh). Enter vazio cancela."
+    [grp.p_nome]="Nome do grupo: "
+    [grp.nome_vazio]="Informe o nome do grupo."
+    [grp.nome_formato]="Nome inválido: '%s'. Use letras minúsculas sem acento e números, começando por letra, com _ entre as partes (ex: gp_rh)."
+    [grp.nome_debkit]="'%s': nomes começando por \"debkit\" são reservados para os grupos do próprio debkit."
+    [grp.nome_existe]="Já existe um grupo '%s' no servidor."
+    [grp.nome_usuario_existe]="Já existe um usuário '%s' (o grupo pessoal dele tem esse nome)."
+    [grp.nome_sudoers]="'%s' é citado no sudoers: quem entrasse no grupo ganharia sudo. O debkit não cria esse grupo."
+    [grp.p_membros]="Membros (números separados por vírgula ou espaço; Enter para nenhum): "
+    [grp.r_grupo]="Grupo: %s"
+    [grp.r_membros]="Membros: %s"
+    [grp.r_outros]="Outros membros (de sistema; o debkit não mexe): %s"
+    [grp.r_principais]="Grupo principal de: %s (não podem sair)"
+    [grp.p_confirmar_criar]="Criar o grupo?"
+    [grp.criando]="Criando o grupo %s..."
+    [grp.criado]="Grupo %s criado."
+    [grp.falhou]="Não foi possível criar o grupo %s: %s"
+    [grp.desfazer_falhou]="ATENÇÃO: não foi possível apagar o grupo %s criado pela metade: confira à mão."
+    [grp.f_groupadd]="o groupadd falhou"
+    [grp.f_gid]="o GID %s criado está fora da faixa de grupos comuns"
+    [grp.f_membros]="não foi possível definir os membros"
+    [grp.nao_usuario_comum]="'%s' não é um usuário comum do servidor."
+    [grp.nao_gerenciado]="'%s' não é um grupo comum que o debkit gerencia."
+    [grp.nada_a_fazer]="Nenhum usuário para colocar ou tirar."
+    [grp.e_principal]="'%s' tem %s como grupo principal: não entra nem sai por aqui."
+    [grp.ja_membro]="'%s' já é membro de %s."
+    [grp.nao_membro]="'%s' não é membro de %s."
+    [grp.entrar_e_sair]="'%s' está para entrar e sair ao mesmo tempo."
+    [grp.p_grupo]="Grupo (número; Enter cancela): "
+    [grp.a_entrar]="Colocar usuários no grupo"
+    [grp.a_sair]="Tirar usuários do grupo"
+    [grp.p_acao]="Opção (Enter cancela): "
+    [grp.p_usuarios]="Usuários (números separados por vírgula ou espaço; Enter cancela): "
+    [grp.sem_candidatos_entrar]="Todos os usuários comuns já estão em %s."
+    [grp.sem_candidatos_sair]="%s não tem membros que possam sair."
+    [grp.p_confirmar_entrar]="Colocar %s no grupo %s?"
+    [grp.p_confirmar_sair]="Tirar %s do grupo %s?"
+    [grp.membros_ok]="Membros de %s atualizados."
+    [grp.membros_falhou]="Não foi possível mudar os membros de %s: a lista anterior foi mantida."
+    [grp.membros_desfazer_falhou]="ATENÇÃO: os membros de %s não ficaram como o esperado e a lista anterior não voltou: confira à mão."
+    [grp.reconectar]="Quem já está conectado ao Samba só ganha ou perde o acesso ao reconectar (sair e entrar de novo no Windows)."
+    [grp.remover_principal]="%s é o grupo principal de: %s. O debkit não remove esse grupo."
+    [grp.aviso_membros]="%d membro(s) perdem o acesso dado por este grupo: %s"
+    [grp.sem_membros]="O grupo não tem membros."
+    [grp.aviso_usos]="O grupo é usado no %s, nos compartilhamentos: %s- essas regras passarão a apontar para um grupo que não existe."
+    [grp.procurando]="Procurando arquivos do grupo (GID %s) na base das pastas pessoais e nos compartilhamentos..."
+    [grp.aviso_arquivos]="%d arquivo(s)/pasta(s) pertencem ao grupo. Eles ficam com o número %s e um grupo criado depois pode receber o mesmo número e herdar o acesso."
+    [grp.aviso_arquivos_muitos]="%d arquivo(s)/pasta(s) ou mais pertencem ao grupo. Eles ficam com o número %s e um grupo criado depois pode receber o mesmo número e herdar o acesso."
+    [grp.sem_arquivos]="Nenhum arquivo do grupo encontrado na base das pastas pessoais nem nos compartilhamentos."
+    [grp.p_confirmar_remover]="Para remover, digite o nome do grupo (%s); Enter cancela: "
+    [grp.removido]="Grupo %s removido."
+    [grp.remover_falhou]="Não foi possível remover o grupo %s."
+)
+# shellcheck disable=SC2034  # catálogo do núcleo
+MSG_en+=(
+    [samba.grupos]="Groups: create, members and remove"
+    [grp.titulo]="Groups"
+    [grp.listar]="List groups"
+    [grp.criar]="Create group"
+    [grp.membros]="Members: add or remove users"
+    [grp.remover]="Remove group"
+    [grp.titulo_listar]="Server groups"
+    [grp.titulo_criar]="Create group"
+    [grp.titulo_membros]="Group members"
+    [grp.titulo_remover]="Remove group"
+    [grp.titulo_grupos]="Groups:"
+    [grp.titulo_usuarios]="Users:"
+    [grp.c_grupo]="Group"
+    [grp.c_membros]="Members"
+    [grp.marca_principal]="(primary)"
+    [grp.usado_em]="used in Samba: %s"
+    [grp.total]="%d group(s)."
+    [grp.nenhum]="No regular groups on the server."
+    [grp.sem_usuarios]="(no regular users on the server yet)"
+    [grp.dica_nome]="Name: lowercase letters without accents and digits, starting with a letter, with _ between parts (e.g. gp_hr). Empty Enter cancels."
+    [grp.p_nome]="Group name: "
+    [grp.nome_vazio]="Enter the group name."
+    [grp.nome_formato]="Invalid name: '%s'. Use lowercase letters without accents and digits, starting with a letter, with _ between parts (e.g. gp_hr)."
+    [grp.nome_debkit]="'%s': names starting with \"debkit\" are reserved for debkit's own groups."
+    [grp.nome_existe]="A group '%s' already exists on the server."
+    [grp.nome_usuario_existe]="A user '%s' already exists (their personal group has that name)."
+    [grp.nome_sudoers]="'%s' is referenced in sudoers: anyone joining the group would get sudo. debkit does not create this group."
+    [grp.p_membros]="Members (numbers separated by commas or spaces; Enter for none): "
+    [grp.r_grupo]="Group: %s"
+    [grp.r_membros]="Members: %s"
+    [grp.r_outros]="Other members (system; debkit does not touch them): %s"
+    [grp.r_principais]="Primary group of: %s (cannot leave)"
+    [grp.p_confirmar_criar]="Create the group?"
+    [grp.criando]="Creating group %s..."
+    [grp.criado]="Group %s created."
+    [grp.falhou]="Could not create group %s: %s"
+    [grp.desfazer_falhou]="WARNING: could not delete the half-created group %s: check it by hand."
+    [grp.f_groupadd]="groupadd failed"
+    [grp.f_gid]="the created GID %s is outside the regular group range"
+    [grp.f_membros]="could not set the members"
+    [grp.nao_usuario_comum]="'%s' is not a regular user on the server."
+    [grp.nao_gerenciado]="'%s' is not a regular group managed by debkit."
+    [grp.nada_a_fazer]="No users to add or remove."
+    [grp.e_principal]="'%s' has %s as primary group: cannot join or leave here."
+    [grp.ja_membro]="'%s' is already a member of %s."
+    [grp.nao_membro]="'%s' is not a member of %s."
+    [grp.entrar_e_sair]="'%s' is set to join and leave at the same time."
+    [grp.p_grupo]="Group (number; Enter cancels): "
+    [grp.a_entrar]="Add users to the group"
+    [grp.a_sair]="Remove users from the group"
+    [grp.p_acao]="Option (Enter cancels): "
+    [grp.p_usuarios]="Users (numbers separated by commas or spaces; Enter cancels): "
+    [grp.sem_candidatos_entrar]="All regular users are already in %s."
+    [grp.sem_candidatos_sair]="%s has no members that can leave."
+    [grp.p_confirmar_entrar]="Add %s to group %s?"
+    [grp.p_confirmar_sair]="Remove %s from group %s?"
+    [grp.membros_ok]="Members of %s updated."
+    [grp.membros_falhou]="Could not change the members of %s: the previous list was kept."
+    [grp.membros_desfazer_falhou]="WARNING: the members of %s are not as expected and the previous list did not come back: check it by hand."
+    [grp.reconectar]="Users already connected to Samba only gain or lose access after reconnecting (sign out and in again on Windows)."
+    [grp.remover_principal]="%s is the primary group of: %s. debkit does not remove this group."
+    [grp.aviso_membros]="%d member(s) lose the access given by this group: %s"
+    [grp.sem_membros]="The group has no members."
+    [grp.aviso_usos]="The group is used in %s, in the shares: %s- those rules will point to a group that does not exist."
+    [grp.procurando]="Looking for files of the group (GID %s) in the home folder base and in the shares..."
+    [grp.aviso_arquivos]="%d file(s)/folder(s) belong to the group. They keep the number %s, and a group created later may get the same number and inherit the access."
+    [grp.aviso_arquivos_muitos]="%d or more file(s)/folder(s) belong to the group. They keep the number %s, and a group created later may get the same number and inherit the access."
+    [grp.sem_arquivos]="No files of the group found in the home folder base or in the shares."
+    [grp.p_confirmar_remover]="To remove, type the group name (%s); Enter cancels: "
+    [grp.removido]="Group %s removed."
+    [grp.remover_falhou]="Could not remove group %s."
+)
 # ── Dependências (comando | tipo | pacote no Debian; ver núcleo) ───────────
 DEBKIT_DEPENDENCIAS+=(
     "smbd|essencial|samba"
@@ -907,19 +1056,32 @@ debkit_usuario_sugerir() {
 
 # Grupos comuns que podem receber usuários (um por linha, em ordem): GID na
 # faixa do login.defs, sem os grupos pessoais (mesmo nome de um usuário
-# que o tem como grupo principal) e sem o grupo de proteção do debkit
+# que o tem como grupo principal), sem o grupo de proteção do debkit e sem
+# os grupos citados no sudoers (entrar neles daria sudo)
 debkit_samba_grupos_comuns() {
     local nome gid
-    local -A pessoal=()
+    local -A pessoal=() sudoers=()
     while IFS=: read -r nome _ _ gid _; do
         pessoal["$nome:$gid"]=1
     done < <(getent passwd)
+    while read -r nome; do sudoers["$nome"]=1; done < <(debkit_grupos_sudoers)
     while IFS=: read -r nome _ gid _; do
         debkit_gid_comum "$gid" || continue
         [ -n "${pessoal["$nome:$gid"]+x}" ] && continue
         [ "$nome" == "$DEBKIT_GRUPO_USUARIOS" ] && continue
+        [ -n "${sudoers[$nome]+x}" ] || [ -n "${sudoers[#$gid]+x}" ] && continue
         echo "$nome"
     done < <(getent group) | sort -u
+}
+
+# Grupos citados no sudoers e no sudoers.d ("%grupo" e "%#gid"; um por
+# linha: "grupo" ou "#gid"). Lê com folga: na dúvida, o grupo fica de fora.
+DEBKIT_ARQ_SUDOERS="${DEBKIT_ARQ_SUDOERS:-/etc/sudoers}"
+DEBKIT_DIR_SUDOERS_D="${DEBKIT_DIR_SUDOERS_D:-/etc/sudoers.d}"
+debkit_grupos_sudoers() {
+    cat -- "$DEBKIT_ARQ_SUDOERS" "$DEBKIT_DIR_SUDOERS_D"/* 2>/dev/null \
+        | grep -vE '^[[:space:]]*#([^i#]|$)' \
+        | grep -oE '%:?#?[^][:space:],:=()!%"\\]+' | sed 's/^%:\{0,1\}//' | sort -u
 }
 
 # Shell sem login (Debian: /usr/sbin/nologin)
@@ -1588,6 +1750,235 @@ debkit_samba_tela_trocar_senha() {
     return "$rc"
 }
 
+# ── Grupos: regras e consultas ──────────────────────────────────────────────
+# Decisão de 19/10/2026 (planejamento, 3.6). Nome do grupo: as regras do
+# login, sem os reservados, sem o que já existe (grupo ou usuário) e sem
+# nomes começando por "debkit" (grupos do próprio debkit).
+DEBKIT_GRP_RESERVADOS=(users sudo adm staff wheel admins sambashare)
+
+# Imprime o problema do nome do grupo novo (mensagem) e retorna 1; 0 = livre e válido
+debkit_grupo_nome_problema() {
+    local nome="$1" r
+    if [ -z "$nome" ]; then t grp.nome_vazio; return 1; fi
+    if [ "${#nome}" -lt 2 ] || [ "${#nome}" -gt 32 ]; then t usr.nome_tamanho "$nome" "${#nome}"; return 1; fi
+    local l="$DEBKIT_MINUSCULAS" ld="$DEBKIT_MINUSCULAS$DEBKIT_DIGITOS"   # sem intervalos: ver núcleo
+    if [[ ! "$nome" =~ ^[$l][$ld]*(_[$ld]+)*$ ]]; then t grp.nome_formato "$nome"; return 1; fi
+    for r in "${DEBKIT_USR_RESERVADOS[@]}" "${DEBKIT_GRP_RESERVADOS[@]}"; do
+        if [ "$nome" == "$r" ]; then t usr.nome_reservado "$nome"; return 1; fi
+    done
+    if [[ "$nome" == debkit* ]]; then t grp.nome_debkit "$nome"; return 1; fi
+    if getent group "$nome" >/dev/null 2>&1; then t grp.nome_existe "$nome"; return 1; fi
+    if getent passwd "$nome" >/dev/null 2>&1; then t grp.nome_usuario_existe "$nome"; return 1; fi
+    if debkit_grupos_sudoers | grep -qxF -- "$nome"; then t grp.nome_sudoers "$nome"; return 1; fi
+    return 0
+}
+
+# O grupo é um dos que o debkit gerencia? (comum, sem os pessoais e o de proteção)
+debkit_grupo_gerenciado() { [ -n "$1" ] && debkit_samba_grupos_comuns | grep -qxF -- "$1"; }
+
+# Membros listados no grupo (os "suplementares"; um por linha, em ordem)
+debkit_grupo_membros() {
+    getent group "$1" | cut -d: -f4 | tr ',' '\n' | sed '/^$/d' | sort
+}
+
+# Usuários que têm o grupo como grupo principal (um por linha, em ordem)
+debkit_grupo_principais() {
+    local gid
+    gid=$(getent group "$1" | cut -d: -f3)
+    [ -n "$gid" ] || return 0
+    getent passwd | awk -F: -v g="$gid" '$4 == g {print $1}' | sort
+}
+
+# Usuários comuns (UID na faixa do login.defs; um por linha, em ordem)
+debkit_samba_usuarios_comuns() {
+    local nome uid
+    while IFS=: read -r nome _ uid _; do
+        debkit_uid_comum "$uid" && echo "$nome"
+    done < <(getent passwd) | sort -u
+}
+
+# Compartilhamentos do smb.conf que usam o grupo (um por linha): "@g", "+g",
+# "&g" em valid/invalid users, read/write list e admin users, e force group
+debkit_samba_grupo_usos() {
+    testparm -s "$DEBKIT_SMB_CONF" 2>/dev/null | awk -v g="$1" '
+        /^\[/ { sec = substr($0, 2, length($0) - 2); next }
+        {
+            linha = $0; sub(/^[ \t]+/, "", linha)
+            p = linha; sub(/[ \t]*=.*/, "", p); p = tolower(p)
+            v = linha; if (!sub(/^[^=]*=[ \t]*/, "", v)) next
+            if (p == "force group") {
+                sub(/^\+/, "", v); if (v == g) usa[sec] = 1
+            } else if (p ~ /^(valid users|invalid users|read list|write list|admin users)$/) {
+                n = split(v, tok, /[ ,]+/)
+                for (i = 1; i <= n; i++) {
+                    x = tok[i]; gsub(/"/, "", x)
+                    if (x ~ /^[@+&]/) { sub(/^[@+&]+/, "", x); if (x == g) usa[sec] = 1 }
+                }
+            }
+        }
+        END { for (s in usa) print s }' | sort
+}
+
+# Pastas onde procurar arquivos de um grupo: a base das pastas pessoais e os
+# caminhos dos compartilhamentos (sem variáveis como %U), sem repetir pasta
+# que já está dentro de outra da lista
+debkit_samba_pastas_dados() {
+    local p q dentro
+    local -a todas=()
+    mapfile -t todas < <({
+        [ -n "$DEBKIT_HOMES_BASE" ] && echo "$DEBKIT_HOMES_BASE"
+        testparm -s "$DEBKIT_SMB_CONF" 2>/dev/null | awk '
+            /^\[/ { sec = tolower(substr($0, 2, length($0) - 2)); next }
+            sec != "global" && sec != "homes" && sec != "printers" && sec != "print$" && $1 == "path" && $2 == "=" {
+                v = $0; sub(/^[^=]*=[ \t]*/, "", v); if (v !~ /%/) print v }'
+    } | sed 's:/*$::; /^$/d' | sort -u)
+    for p in "${todas[@]}"; do
+        if [ ! -d "$p" ] || [ -L "$p" ]; then continue; fi
+        dentro=0
+        for q in "${todas[@]}"; do
+            [ "$q" != "$p" ] && [[ "$p" == "$q"/* ]] && dentro=1
+        done
+        [ "$dentro" -eq 0 ] && echo "$p"
+    done
+}
+
+DEBKIT_GRP_ARQUIVOS_MAX=1000
+# Conta (até GRP_ARQUIVOS_MAX) os arquivos e pastas com o GID <gid> nas
+# pastas de dados. Imprime o número.
+debkit_grupo_contar_arquivos() {
+    local gid="$1" p
+    local -a pastas=()
+    mapfile -t pastas < <(debkit_samba_pastas_dados)
+    for p in "${pastas[@]}"; do
+        find "$p" -xdev -group "$gid" -printf '.\n' 2>/dev/null
+    done | head -n "$DEBKIT_GRP_ARQUIVOS_MAX" | wc -l
+}
+
+# ── Grupos: criar ───────────────────────────────────────────────────────────
+# Entrada: DEBKIT_G_NOME e DEBKIT_G_MEMBROS (array de usuários comuns).
+# Tudo ou nada: cria o grupo comum (groupadd, GID da faixa do login.defs),
+# define os membros de uma vez (gpasswd -M), confere e, se algo falhar,
+# apaga o grupo que criou.
+debkit_grupo_criar() {
+    local nome="$DEBKIT_G_NOME" gid u motivo="" esperado
+    local -a membros=()
+    DEBKIT_G_FEITO=0
+    if ! motivo=$(debkit_grupo_nome_problema "$nome"); then
+        msg_erro "$(t grp.falhou "$nome" "$motivo")"; return 1
+    fi
+    for u in "${DEBKIT_G_MEMBROS[@]}"; do
+        if ! debkit_samba_usuarios_comuns | grep -qxF -- "$u"; then
+            msg_erro "$(t grp.falhou "$nome" "$(t grp.nao_usuario_comum "$u")")"; return 1
+        fi
+        [[ " ${membros[*]} " == *" $u "* ]] || membros+=("$u")
+    done
+    [ ${#membros[@]} -gt 0 ] && mapfile -t membros < <(printf '%s\n' "${membros[@]}" | sort)
+    msg_info "$(t grp.criando "$nome")"
+    if ! groupadd -- "$nome" >/dev/null 2>&1; then
+        debkit_grupo_falhou "$(t grp.f_groupadd)"; return 1
+    fi
+    DEBKIT_G_FEITO=1
+    gid=$(getent group "$nome" | cut -d: -f3)
+    if ! debkit_gid_comum "$gid"; then
+        debkit_grupo_falhou "$(t grp.f_gid "$gid")"; return 1
+    fi
+    if [ ${#membros[@]} -gt 0 ] && ! gpasswd -M "$(IFS=,; echo "${membros[*]}")" -- "$nome" >/dev/null 2>&1; then
+        debkit_grupo_falhou "$(t grp.f_membros)"; return 1
+    fi
+    # Conferência final (resultado real)
+    esperado=$(printf '%s\n' "${membros[@]}" | sed '/^$/d' | sort)
+    [ "$(debkit_grupo_membros "$nome")" == "$esperado" ] || motivo="membros"
+    debkit_grupo_gerenciado "$nome" || motivo="grupo comum"
+    if [ -n "$motivo" ]; then
+        debkit_grupo_falhou "$(t usr.f_conferencia "$motivo")"; return 1
+    fi
+    debkit_auditar grupo_criar "nome=$nome gid=$gid membros=$(IFS=,; echo "${membros[*]}") resultado=ok"
+    msg_ok "$(t grp.criado "$nome")"
+}
+
+# Falha no meio da criação: informa, apaga o grupo que foi criado e audita
+debkit_grupo_falhou() {
+    local nome="$DEBKIT_G_NOME"
+    msg_erro "$(t grp.falhou "$nome" "$1")"
+    debkit_auditar grupo_criar "nome=$nome resultado=falha motivo=$1"
+    [ "$DEBKIT_G_FEITO" -eq 1 ] || return 0
+    groupdel -- "$nome" >/dev/null 2>&1
+    if getent group "$nome" >/dev/null 2>&1; then
+        msg_erro "$(t grp.desfazer_falhou "$nome")"
+    else
+        DEBKIT_G_FEITO=0
+        msg_info "$(t usr.desfeito)"
+        debkit_auditar grupo_criar "nome=$nome resultado=desfeito"
+    fi
+}
+
+# ── Grupos: entrar e sair ───────────────────────────────────────────────────
+# debkit_grupo_alterar_membros <grupo>; entrada: DEBKIT_G_ENTRAR e
+# DEBKIT_G_SAIR (arrays de usuários comuns). Troca a lista de uma vez
+# (gpasswd -M), mantendo os outros membros; confere e, se não conferir,
+# volta a lista anterior.
+debkit_grupo_alterar_membros() {
+    local grupo="$1" u antes depois esperado
+    local -a atuais=() novos=() principais=()
+    if ! debkit_grupo_gerenciado "$grupo"; then msg_erro "$(t grp.nao_gerenciado "$grupo")"; return 1; fi
+    if [ $((${#DEBKIT_G_ENTRAR[@]} + ${#DEBKIT_G_SAIR[@]})) -eq 0 ]; then msg_erro "$(t grp.nada_a_fazer)"; return 1; fi
+    mapfile -t atuais < <(getent group "$grupo" | cut -d: -f4 | tr ',' '\n' | sed '/^$/d')   # na ordem do arquivo
+    mapfile -t principais < <(debkit_grupo_principais "$grupo")
+    for u in "${DEBKIT_G_ENTRAR[@]}" "${DEBKIT_G_SAIR[@]}"; do
+        if ! debkit_samba_usuarios_comuns | grep -qxF -- "$u"; then msg_erro "$(t grp.nao_usuario_comum "$u")"; return 1; fi
+        if [[ " ${principais[*]} " == *" $u "* ]]; then msg_erro "$(t grp.e_principal "$u" "$grupo")"; return 1; fi
+    done
+    for u in "${DEBKIT_G_ENTRAR[@]}"; do
+        if [[ " ${atuais[*]} " == *" $u "* ]]; then msg_erro "$(t grp.ja_membro "$u" "$grupo")"; return 1; fi
+        if [[ " ${DEBKIT_G_SAIR[*]} " == *" $u "* ]]; then msg_erro "$(t grp.entrar_e_sair "$u")"; return 1; fi
+    done
+    for u in "${DEBKIT_G_SAIR[@]}"; do
+        if [[ " ${atuais[*]} " != *" $u "* ]]; then msg_erro "$(t grp.nao_membro "$u" "$grupo")"; return 1; fi
+    done
+    for u in "${atuais[@]}"; do
+        [[ " ${DEBKIT_G_SAIR[*]} " == *" $u "* ]] || novos+=("$u")
+    done
+    for u in "${DEBKIT_G_ENTRAR[@]}"; do
+        [[ " ${novos[*]} " == *" $u "* ]] || novos+=("$u")
+    done
+    antes=$(IFS=,; echo "${atuais[*]}")
+    depois=$(IFS=,; echo "${novos[*]}")
+    esperado=$(printf '%s\n' "${novos[@]}" | sed '/^$/d' | sort)
+    if ! gpasswd -M "$depois" -- "$grupo" >/dev/null 2>&1 || [ "$(debkit_grupo_membros "$grupo")" != "$esperado" ]; then
+        gpasswd -M "$antes" -- "$grupo" >/dev/null 2>&1
+        if [ "$(debkit_grupo_membros "$grupo")" == "$(printf '%s\n' "${atuais[@]}" | sed '/^$/d' | sort)" ]; then
+            msg_erro "$(t grp.membros_falhou "$grupo")"
+        else
+            msg_erro "$(t grp.membros_desfazer_falhou "$grupo")"
+        fi
+        debkit_auditar grupo_membros "grupo=$grupo resultado=falha"
+        return 1
+    fi
+    debkit_auditar grupo_membros "grupo=$grupo entraram=$(IFS=,; echo "${DEBKIT_G_ENTRAR[*]}") sairam=$(IFS=,; echo "${DEBKIT_G_SAIR[*]}") resultado=ok"
+    msg_ok "$(t grp.membros_ok "$grupo")"
+    msg_info "$(t grp.reconectar)"
+}
+
+# ── Grupos: remover ─────────────────────────────────────────────────────────
+# debkit_grupo_remover <grupo>: só grupo gerenciado e que não é o grupo
+# principal de ninguém. Os avisos (membros, smb.conf, arquivos) e a
+# confirmação ficam na tela.
+debkit_grupo_remover() {
+    local grupo="$1" gid principais membros
+    if ! debkit_grupo_gerenciado "$grupo"; then msg_erro "$(t grp.nao_gerenciado "$grupo")"; return 1; fi
+    principais=$(debkit_grupo_principais "$grupo" | paste -sd, | sed 's/,/, /g')
+    if [ -n "$principais" ]; then msg_erro "$(t grp.remover_principal "$grupo" "$principais")"; return 1; fi
+    gid=$(getent group "$grupo" | cut -d: -f3)
+    membros=$(debkit_grupo_membros "$grupo" | paste -sd,)
+    if ! groupdel -- "$grupo" >/dev/null 2>&1 || getent group "$grupo" >/dev/null 2>&1; then
+        msg_erro "$(t grp.remover_falhou "$grupo")"
+        debkit_auditar grupo_remover "nome=$grupo resultado=falha"
+        return 1
+    fi
+    debkit_auditar grupo_remover "nome=$grupo gid=$gid membros=$membros resultado=ok"
+    msg_ok "$(t grp.removido "$grupo")"
+}
+
 # ── Usuários: tela ──────────────────────────────────────────────────────────
 # Lê uma linha para a variável indicada; fim da entrada = cancelar (retorna 1)
 debkit_ler() {
@@ -1781,6 +2172,248 @@ debkit_samba_tela_pastas_pessoais() {
     pausar
 }
 
+# ── Grupos: telas ───────────────────────────────────────────────────────────
+# Escolhe UM item numerado: debkit_escolher_um <variável> <prompt> <itens...>.
+# Retorna 1 se cancelar (Enter vazio ou fim da entrada).
+debkit_escolher_um() {
+    local -n _item="$1"
+    local prompt="$2" escolha
+    shift 2
+    local -a _lista=("$@")
+    while true; do
+        debkit_ler escolha "$prompt" || return 1
+        [ -z "$escolha" ] && return 1
+        if [[ "$escolha" =~ ^[0-9]+$ ]] && [ "$((10#$escolha))" -ge 1 ] && [ "$((10#$escolha))" -le $# ]; then
+            _item="${_lista[$((10#$escolha - 1))]}"; return 0
+        fi
+        msg_erro "$(t geral.opcao_invalida "$escolha")"
+    done
+}
+
+# Escolhe VÁRIOS itens numerados (vírgula ou espaço; Enter = nenhum):
+# debkit_escolher_varios <array> <prompt> <itens...>. Retorna 1 no fim da entrada.
+debkit_escolher_varios() {
+    local -n _itens="$1"
+    local prompt="$2" escolha n problema
+    local -a _partes=()
+    shift 2
+    local -a _lista=("$@")
+    while true; do
+        debkit_ler escolha "$prompt" || return 1
+        _itens=(); problema=""
+        read -ra _partes <<< "${escolha//,/ }"      # sem expandir * e ? digitados
+        for n in "${_partes[@]}"; do
+            if [[ "$n" =~ ^[0-9]+$ ]] && [ "$((10#$n))" -ge 1 ] && [ "$((10#$n))" -le $# ]; then
+                n="${_lista[$((10#$n - 1))]}"
+                [[ " ${_itens[*]} " == *" $n "* ]] || _itens+=("$n")
+            else
+                problema="$n"; break
+            fi
+        done
+        [ -z "$problema" ] && return 0
+        msg_erro "$(t usr.grupos_invalido "$problema")"
+    done
+}
+
+# Lista numerada (4 espaços de recuo)
+debkit_numerar() { local i=0 x; for x in "$@"; do i=$((i + 1)); echo "    $i) $x"; done; }
+
+# Junta com ", " (ou "(nenhum)")
+debkit_juntar() { if [ $# -eq 0 ]; then t usr.r_nenhum; else local IFS=,; local s="$*"; printf '%s' "${s//,/, }"; fi; }
+
+# Mostra a tabela de grupos: nome, GID, membros e compartilhamentos que usam
+debkit_samba_listar_grupos() {
+    local g gid membros principais usos wg=5
+    local -a grupos=()
+    mapfile -t grupos < <(debkit_samba_grupos_comuns)
+    if [ ${#grupos[@]} -eq 0 ]; then msg_info "$(t grp.nenhum)"; return 0; fi
+    for g in "${grupos[@]}"; do [ "${#g}" -gt "$wg" ] && wg=${#g}; done
+    printf '  %s%s  %s  %s%s\n' "$C_NEGRITO" "$(debkit_pad "$(t grp.c_grupo)" "$wg")" "$(debkit_pad GID 6)" "$(t grp.c_membros)" "$C_RESET"
+    for g in "${grupos[@]}"; do
+        gid=$(getent group "$g" | cut -d: -f3)
+        membros=$(debkit_grupo_membros "$g" | paste -sd, | sed 's/,/, /g')
+        principais=$(debkit_grupo_principais "$g" | sed "s/\$/ $(t grp.marca_principal)/" | paste -sd, | sed 's/,/, /g')
+        [ -n "$principais" ] && membros="${membros:+$membros, }$principais"
+        printf '  %s  %s  %s\n' "$(debkit_pad "$g" "$wg")" "$(debkit_pad "$gid" 6)" "${membros:-—}"
+        usos=$(debkit_samba_grupo_usos "$g" | sed 's/.*/[&]/' | paste -sd' ')
+        [ -n "$usos" ] && printf '  %s  %s  %s%s%s\n' "$(debkit_pad "" "$wg")" "$(debkit_pad "" 6)" "$C_CINZA" "$(t grp.usado_em "$usos")" "$C_RESET"
+    done
+    echo ""
+    echo "  $(t grp.total "${#grupos[@]}")"
+}
+
+debkit_samba_tela_listar_grupos() {
+    titulo "$(t grp.titulo_listar)"
+    debkit_samba_listar_grupos
+    pausar
+}
+
+# Tela: nome, membros, resumo e UMA confirmação
+debkit_samba_tela_criar_grupo() {
+    local nome problema rc
+    local -a usuarios=() escolhidos=()
+    titulo "$(t grp.titulo_criar)"
+    if ! debkit_samba_ambiente_pronto; then msg_erro "$(t usr.ambiente_nao_pronto)"; pausar; return 1; fi
+    msg_info "$(t grp.dica_nome)"
+    while true; do
+        debkit_ler nome "$(t grp.p_nome)" || { msg_aviso "$(t usr.cancelado)"; return 1; }
+        [ -z "$nome" ] && { msg_aviso "$(t usr.cancelado)"; return 1; }
+        problema=$(debkit_grupo_nome_problema "$nome") && break
+        msg_erro "$problema"
+    done
+    mapfile -t usuarios < <(debkit_samba_usuarios_comuns)
+    echo ""
+    echo "  $(t grp.titulo_usuarios)"
+    if [ ${#usuarios[@]} -eq 0 ]; then
+        echo "    $(t grp.sem_usuarios)"
+    else
+        debkit_numerar "${usuarios[@]}"
+        debkit_escolher_varios escolhidos "$(t grp.p_membros)" "${usuarios[@]}" || { msg_aviso "$(t usr.cancelado)"; return 1; }
+    fi
+    echo ""
+    echo "  $(t usr.titulo_resumo)"
+    echo "    $(t grp.r_grupo "$nome")"
+    echo "    $(t grp.r_membros "$(debkit_juntar "${escolhidos[@]}")")"
+    echo ""
+    if ! confirmar "$(t grp.p_confirmar_criar)"; then msg_aviso "$(t usr.cancelado)"; pausar; return 1; fi
+    DEBKIT_G_NOME="$nome"; DEBKIT_G_MEMBROS=("${escolhidos[@]}")
+    debkit_grupo_criar; rc=$?
+    pausar
+    return "$rc"
+}
+
+# Tela: escolhe o grupo, mostra os membros e adiciona ou tira
+debkit_samba_tela_membros() {
+    local grupo acao u rc
+    local -a grupos=() atuais=() principais=() candidatos=() escolhidos=() outros=()
+    titulo "$(t grp.titulo_membros)"
+    if ! debkit_samba_ambiente_pronto; then msg_erro "$(t usr.ambiente_nao_pronto)"; pausar; return 1; fi
+    mapfile -t grupos < <(debkit_samba_grupos_comuns)
+    if [ ${#grupos[@]} -eq 0 ]; then msg_info "$(t grp.nenhum)"; pausar; return 0; fi
+    echo "  $(t grp.titulo_grupos)"
+    debkit_numerar "${grupos[@]}"
+    debkit_escolher_um grupo "$(t grp.p_grupo)" "${grupos[@]}" || { msg_aviso "$(t usr.cancelado)"; return 1; }
+    mapfile -t principais < <(debkit_grupo_principais "$grupo")
+    # Membros comuns (podem sair) e outros membros (de sistema: o debkit não mexe)
+    while read -r u; do
+        [ -n "$u" ] || continue
+        if debkit_samba_usuarios_comuns | grep -qxF -- "$u"; then atuais+=("$u"); else outros+=("$u"); fi
+    done < <(debkit_grupo_membros "$grupo")
+    echo ""
+    echo "  $(t grp.r_membros "$(debkit_juntar "${atuais[@]}")")"
+    [ ${#outros[@]} -gt 0 ] && echo "  $(t grp.r_outros "$(debkit_juntar "${outros[@]}")")"
+    [ ${#principais[@]} -gt 0 ] && echo "  $(t grp.r_principais "$(debkit_juntar "${principais[@]}")")"
+    echo ""
+    echo "    1) $(t grp.a_entrar)"
+    echo "    2) $(t grp.a_sair)"
+    while true; do
+        debkit_ler acao "$(t grp.p_acao)" || { msg_aviso "$(t usr.cancelado)"; return 1; }
+        case "$acao" in
+            "") msg_aviso "$(t usr.cancelado)"; return 1 ;;
+            1|2) break ;;
+            *) msg_erro "$(t geral.opcao_invalida "$acao")" ;;
+        esac
+    done
+    DEBKIT_G_ENTRAR=(); DEBKIT_G_SAIR=()
+    if [ "$acao" == 1 ]; then
+        while read -r u; do
+            [[ " ${atuais[*]} ${principais[*]} " == *" $u "* ]] || candidatos+=("$u")
+        done < <(debkit_samba_usuarios_comuns)
+    else
+        candidatos=("${atuais[@]}")
+    fi
+    echo ""
+    if [ ${#candidatos[@]} -eq 0 ]; then
+        if [ "$acao" == 1 ]; then msg_info "$(t grp.sem_candidatos_entrar "$grupo")"; else msg_info "$(t grp.sem_candidatos_sair "$grupo")"; fi
+        pausar; return 0
+    fi
+    echo "  $(t grp.titulo_usuarios)"
+    debkit_numerar "${candidatos[@]}"
+    debkit_escolher_varios escolhidos "$(t grp.p_usuarios)" "${candidatos[@]}" || { msg_aviso "$(t usr.cancelado)"; return 1; }
+    if [ ${#escolhidos[@]} -eq 0 ]; then msg_aviso "$(t usr.cancelado)"; pausar; return 1; fi
+    echo ""
+    if [ "$acao" == 1 ]; then
+        DEBKIT_G_ENTRAR=("${escolhidos[@]}")
+        confirmar "$(t grp.p_confirmar_entrar "$(debkit_juntar "${escolhidos[@]}")" "$grupo")" || { msg_aviso "$(t usr.cancelado)"; pausar; return 1; }
+    else
+        DEBKIT_G_SAIR=("${escolhidos[@]}")
+        confirmar "$(t grp.p_confirmar_sair "$(debkit_juntar "${escolhidos[@]}")" "$grupo")" || { msg_aviso "$(t usr.cancelado)"; pausar; return 1; }
+    fi
+    debkit_grupo_alterar_membros "$grupo"; rc=$?
+    pausar
+    return "$rc"
+}
+
+# Tela: escolhe o grupo, mostra o que será perdido (membros, smb.conf,
+# arquivos) e pede UMA confirmação digitando o nome do grupo
+debkit_samba_tela_remover_grupo() {
+    local grupo gid n resp rc
+    local -a grupos=() membros=() usos=() principais=()
+    titulo "$(t grp.titulo_remover)"
+    if ! debkit_samba_ambiente_pronto; then msg_erro "$(t usr.ambiente_nao_pronto)"; pausar; return 1; fi
+    mapfile -t grupos < <(debkit_samba_grupos_comuns)
+    if [ ${#grupos[@]} -eq 0 ]; then msg_info "$(t grp.nenhum)"; pausar; return 0; fi
+    echo "  $(t grp.titulo_grupos)"
+    debkit_numerar "${grupos[@]}"
+    debkit_escolher_um grupo "$(t grp.p_grupo)" "${grupos[@]}" || { msg_aviso "$(t usr.cancelado)"; return 1; }
+    echo ""
+    mapfile -t principais < <(debkit_grupo_principais "$grupo")
+    if [ ${#principais[@]} -gt 0 ]; then
+        msg_erro "$(t grp.remover_principal "$grupo" "$(debkit_juntar "${principais[@]}")")"; pausar; return 1
+    fi
+    mapfile -t membros < <(debkit_grupo_membros "$grupo")
+    mapfile -t usos < <(debkit_samba_grupo_usos "$grupo")
+    gid=$(getent group "$grupo" | cut -d: -f3)
+    if [ ${#membros[@]} -gt 0 ]; then
+        msg_aviso "$(t grp.aviso_membros "${#membros[@]}" "$(debkit_juntar "${membros[@]}")")"
+    else
+        msg_info "$(t grp.sem_membros)"
+    fi
+    if [ ${#usos[@]} -gt 0 ]; then
+        msg_aviso "$(t grp.aviso_usos "$DEBKIT_SMB_CONF" "$(printf '[%s] ' "${usos[@]}")")"
+    fi
+    msg_info "$(t grp.procurando "$gid")"
+    n=$(debkit_grupo_contar_arquivos "$gid")
+    if [ "$n" -ge "$DEBKIT_GRP_ARQUIVOS_MAX" ]; then
+        msg_aviso "$(t grp.aviso_arquivos_muitos "$n" "$gid")"
+    elif [ "$n" -gt 0 ]; then
+        msg_aviso "$(t grp.aviso_arquivos "$n" "$gid")"
+    else
+        msg_info "$(t grp.sem_arquivos)"
+    fi
+    echo ""
+    debkit_ler resp "$(t grp.p_confirmar_remover "$grupo")" || { msg_aviso "$(t usr.cancelado)"; return 1; }
+    if [ "$resp" != "$grupo" ]; then msg_aviso "$(t usr.cancelado)"; pausar; return 1; fi
+    debkit_grupo_remover "$grupo"; rc=$?
+    pausar
+    return "$rc"
+}
+
+# Submenu de grupos
+debkit_samba_menu_grupos() {
+    local opcao
+    while true; do
+        titulo "$(t grp.titulo)"
+        echo "  1) $(t grp.listar)"
+        echo "  2) $(t grp.criar)"
+        echo "  3) $(t grp.membros)"
+        echo "  4) $(t grp.remover)"
+        echo ""
+        echo "  0) $(t geral.voltar)"
+        echo ""
+        ler_opcao opcao
+        case "$opcao" in
+            "") continue ;;
+            1)  debkit_samba_tela_listar_grupos ;;
+            2)  debkit_samba_tela_criar_grupo ;;
+            3)  debkit_samba_tela_membros ;;
+            4)  debkit_samba_tela_remover_grupo ;;
+            0)  return 0 ;;
+            *)  msg_erro "$(t geral.opcao_invalida "$opcao")"; pausar ;;
+        esac
+    done
+}
+
 # ── Menu ────────────────────────────────────────────────────────────────────
 debkit_samba_menu() {
     local opcao
@@ -1791,6 +2424,7 @@ debkit_samba_menu() {
         echo "  3) $(t samba.trocar_senha)"
         echo "  4) $(t samba.criar_home)"
         echo "  5) $(t samba.pastas_pessoais)"
+        echo "  6) $(t samba.grupos)"
         echo ""
         echo "  0) $(t geral.voltar)"
         echo ""
@@ -1802,6 +2436,7 @@ debkit_samba_menu() {
             3)  debkit_samba_tela_trocar_senha ;;
             4)  debkit_samba_tela_home_existente ;;
             5)  debkit_samba_tela_pastas_pessoais ;;
+            6)  debkit_samba_menu_grupos ;;
             0)  return 0 ;;
             *)  msg_erro "$(t geral.opcao_invalida "$opcao")"; pausar ;;
         esac

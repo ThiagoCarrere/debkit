@@ -55,6 +55,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   procura o `include` pelo caminho exato da areia.
 
 ### Adicionado
+- **Grupos** (menu Samba, opção 6): listar (GID, membros, grupo principal
+  e uso no Samba), criar (nome com as regras do login, sem reservados,
+  `debkit*`, nomes já usados ou citados no sudoers; membros na criação;
+  tudo ou nada), colocar e tirar membros (lista trocada de uma vez com
+  `gpasswd -M` e conferida; se não conferir, volta a anterior) e remover
+  (recusa grupo principal de alguém; avisa os membros, o uso no `smb.conf`
+  e os arquivos do grupo nas pastas de dados; confirmação digitando o
+  nome). Ficam de fora os grupos de sistema, os pessoais, o
+  `debkit_usuarios` e os citados no sudoers (entrar neles daria sudo).
+  Prova real: quem já está conectado ao Samba só muda o acesso ao
+  reconectar.
 - **Trocar senha** (menu Samba, opção 3; as opções seguintes passaram a 4
   e 5): usuário de arquivos só a do Samba (a do Linux continua bloqueada e
   é conferida); com acesso ao servidor: Samba, Linux ou as duas, tudo ou
