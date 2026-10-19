@@ -278,6 +278,24 @@ Decisão de 19/10/2026 (Thiago):
 Ordem: 2.0 convidado → 2.1 criar + listar → 2.2 permissões → 2.3 remover
 → 2.4 existentes.
 
+**Como ficou a 2.1 (criar + listar):** base `SHARES_BASE` (definida na
+primeira criação; sugestão `<disco de dados em /mnt>/compartilhamentos` ou
+`/srv/samba`); pasta padrão `<base>/<nome>` ou outra dentro de `/mnt`/`/srv`
+(real, sem link, a de cima existindo, sem se misturar com a base das
+pastas pessoais nem com a pasta de outro compartilhamento). Bloco no
+smb.conf: `valid users` (todos os grupos), `write list` (os de escrita),
+`read only = yes`, `force group` (o primeiro de escrita, ou o de leitura),
+`create mask = 0660`, `directory mask = 2770`. Conferência: fora a seção
+nova nada muda, e a seção em vigor é igual ao `testparm` do bloco sozinho.
+Pasta que já existe tem dono e permissões ajustados (o conteúdo, só na
+2.2); se algo falhar, a pasta nova é apagada ou a existente volta como era
+(`chmod` com 5 dígitos: em pasta, `755` manteria o setgid). A listagem
+mostra todos (inclusive os feitos à mão), com quem escreve e quem só lê
+calculados como o Samba faz, e alerta pasta inexistente, `guest ok` e
+falta de `valid users`. Prova real (`t17b`): escrita grava (e o colega do
+mesmo grupo altera e apaga), somente leitura lê e não grava, fora dos
+grupos é recusado.
+
 ## 4. O que o debkit gerencia
 
 Decisão de 15/10/2026 (substitui a regra anterior "só gerencia o que ele
@@ -411,7 +429,7 @@ debkit/
 |---|---|
 | 0. Fundação | 0.1 esqueleto ✔ · 0.2 detecção do ambiente ✔ · 0.3 preparação do ambiente e backups ✔ · 0.4 proteção SSH ✔ · 0.5 firewall ✔ |
 | 1. Usuários e grupos | 1.0 reestruturar ✔ (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário ✔ (tipos, nome completo, grupos; sem home) · 1.1b pasta pessoal ✔ (base no disco de dados, na criação ou depois, `[homes]`) · listar ✔ · trocar senha ✔ · grupos ✔ (criar, remover, entrar/sair) · menu em submenus ✔ · excluir usuário ✔ · consistência Linux x Samba ✔ · ~~desativar/reativar~~ (adiado, 3.4) |
-| 2. Compartilhamentos | decisões na seção 3.7 · 2.0 `map to guest = never` ✔ · 2.1 criar + listar · 2.2 permissões (grupos com escrita / somente leitura) · 2.3 remover · 2.4 os já existentes |
+| 2. Compartilhamentos | decisões na seção 3.7 · 2.0 `map to guest = never` ✔ · 2.1 criar + listar ✔ · 2.2 permissões (grupos com escrita / somente leitura) · 2.3 remover · 2.4 os já existentes |
 | 3. Diagnóstico | falhas de login, sessões ativas, saúde do Samba, consulta à auditoria |
 | 4. Publicação | comandos diretos completos, `install.sh`, **desinstalação**, README, mensagens em inglês, testes automáticos e CI |
 
@@ -586,7 +604,11 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
     também usado pelo `unix password sync`). Prova real na VM: o
     `--preparar` mudou uma única linha do smb.conf; `t16b` confirma nome
     inexistente e usuário excluído recusados.
-20. **Próxima tarefa:** 2.1 criar + listar compartilhamentos.
+20. ✔ 2.1 criar + listar compartilhamentos (Samba → Compartilhamentos → 1
+    e 2; detalhes na seção 3.7).
+21. **Próxima tarefa:** 2.2 permissões (adicionar/remover grupos de um
+    compartilhamento, trocar escrita/somente leitura, ajustar o conteúdo
+    de uma pasta que já existia).
 
 **VM limpa de novo:** `dev/vmnova.sh` → (reinicia) → `dev/vmprepara.sh` →
 `./debkit --preparar` → testes.
@@ -626,7 +648,9 @@ dependem de o servidor estar sem grupos (o `t09` cria o próprio). Com excluir
 usuário: 1412 + 139 (`t14_excluir.sh` e a prova real `t14b_excluir_real.sh`).
 Com a consistência: 1474 + 154 (`t15_consistencia.sh` e
 `t15b_consistencia_real.sh`). Com a tarefa 2.0: 1505 + 162 (`t16_convidado.sh` e
-`t16b_convidado_real.sh`). Os testes também acusam se alguém usar o debkit na VM enquanto rodam (o
+`t16b_convidado_real.sh`). Com a tarefa 2.1: 1651 + 194 (`t17_compartilhar.sh` e
+`t17b_compartilhar_real.sh`; pastas de teste em `/srv/dkt-teste.*`, que a
+impressão digital do `run.sh` confere). Os testes também acusam se alguém usar o debkit na VM enquanto rodam (o
 log e a trava reais mudam): não usar o debkit durante a suíte.
 
 Os testes funcionam com o servidor preparado ou não: em vez de exigir que

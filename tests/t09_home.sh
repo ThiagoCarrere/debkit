@@ -295,10 +295,10 @@ contem "Opção inválida: '999'" "$saida"; contem "Cancelado" "$saida"
 caso "tela pastas pessoais: mostra a base e o [homes]"
 saida=$(tela debkit_samba_tela_pastas_pessoais "")
 contem "Base das pastas pessoais: $BASE" "$saida"; contem "Compartilhamento [homes]: ativo e com escrita" "$saida"
-caso "menu: Usuários > 4) Criar pasta pessoal; Compartilhamentos > 1) Pastas pessoais"
+caso "menu: Usuários > 4) Criar pasta pessoal; Compartilhamentos > 3) Pastas pessoais"
 contem "4) Criar pasta pessoal para um usuário existente" "$(pty 0.6 "bash $DEBKIT" 1 1 0 0 0)"
-saida=$(pty 0.6 "bash $DEBKIT" 1 3 1 "" 0 0 0)
-contem "1) Pastas pessoais: base e compartilhamento [homes]" "$saida"; contem "próxima fase" "$saida"
+saida=$(pty 0.6 "bash $DEBKIT" 1 3 3 "" 0 0 0)
+contem "3) Pastas pessoais: base e compartilhamento [homes]" "$saida"
 contem "Base das pastas pessoais: $BASE" "$saida"
 
 # ── Limpeza ──────────────────────────────────────────────────────────────────

@@ -48,3 +48,8 @@ SMB_BACKUP_DIR=/etc/samba/conf-bkp
 # (nunca o disco do sistema). Vazio = ainda não definida: o debkit pergunta
 # na primeira vez e grava aqui.
 HOMES_BASE=
+
+# Base dos compartilhamentos (SHARES_BASE/<nome>), dentro de /mnt ou /srv.
+# Vazio = ainda não definida: o debkit pergunta na primeira vez e grava
+# aqui. Cada compartilhamento pode usar outra pasta dentro de /mnt ou /srv.
+SHARES_BASE=
