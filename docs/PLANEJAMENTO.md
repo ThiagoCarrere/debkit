@@ -430,6 +430,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | Listar usuários | `8ff61b1` |
 | Trocar senha (+ unix password sync desligado) | `64ab68c` |
 | Grupos (criar, membros, remover) | `aa7f084` |
+| Grupos: efeito na hora (reconexão automática) | `5d77706` |
 
 **Próximos passos:**
 
