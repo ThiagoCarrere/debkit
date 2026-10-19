@@ -465,6 +465,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | Grupos: efeito na hora (reconexão automática) | `5d77706` |
 | Menu do Samba em submenus | `32fda5b` |
 | Excluir usuário; grupos com s/n e "adicionar/remover" | `8842b1e` |
+| Verificar e corrigir contas (consistência) | `bef38c8` |
 
 **Próximos passos:**
 
