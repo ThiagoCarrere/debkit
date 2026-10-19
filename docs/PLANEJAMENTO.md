@@ -436,6 +436,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | Trocar senha (+ unix password sync desligado) | `64ab68c` |
 | Grupos (criar, membros, remover) | `aa7f084` |
 | Grupos: efeito na hora (reconexão automática) | `5d77706` |
+| Menu do Samba em submenus | `32fda5b` |
 
 **Próximos passos:**
 
