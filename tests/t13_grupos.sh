@@ -29,7 +29,7 @@ LOG() { cat "$AREIA/debkit.log" 2>/dev/null; }
 useradd -M -s /usr/sbin/nologin -N -g users dkt_semgrupo     # usuário sem grupo pessoal
 nome() { p "debkit_grupo_nome_problema '$1'; echo RC=\$?"; }
 caso "nome: válidos"
-for n in gp_rh vendas financeiro_2026 ab rh2 "$(printf 'g%.0s' {1..32})"; do contem "RC=0" "$(nome "$n")" "$n"; done
+for n in dkt_gp_rh dkt_vendas dkt_fin_2026 dkt_x9 "dkt_$(printf 'g%.0s' {1..28})"; do contem "RC=0" "$(nome "$n")" "$n"; done
 caso "nome: formato e tamanho"
 contem "Informe o nome do grupo" "$(nome '')"
 contem "use de 2 a 32" "$(nome a)"; contem "use de 2 a 32" "$(nome "$(printf 'g%.0s' {1..33})")"
@@ -99,7 +99,7 @@ alterar() { p "${4:-} DEBKIT_G_ENTRAR=($2); DEBKIT_G_SAIR=($3); debkit_grupo_alt
 gpasswd -a daemon dkt_g1 >/dev/null                # membro de sistema (posto à mão)
 caso "entrar: um usuário"
 saida=$(alterar dkt_g1 "dkt_c" "")
-contem "RC=0" "$saida"; contem "Membros de dkt_g1 atualizados" "$saida"; contem "reconectar" "$saida"
+contem "RC=0" "$saida"; contem "Membros de dkt_g1 atualizados" "$saida"; nao_contem "sessão" "$saida" "ninguém conectado: nada a reconectar"
 igual "dkt_a,dkt_b,daemon,dkt_c" "$(membros dkt_g1)" "dkt_c entrou, daemon mantido"
 contem "grupo_membros grupo=dkt_g1 entraram=dkt_c sairam= resultado=ok" "$(LOG)"
 caso "sair e entrar juntos"
@@ -311,6 +311,48 @@ saida=$(pty 0.6 "bash $DEBKIT" 1 6 1 "" 0 0 0)
 contem "Grupos: criar, membros e remover" "$saida"; contem "Grupos do servidor" "$saida"
 caso "inglês"
 contem "Group dkt_en created." "$(p "DEBKIT_IDIOMA=en; DEBKIT_G_NOME=dkt_en; DEBKIT_G_MEMBROS=(); debkit_grupo_criar")"
+
+# ════════════════════════════════════════════════════════════════════════════
+# Reconexão automática (sessões abertas do Samba)
+# ════════════════════════════════════════════════════════════════════════════
+sessao() { sleep 60 >/dev/null 2>&1 & echo $!; }     # processo descartável no papel da sessão
+FAKE() {  # FAKE <pid> <usuário>: smbstatus mostra a sessão; smbcontrol encerra (ou não, com $3=nao)
+    echo "smbstatus() { printf 'PID     Username     Group\n-----\n%s  %s  %s  127.0.0.1\n' '$1' '$2' '$2'; };
+          smbcontrol() { echo \"\$*\" >> '$AREIA/smbcontrol'; [ '${3:-sim}' == sim ] && kill \"\$3\"; return 0; };"
+}
+caso "reconectar: encerra só as sessões do usuário e confere"
+P=$(sessao); : > "$AREIA/smbcontrol"
+saida=$(p "$(FAKE "$P" dkt_a) debkit_samba_reconectar dkt_a dkt_b; echo RC=\$?")
+contem "RC=0" "$saida"; contem "dkt_a: 1 sessão(ões) do Samba reconectada(s)" "$saida"; nao_contem "dkt_b:" "$saida" "sem sessão: nada"
+verdadeiro "sessão encerrada" bash -c "! kill -0 $P"
+contem "-s $AREIA/smb.conf $P shutdown" "$(cat "$AREIA/smbcontrol")"
+contem "samba_reconectar usuario=dkt_a pids=$P resultado=ok" "$(LOG)"
+caso "reconectar: sessão que não acaba (e não é smbd) - avisa, não mata outro processo"
+P=$(sessao)
+saida=$(p "$(FAKE "$P" dkt_a nao) debkit_samba_reconectar dkt_a; echo RC=\$?")
+contem "RC=1" "$saida"; contem "não foi possível encerrar a sessão" "$saida"
+verdadeiro "processo que não é smbd continua" kill -0 "$P"
+contem "samba_reconectar usuario=dkt_a pids=$P resultado=falha" "$(LOG)"
+kill "$P"
+caso "entrar/sair: reconecta quem entrou ou saiu"
+P=$(sessao)
+saida=$(p "$(FAKE "$P" dkt_c) DEBKIT_G_ENTRAR=(dkt_c); DEBKIT_G_SAIR=(); debkit_grupo_alterar_membros dkt_rh; echo RC=\$?")
+contem "RC=0" "$saida"; contem "dkt_c: 1 sessão(ões)" "$saida"; verdadeiro "encerrada" bash -c "! kill -0 $P"
+P=$(sessao)
+saida=$(p "$(FAKE "$P" dkt_b) DEBKIT_G_ENTRAR=(); DEBKIT_G_SAIR=(dkt_c); debkit_grupo_alterar_membros dkt_rh; echo RC=\$?")
+contem "RC=0" "$saida"; nao_contem "sessão(ões)" "$saida" "dkt_b não foi mexido"; verdadeiro "sessão de outro continua" kill -0 "$P"
+kill "$P"
+caso "criar e remover: reconectam os membros"
+P=$(sessao)
+contem "dkt_a: 1 sessão(ões)" "$(p "$(FAKE "$P" dkt_a) DEBKIT_G_NOME=dkt_ses; DEBKIT_G_MEMBROS=(dkt_a); debkit_grupo_criar")"
+P=$(sessao)
+contem "dkt_a: 1 sessão(ões)" "$(p "$(FAKE "$P" dkt_a) debkit_grupo_remover dkt_ses")"
+caso "telas: avisam antes da confirmação quem está conectado"
+P=$(sessao)
+saida=$(printf '%s\n' "$(idx_g dkt_rh)" 1 "$(p "debkit_samba_usuarios_comuns" | grep -vxE 'dkt_a|dkt_b' | grep -nx dkt_c | cut -d: -f1)" n "" | p "$(FAKE "$P" dkt_c) debkit_samba_tela_membros")
+contem "Conectado(s) ao Samba agora: dkt_c" "$saida"; contem "Cancelado" "$saida"
+verdadeiro "cancelado: sessão intacta" kill -0 "$P"
+kill "$P"
 
 limpar_usuarios
 caso "limpeza"

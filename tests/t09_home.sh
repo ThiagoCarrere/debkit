@@ -255,10 +255,13 @@ igual "$md5" "$(md5sum < "$AREIA/smb.conf")" "smb.conf intacto"
 # Telas
 # ════════════════════════════════════════════════════════════════════════════
 tela() { local f="$1"; shift; printf '%s\n' "$@" | h "$f; echo RC=\$?"; }
+# Grupo próprio: a pergunta "Grupos" aparece sempre (com ou sem grupos
+# reais no servidor) e as telas respondem Enter (nenhum)
+groupadd dkt_h_grupo
 caso "tela criar usuário: primeira vez define a base, cria com pasta e oferece o [homes]"
 conf_inicial; smb_teste "$SMB_MIN"; rm -rf "${DISCO:?}/homes_t"
-# nome completo, login, tipo, (grupos: lista vazia), pasta? s, base, confirma base, senha x2, confirma, [homes]? s, Enter
-saida=$(tela debkit_samba_tela_criar_usuario "" dkt_t1 "" s "$DISCO/homes_t" s "senha12" "senha12" s s "")
+# nome completo, login, tipo, grupos (Enter), pasta? s, base, confirma base, senha x2, confirma, [homes]? s, Enter
+saida=$(tela debkit_samba_tela_criar_usuario "" dkt_t1 "" "" s "$DISCO/homes_t" s "senha12" "senha12" s s "")
 contem "Discos de dados montados:" "$saida"; contem "$DISCO" "$saida"
 contem "Base das pastas pessoais: $DISCO/homes_t (gravada" "$saida"
 contem "Pasta pessoal: $DISCO/homes_t/dkt_t1" "$saida" "resumo"
@@ -267,17 +270,17 @@ igual "$DISCO/homes_t/dkt_t1" "$(getent passwd dkt_t1 | cut -d: -f6)"
 contem "HOMES_BASE=$DISCO/homes_t" "$(cat "$AREIA/debkit.conf")"
 caso "tela criar usuário: Enter na base usa a sugestão (<disco>/homes)"
 conf_inicial
-saida=$(tela debkit_samba_tela_criar_usuario "" dkt_t2 "" s "" n "senha12" "senha12" n "")
+saida=$(tela debkit_samba_tela_criar_usuario "" dkt_t2 "" "" s "" n "senha12" "senha12" n "")
 contem "Seguindo sem pasta pessoal" "$saida" "recusou a base"; contem "Cancelado" "$saida"
 nao_contem "HOMES_BASE=/" "$(cat "$AREIA/debkit.conf")" "nada gravado"
 caso "tela criar usuário (terminal): a base sugerida é <primeiro disco>/homes"
 sug="$(h debkit_samba_discos_dados | head -1)/homes"
-saida=$(pty 0.7 "bash $DEBKIT" 1 2 "" dkt_t2 "" s "" n "senha12" "senha12" n "" 0 0)
+saida=$(pty 0.7 "bash $DEBKIT" 1 2 "" dkt_t2 "" "" s "" n "senha12" "senha12" n "" 0 0)
 contem "Base [$sug]:" "$saida" "sugestão no prompt"; contem "Usar $sug como base das pastas pessoais" "$saida"
 nao_contem "HOMES_BASE=/" "$(cat "$AREIA/debkit.conf")" "recusou: nada gravado"
 caso "tela criar usuário: sem disco de dados - segue sem pasta"
 conf_inicial
-saida=$(tela "debkit_samba_discos_dados() { :; }; debkit_samba_tela_criar_usuario" "" dkt_t3 "" s "senha12" "senha12" s "")
+saida=$(tela "debkit_samba_discos_dados() { :; }; debkit_samba_tela_criar_usuario" "" dkt_t3 "" "" s "senha12" "senha12" s "")
 contem "Nenhum disco de dados montado" "$saida"; contem "Seguindo sem pasta pessoal" "$saida"
 contem "Pasta pessoal: não" "$saida"; contem "RC=0" "$saida"
 igual "/nonexistent" "$(getent passwd dkt_t3 | cut -d: -f6)"

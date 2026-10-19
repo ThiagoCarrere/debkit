@@ -471,7 +471,9 @@ MSG_pt_BR+=(
     [grp.membros_ok]="Membros de %s atualizados."
     [grp.membros_falhou]="Não foi possível mudar os membros de %s: a lista anterior foi mantida."
     [grp.membros_desfazer_falhou]="ATENÇÃO: os membros de %s não ficaram como o esperado e a lista anterior não voltou: confira à mão."
-    [grp.reconectar]="Quem já está conectado ao Samba só ganha ou perde o acesso ao reconectar (sair e entrar de novo no Windows)."
+    [ses.aviso]="Conectado(s) ao Samba agora: %s. Ao terminar, a conexão será refeita para os grupos valerem na hora (arquivo aberto sem salvar pode ser afetado)."
+    [ses.reconectado]="%s: %d sessão(ões) do Samba reconectada(s); o acesso já vale com os grupos novos."
+    [ses.falhou]="%s: não foi possível encerrar a sessão do Samba; o acesso só muda quando ele reconectar."
     [grp.remover_principal]="%s é o grupo principal de: %s. O debkit não remove esse grupo."
     [grp.aviso_membros]="%d membro(s) perdem o acesso dado por este grupo: %s"
     [grp.sem_membros]="O grupo não tem membros."
@@ -545,7 +547,9 @@ MSG_en+=(
     [grp.membros_ok]="Members of %s updated."
     [grp.membros_falhou]="Could not change the members of %s: the previous list was kept."
     [grp.membros_desfazer_falhou]="WARNING: the members of %s are not as expected and the previous list did not come back: check it by hand."
-    [grp.reconectar]="Users already connected to Samba only gain or lose access after reconnecting (sign out and in again on Windows)."
+    [ses.aviso]="Connected to Samba now: %s. When done, the connection will be redone so the groups apply right away (an open unsaved file may be affected)."
+    [ses.reconectado]="%s: %d Samba session(s) reconnected; access now follows the new groups."
+    [ses.falhou]="%s: could not close the Samba session; access only changes when they reconnect."
     [grp.remover_principal]="%s is the primary group of: %s. debkit does not remove this group."
     [grp.aviso_membros]="%d member(s) lose the access given by this group: %s"
     [grp.sem_membros]="The group has no members."
@@ -1854,6 +1858,57 @@ debkit_grupo_contar_arquivos() {
     done | head -n "$DEBKIT_GRP_ARQUIVOS_MAX" | wc -l
 }
 
+# ── Sessões do Samba ────────────────────────────────────────────────────────
+# O Samba lê os grupos do usuário só quando a sessão começa (e o Windows
+# reaproveita a sessão para todas as pastas): para entrar/sair de um grupo
+# valer na hora, as sessões abertas do usuário são encerradas e o Windows
+# reconecta sozinho, já com os grupos novos (decisão de 19/10/2026: sempre).
+
+# PIDs do smbd com sessão aberta do usuário (um por linha)
+debkit_samba_sessoes() {
+    LC_ALL=C smbstatus -s "$DEBKIT_SMB_CONF" -p 2>/dev/null | awk -v u="$1" '$1 ~ /^[0-9]+$/ && $2 == u {print $1}' | sort -u
+}
+
+# Dos usuários indicados, imprime os que estão conectados agora (um por linha)
+debkit_samba_conectados() {
+    local u
+    for u in "$@"; do [ -n "$(debkit_samba_sessoes "$u")" ] && echo "$u"; done
+    return 0
+}
+
+# Encerra as sessões abertas dos usuários (smbcontrol <pid> shutdown; se não
+# adiantar, TERM no processo, só se for um smbd) e confere que acabaram.
+# Retorna 1 se alguma sessão não foi encerrada.
+debkit_samba_reconectar() {
+    local u pid i vivos rc=0
+    local -a pids=()
+    for u in "$@"; do
+        mapfile -t pids < <(debkit_samba_sessoes "$u")
+        [ ${#pids[@]} -gt 0 ] || continue
+        for pid in "${pids[@]}"; do
+            smbcontrol -s "$DEBKIT_SMB_CONF" "$pid" shutdown >/dev/null 2>&1
+        done
+        for (( i = 0; i < 25; i++ )); do
+            vivos=""
+            for pid in "${pids[@]}"; do kill -0 "$pid" 2>/dev/null && vivos+=" $pid"; done
+            [ -z "$vivos" ] && break
+            [ "$i" -eq 10 ] && for pid in $vivos; do
+                [[ "$(cat "/proc/$pid/comm" 2>/dev/null)" == smbd* ]] && kill -TERM "$pid" 2>/dev/null
+            done
+            sleep 0.2
+        done
+        if [ -n "$vivos" ]; then
+            msg_aviso "$(t ses.falhou "$u")"
+            debkit_auditar samba_reconectar "usuario=$u pids=$(IFS=,; echo "${pids[*]}") resultado=falha"
+            rc=1
+        else
+            msg_info "$(t ses.reconectado "$u" "${#pids[@]}")"
+            debkit_auditar samba_reconectar "usuario=$u pids=$(IFS=,; echo "${pids[*]}") resultado=ok"
+        fi
+    done
+    return "$rc"
+}
+
 # ── Grupos: criar ───────────────────────────────────────────────────────────
 # Entrada: DEBKIT_G_NOME e DEBKIT_G_MEMBROS (array de usuários comuns).
 # Tudo ou nada: cria o grupo comum (groupadd, GID da faixa do login.defs),
@@ -1894,6 +1949,8 @@ debkit_grupo_criar() {
     fi
     debkit_auditar grupo_criar "nome=$nome gid=$gid membros=$(IFS=,; echo "${membros[*]}") resultado=ok"
     msg_ok "$(t grp.criado "$nome")"
+    debkit_samba_reconectar "${membros[@]}"
+    return 0
 }
 
 # Falha no meio da criação: informa, apaga o grupo que foi criado e audita
@@ -1956,7 +2013,8 @@ debkit_grupo_alterar_membros() {
     fi
     debkit_auditar grupo_membros "grupo=$grupo entraram=$(IFS=,; echo "${DEBKIT_G_ENTRAR[*]}") sairam=$(IFS=,; echo "${DEBKIT_G_SAIR[*]}") resultado=ok"
     msg_ok "$(t grp.membros_ok "$grupo")"
-    msg_info "$(t grp.reconectar)"
+    debkit_samba_reconectar "${DEBKIT_G_ENTRAR[@]}" "${DEBKIT_G_SAIR[@]}"
+    return 0
 }
 
 # ── Grupos: remover ─────────────────────────────────────────────────────────
@@ -1965,11 +2023,13 @@ debkit_grupo_alterar_membros() {
 # confirmação ficam na tela.
 debkit_grupo_remover() {
     local grupo="$1" gid principais membros
+    local -a lista=()
     if ! debkit_grupo_gerenciado "$grupo"; then msg_erro "$(t grp.nao_gerenciado "$grupo")"; return 1; fi
     principais=$(debkit_grupo_principais "$grupo" | paste -sd, | sed 's/,/, /g')
     if [ -n "$principais" ]; then msg_erro "$(t grp.remover_principal "$grupo" "$principais")"; return 1; fi
     gid=$(getent group "$grupo" | cut -d: -f3)
     membros=$(debkit_grupo_membros "$grupo" | paste -sd,)
+    mapfile -t lista < <(debkit_grupo_membros "$grupo")
     if ! groupdel -- "$grupo" >/dev/null 2>&1 || getent group "$grupo" >/dev/null 2>&1; then
         msg_erro "$(t grp.remover_falhou "$grupo")"
         debkit_auditar grupo_remover "nome=$grupo resultado=falha"
@@ -1977,6 +2037,8 @@ debkit_grupo_remover() {
     fi
     debkit_auditar grupo_remover "nome=$grupo gid=$gid membros=$membros resultado=ok"
     msg_ok "$(t grp.removido "$grupo")"
+    debkit_samba_reconectar "${lista[@]}"
+    return 0
 }
 
 # ── Usuários: tela ──────────────────────────────────────────────────────────
@@ -2215,6 +2277,15 @@ debkit_escolher_varios() {
     done
 }
 
+# Avisa (antes da confirmação) quem está conectado ao Samba e será reconectado
+debkit_aviso_conectados() {
+    local -a con=()
+    [ $# -gt 0 ] || return 0
+    mapfile -t con < <(debkit_samba_conectados "$@")
+    [ ${#con[@]} -gt 0 ] && msg_aviso "$(t ses.aviso "$(debkit_juntar "${con[@]}")")"
+    return 0
+}
+
 # Lista numerada (4 espaços de recuo)
 debkit_numerar() { local i=0 x; for x in "$@"; do i=$((i + 1)); echo "    $i) $x"; done; }
 
@@ -2274,6 +2345,7 @@ debkit_samba_tela_criar_grupo() {
     echo "  $(t usr.titulo_resumo)"
     echo "    $(t grp.r_grupo "$nome")"
     echo "    $(t grp.r_membros "$(debkit_juntar "${escolhidos[@]}")")"
+    debkit_aviso_conectados "${escolhidos[@]}"
     echo ""
     if ! confirmar "$(t grp.p_confirmar_criar)"; then msg_aviso "$(t usr.cancelado)"; pausar; return 1; fi
     DEBKIT_G_NOME="$nome"; DEBKIT_G_MEMBROS=("${escolhidos[@]}")
@@ -2332,6 +2404,7 @@ debkit_samba_tela_membros() {
     debkit_escolher_varios escolhidos "$(t grp.p_usuarios)" "${candidatos[@]}" || { msg_aviso "$(t usr.cancelado)"; return 1; }
     if [ ${#escolhidos[@]} -eq 0 ]; then msg_aviso "$(t usr.cancelado)"; pausar; return 1; fi
     echo ""
+    debkit_aviso_conectados "${escolhidos[@]}"
     if [ "$acao" == 1 ]; then
         DEBKIT_G_ENTRAR=("${escolhidos[@]}")
         confirmar "$(t grp.p_confirmar_entrar "$(debkit_juntar "${escolhidos[@]}")" "$grupo")" || { msg_aviso "$(t usr.cancelado)"; pausar; return 1; }
@@ -2369,6 +2442,7 @@ debkit_samba_tela_remover_grupo() {
     else
         msg_info "$(t grp.sem_membros)"
     fi
+    debkit_aviso_conectados "${membros[@]}"
     if [ ${#usos[@]} -gt 0 ]; then
         msg_aviso "$(t grp.aviso_usos "$DEBKIT_SMB_CONF" "$(printf '[%s] ' "${usos[@]}")")"
     fi

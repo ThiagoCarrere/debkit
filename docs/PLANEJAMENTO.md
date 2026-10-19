@@ -193,8 +193,20 @@ Decisão de 19/10/2026 (Thiago):
 - **Entrar e sair:** tela por grupo (escolhe o grupo, vê os membros,
   adiciona ou tira). Membros: os usuários comuns, inclusive admins. A lista
   é trocada de uma vez (`gpasswd -M`, que recusa tudo se um nome não
-  existe) e conferida; se não conferir, volta a anterior. Quem está
-  conectado ao Samba só ganha/perde o acesso ao reconectar.
+  existe) e conferida; se não conferir, volta a anterior.
+- **Efeito na hora (decisão de 19/10/2026, Thiago: sempre automático):** o
+  Samba lê os grupos só quando a sessão começa e o Windows reaproveita a
+  sessão para todas as pastas - sem nada, quem entra no grupo não abre a
+  pasta nova e quem sai continua acessando até reconectar. Ao criar,
+  mudar membros ou remover um grupo, o debkit encerra as sessões abertas
+  SÓ dos usuários afetados (`smbstatus -p` → `smbcontrol <pid> shutdown`;
+  se não adiantar, TERM no processo, só se for um `smbd`) e confere que
+  acabaram; o Windows reconecta sozinho, com os grupos novos. Antes da
+  confirmação a tela avisa quem está conectado (arquivo aberto sem salvar
+  pode ser afetado). Não precisa recarregar o Samba (ele consulta os
+  grupos no Linux a cada sessão nova). Prova real (`t13b`), com sessão
+  aberta: entrar → acessa na hora; sair e remover → a sessão aberta para
+  de gravar na hora.
 - **Remover:** o `groupdel` apaga grupo com membros sem avisar e recusa o
   grupo principal de um usuário (testado). O debkit:
   - recusa se for o grupo principal de algum usuário;
@@ -488,9 +500,9 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
     instalação, segurança, status). Não é urgente, mas precisa ser feito.
 14. ✔ Grupos (menu Samba, opção 6: listar, criar, membros, remover;
     decisões na seção 3.6). Prova real na VM (`t13b`): o grupo dá o acesso
-    a um compartilhamento `valid users = @grupo`; entrar/sair vale nas
-    conexões novas e a sessão já aberta só muda ao reconectar; o smb.conf
-    real volta idêntico. Achado na revisão: grupos citados no sudoers ficam
+    a um compartilhamento `valid users = @grupo`; entrar, sair e remover
+    valem na hora, inclusive com a sessão aberta (o debkit refaz a sessão
+    dos usuários afetados); o smb.conf real volta idêntico. Achado na revisão: grupos citados no sudoers ficam
     fora (entrar neles daria sudo).
 15. **Próxima tarefa:** desativar/reativar usuário (seção 3.4).
 
@@ -524,7 +536,11 @@ de teste de verdade - arquivos ext4 em loop, um somente leitura e um tmpfs
 - em `/mnt/dkt-teste.*` e desmonta no fim; a impressão digital do `run.sh`
 confere que nenhuma montagem sobrou). Com os scripts da VM e a listagem:
 994 + 65. Com trocar senha: 1082 + 78. Com grupos: 1278 + 106
-(`t13_grupos.sh` e a prova real `t13b_grupos_real.sh`).
+(`t13_grupos.sh` e a prova real `t13b_grupos_real.sh`). Com a reconexão
+automática: 1303 + 116, com usuários e grupos de demonstração na VM (o
+`t07` confere cada grupo comum real, então o total varia com eles). A VM
+pode guardar dados de demonstração (nomes sem `dkt_`); os testes não
+dependem de o servidor estar sem grupos (o `t09` cria o próprio).
 
 Os testes funcionam com o servidor preparado ou não: em vez de exigir que
 os arquivos reais do debkit não existam, conferem que não mudaram

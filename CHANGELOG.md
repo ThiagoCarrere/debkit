@@ -64,8 +64,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   e os arquivos do grupo nas pastas de dados; confirmação digitando o
   nome). Ficam de fora os grupos de sistema, os pessoais, o
   `debkit_usuarios` e os citados no sudoers (entrar neles daria sudo).
-  Prova real: quem já está conectado ao Samba só muda o acesso ao
-  reconectar.
+  Efeito na hora: as sessões abertas no Samba só dos usuários afetados são
+  refeitas (o Windows reconecta sozinho, já com os grupos novos), com
+  aviso antes da confirmação. Prova real com sessão aberta.
 - **Trocar senha** (menu Samba, opção 3; as opções seguintes passaram a 4
   e 5): usuário de arquivos só a do Samba (a do Linux continua bloqueada e
   é conferida); com acesso ao servidor: Samba, Linux ou as duas, tudo ou
