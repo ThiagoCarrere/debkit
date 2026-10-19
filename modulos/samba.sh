@@ -414,6 +414,41 @@ MSG_en+=(
 MSG_pt_BR+=(
     [samba.grupos]="Grupos"
     [samba.usuarios]="Usuários"
+    [samba.excluir_usuario]="Excluir usuário"
+    [rmu.titulo]="Excluir usuário"
+    [rmu.sem_usuarios]="Nenhum usuário que o debkit possa excluir (administradores e quem roda o debkit não são excluídos)."
+    [rmu.admin]="%s é administrador (sudo): o debkit não exclui administradores."
+    [rmu.proprio]="%s é quem está rodando o debkit: não pode ser excluído."
+    [rmu.grupo_no_smb]="O grupo pessoal de %s é usado no Samba (%s): tire-o dos compartilhamentos antes de excluir."
+    [rmu.processos]="%s tem processos em execução fora do Samba (%s; ex: SSH aberto): encerre-os antes de excluir."
+    [rmu.titulo_perde]="Será excluído %s:"
+    [rmu.r_contas]="Contas: Linux e Samba (a senha some junto)"
+    [rmu.r_contas_linux]="Contas: Linux (sem conta no Samba)"
+    [rmu.r_home_apagar]="Pasta pessoal: %s - será APAGADA com tudo dentro"
+    [rmu.r_home_nenhuma]="Pasta pessoal: não tem"
+    [rmu.r_home_manter]="Pasta pessoal: %s - será mantida (%s)"
+    [rmu.h_nao_pasta]="não é uma pasta comum"
+    [rmu.h_fora]="fora da base das pastas pessoais e de /home"
+    [rmu.h_dono]="o dono não é o usuário"
+    [rmu.h_outro]="outro usuário usa a mesma pasta"
+    [rmu.aviso_sessoes]="Conectado ao Samba agora (%d sessão/ões): a conexão será encerrada."
+    [rmu.aviso_usos]="O login é citado no %s, nos compartilhamentos: %s- essas regras passarão a apontar para um usuário que não existe."
+    [rmu.procurando]="Procurando arquivos do usuário (UID %s) na base das pastas pessoais e nos compartilhamentos..."
+    [rmu.aviso_arquivos]="%d arquivo(s)/pasta(s) dele nos compartilhamentos NÃO serão apagados. Eles ficam com o número %s e um usuário criado depois pode receber o mesmo número e virar dono deles."
+    [rmu.aviso_arquivos_muitos]="%d ou mais arquivo(s)/pasta(s) dele nos compartilhamentos NÃO serão apagados. Eles ficam com o número %s e um usuário criado depois pode receber o mesmo número e virar dono deles."
+    [rmu.sem_arquivos]="Nenhum arquivo dele nos compartilhamentos (fora a pasta pessoal)."
+    [rmu.p_confirmar]="Excluir o usuário %s?"
+    [rmu.excluindo]="Excluindo o usuário %s..."
+    [rmu.excluido]="Usuário %s excluído."
+    [rmu.falhou]="Não foi possível excluir o usuário %s: %s"
+    [rmu.f_sessoes]="não foi possível encerrar a sessão do Samba (nada foi apagado)"
+    [rmu.f_userdel]="o userdel falhou (nada foi apagado)"
+    [rmu.f_samba]="O usuário Linux foi excluído, mas a conta Samba de %s ficou: ela aparece na listagem como \"só Samba\"."
+    [rmu.f_home]="Não foi possível apagar a pasta pessoal %s: apague à mão."
+    [rmu.sessoes_encerradas]="%d sessão(ões) do Samba encerrada(s)."
+    [rmu.home_apagada]="Pasta pessoal %s apagada."
+    [rmu.home_mantida]="Pasta pessoal %s mantida (%s)."
+    [rmu.grupo_mantido]="O grupo pessoal %s foi mantido (tem membros ou é o grupo principal de outro usuário)."
     [samba.compartilhamentos]="Compartilhamentos"
     [samba.titulo_usuarios]="Samba: usuários"
     [samba.titulo_compartilhamentos]="Samba: compartilhamentos"
@@ -421,7 +456,7 @@ MSG_pt_BR+=(
     [grp.titulo]="Samba: grupos"
     [grp.listar]="Listar grupos"
     [grp.criar]="Criar grupo"
-    [grp.membros]="Membros: colocar ou tirar usuários"
+    [grp.membros]="Membros: adicionar ou remover usuários"
     [grp.remover]="Remover grupo"
     [grp.titulo_listar]="Grupos do servidor"
     [grp.titulo_criar]="Criar grupo"
@@ -448,7 +483,7 @@ MSG_pt_BR+=(
     [grp.r_grupo]="Grupo: %s"
     [grp.r_membros]="Membros: %s"
     [grp.r_outros]="Outros membros (de sistema; o debkit não mexe): %s"
-    [grp.r_principais]="Grupo principal de: %s (não podem sair)"
+    [grp.r_principais]="Grupo principal de: %s (não podem ser removidos)"
     [grp.p_confirmar_criar]="Criar o grupo?"
     [grp.criando]="Criando o grupo %s..."
     [grp.criado]="Grupo %s criado."
@@ -459,20 +494,20 @@ MSG_pt_BR+=(
     [grp.f_membros]="não foi possível definir os membros"
     [grp.nao_usuario_comum]="'%s' não é um usuário comum do servidor."
     [grp.nao_gerenciado]="'%s' não é um grupo comum que o debkit gerencia."
-    [grp.nada_a_fazer]="Nenhum usuário para colocar ou tirar."
-    [grp.e_principal]="'%s' tem %s como grupo principal: não entra nem sai por aqui."
+    [grp.nada_a_fazer]="Nenhum usuário para adicionar ou remover."
+    [grp.e_principal]="'%s' tem %s como grupo principal: não pode ser adicionado nem removido por aqui."
     [grp.ja_membro]="'%s' já é membro de %s."
     [grp.nao_membro]="'%s' não é membro de %s."
-    [grp.entrar_e_sair]="'%s' está para entrar e sair ao mesmo tempo."
+    [grp.entrar_e_sair]="'%s' está para ser adicionado e removido ao mesmo tempo."
     [grp.p_grupo]="Grupo (número; Enter cancela): "
-    [grp.a_entrar]="Colocar usuários no grupo"
-    [grp.a_sair]="Tirar usuários do grupo"
+    [grp.a_entrar]="Adicionar usuários ao grupo"
+    [grp.a_sair]="Remover usuários do grupo"
     [grp.p_acao]="Opção (Enter cancela): "
     [grp.p_usuarios]="Usuários (números separados por vírgula ou espaço; Enter cancela): "
     [grp.sem_candidatos_entrar]="Todos os usuários comuns já estão em %s."
-    [grp.sem_candidatos_sair]="%s não tem membros que possam sair."
-    [grp.p_confirmar_entrar]="Colocar %s no grupo %s?"
-    [grp.p_confirmar_sair]="Tirar %s do grupo %s?"
+    [grp.sem_candidatos_sair]="%s não tem membros que possam ser removidos."
+    [grp.p_confirmar_entrar]="Adicionar %s ao grupo %s?"
+    [grp.p_confirmar_sair]="Remover %s do grupo %s?"
     [grp.membros_ok]="Membros de %s atualizados."
     [grp.membros_falhou]="Não foi possível mudar os membros de %s: a lista anterior foi mantida."
     [grp.membros_desfazer_falhou]="ATENÇÃO: os membros de %s não ficaram como o esperado e a lista anterior não voltou: confira à mão."
@@ -487,7 +522,7 @@ MSG_pt_BR+=(
     [grp.aviso_arquivos]="%d arquivo(s)/pasta(s) pertencem ao grupo. Eles ficam com o número %s e um grupo criado depois pode receber o mesmo número e herdar o acesso."
     [grp.aviso_arquivos_muitos]="%d arquivo(s)/pasta(s) ou mais pertencem ao grupo. Eles ficam com o número %s e um grupo criado depois pode receber o mesmo número e herdar o acesso."
     [grp.sem_arquivos]="Nenhum arquivo do grupo encontrado na base das pastas pessoais nem nos compartilhamentos."
-    [grp.p_confirmar_remover]="Para remover, digite o nome do grupo (%s); Enter cancela: "
+    [grp.p_confirmar_remover]="Remover o grupo %s?"
     [grp.removido]="Grupo %s removido."
     [grp.remover_falhou]="Não foi possível remover o grupo %s."
 )
@@ -495,6 +530,41 @@ MSG_pt_BR+=(
 MSG_en+=(
     [samba.grupos]="Groups"
     [samba.usuarios]="Users"
+    [samba.excluir_usuario]="Delete user"
+    [rmu.titulo]="Delete user"
+    [rmu.sem_usuarios]="No users that debkit can delete (administrators and whoever runs debkit are not deleted)."
+    [rmu.admin]="%s is an administrator (sudo): debkit does not delete administrators."
+    [rmu.proprio]="%s is the one running debkit: cannot be deleted."
+    [rmu.grupo_no_smb]="The personal group of %s is used in Samba (%s): remove it from the shares before deleting."
+    [rmu.processos]="%s has processes running outside Samba (%s; e.g. open SSH): end them before deleting."
+    [rmu.titulo_perde]="%s will be deleted:"
+    [rmu.r_contas]="Accounts: Linux and Samba (the password goes with them)"
+    [rmu.r_contas_linux]="Accounts: Linux (no Samba account)"
+    [rmu.r_home_apagar]="Home folder: %s - will be DELETED with everything inside"
+    [rmu.r_home_nenhuma]="Home folder: none"
+    [rmu.r_home_manter]="Home folder: %s - will be kept (%s)"
+    [rmu.h_nao_pasta]="not a regular folder"
+    [rmu.h_fora]="outside the home folder base and /home"
+    [rmu.h_dono]="the owner is not the user"
+    [rmu.h_outro]="another user uses the same folder"
+    [rmu.aviso_sessoes]="Connected to Samba now (%d session(s)): the connection will be closed."
+    [rmu.aviso_usos]="The login is referenced in %s, in the shares: %s- those rules will point to a user that does not exist."
+    [rmu.procurando]="Looking for the user's files (UID %s) in the home folder base and in the shares..."
+    [rmu.aviso_arquivos]="%d of their file(s)/folder(s) in the shares will NOT be deleted. They keep the number %s, and a user created later may get the same number and own them."
+    [rmu.aviso_arquivos_muitos]="%d or more of their file(s)/folder(s) in the shares will NOT be deleted. They keep the number %s, and a user created later may get the same number and own them."
+    [rmu.sem_arquivos]="No files of theirs in the shares (apart from the home folder)."
+    [rmu.p_confirmar]="Delete user %s?"
+    [rmu.excluindo]="Deleting user %s..."
+    [rmu.excluido]="User %s deleted."
+    [rmu.falhou]="Could not delete user %s: %s"
+    [rmu.f_sessoes]="could not close the Samba session (nothing was deleted)"
+    [rmu.f_userdel]="userdel failed (nothing was deleted)"
+    [rmu.f_samba]="The Linux user was deleted, but the Samba account of %s remained: it shows in the listing as \"Samba only\"."
+    [rmu.f_home]="Could not delete the home folder %s: delete it by hand."
+    [rmu.sessoes_encerradas]="%d Samba session(s) closed."
+    [rmu.home_apagada]="Home folder %s deleted."
+    [rmu.home_mantida]="Home folder %s kept (%s)."
+    [rmu.grupo_mantido]="The personal group %s was kept (it has members or is another user's primary group)."
     [samba.compartilhamentos]="Shares"
     [samba.titulo_usuarios]="Samba: users"
     [samba.titulo_compartilhamentos]="Samba: shares"
@@ -568,7 +638,7 @@ MSG_en+=(
     [grp.aviso_arquivos]="%d file(s)/folder(s) belong to the group. They keep the number %s, and a group created later may get the same number and inherit the access."
     [grp.aviso_arquivos_muitos]="%d or more file(s)/folder(s) belong to the group. They keep the number %s, and a group created later may get the same number and inherit the access."
     [grp.sem_arquivos]="No files of the group found in the home folder base or in the shares."
-    [grp.p_confirmar_remover]="To remove, type the group name (%s); Enter cancels: "
+    [grp.p_confirmar_remover]="Remove group %s?"
     [grp.removido]="Group %s removed."
     [grp.remover_falhou]="Could not remove group %s."
 )
@@ -1764,6 +1834,114 @@ debkit_samba_tela_trocar_senha() {
     return "$rc"
 }
 
+# ── Usuários: excluir ───────────────────────────────────────────────────────
+# Decisão de 19/10/2026 (seção 3.4): apaga do Linux, do Samba e a pasta
+# pessoal, com UMA confirmação (s/n) depois de mostrar o que será perdido.
+
+# Quem está rodando o debkit (o administrador por trás do sudo)
+debkit_quem_roda() { echo "${SUDO_USER:-$(logname 2>/dev/null || id -un)}"; }
+
+# Imprime o motivo (mensagem) se o usuário NÃO pode ser excluído e retorna 1
+debkit_usuario_exclusao_problema() {
+    local nome="$1" uid usos outros
+    if ! IFS=: read -r _ _ uid _ < <(getent passwd "$nome") || ! debkit_uid_comum "$uid"; then
+        t sen.nao_comum "$nome"; return 1
+    fi
+    if [ "$(debkit_usuario_tipo "$nome")" == "admin" ]; then t rmu.admin "$nome"; return 1; fi
+    if [ "$nome" == "$(debkit_quem_roda)" ]; then t rmu.proprio "$nome"; return 1; fi
+    usos=$(debkit_samba_grupo_usos "$nome" | sed 's/.*/[&]/' | paste -sd' ')
+    if [ -n "$usos" ]; then t rmu.grupo_no_smb "$nome" "$usos"; return 1; fi
+    outros=$(debkit_usuario_processos "$nome" | paste -sd' ')
+    if [ -n "$outros" ]; then t rmu.processos "$nome" "$outros"; return 1; fi
+    return 0
+}
+
+# Processos do usuário que NÃO são sessões do Samba (ex: SSH aberto): o
+# userdel recusa e o debkit não os mata. Imprime "pid(comando)".
+debkit_usuario_processos() {
+    local pid
+    local -A samba=()
+    for pid in $(debkit_samba_sessoes "$1"); do samba["$pid"]=1; done
+    pgrep -u "$1" 2>/dev/null | while read -r pid; do
+        [ -n "${samba[$pid]+x}" ] && continue
+        [[ "$(cat "/proc/$pid/comm" 2>/dev/null)" == smbd* ]] && continue
+        echo "$pid($(cat "/proc/$pid/comm" 2>/dev/null))"
+    done
+}
+
+# A pasta pessoal pode ser apagada? Só se for <HOMES_BASE ou /home>/<algo>,
+# pasta de verdade (não link), do próprio usuário e de mais ninguém.
+# Imprime: "apagar" | "nenhuma" | "manter:<motivo>"
+debkit_usuario_home_destino() {
+    local nome="$1" uid home pai
+    IFS=: read -r _ _ uid _ _ home _ < <(getent passwd "$nome")
+    if [ "$home" == "$DEBKIT_USR_HOME" ] || { [ ! -e "$home" ] && [ ! -L "$home" ]; }; then echo nenhuma; return; fi
+    if [ -L "$home" ] || [ ! -d "$home" ]; then echo "manter:$(t rmu.h_nao_pasta)"; return; fi
+    pai=$(dirname -- "$home")
+    if [ "$pai" != "/home" ] && { [ -z "$DEBKIT_HOMES_BASE" ] || [ "$pai" != "${DEBKIT_HOMES_BASE%/}" ]; }; then
+        echo "manter:$(t rmu.h_fora)"; return
+    fi
+    if [ "$(stat -c %u -- "$home" 2>/dev/null)" != "$uid" ]; then echo "manter:$(t rmu.h_dono)"; return; fi
+    if [ "$(getent passwd | awk -F: -v h="$home" -v n="$nome" '$6 == h && $1 != n' | wc -l)" -gt 0 ]; then
+        echo "manter:$(t rmu.h_outro)"; return
+    fi
+    echo apagar
+}
+
+# debkit_usuario_excluir <login>: confere de novo as travas, encerra as
+# sessões do Samba, apaga o usuário Linux (userdel, NUNCA -r), a conta
+# Samba, a pasta pessoal (se pode) e o grupo pessoal que sobrar vazio.
+# Se o userdel falhar, nada foi apagado.
+debkit_usuario_excluir() {
+    local nome="$1" motivo uid gid home destino grupos avisos=0
+    if ! motivo=$(debkit_usuario_exclusao_problema "$nome"); then
+        msg_erro "$(t rmu.falhou "$nome" "$motivo")"; return 1
+    fi
+    IFS=: read -r _ _ uid gid _ home _ < <(getent passwd "$nome")
+    destino=$(debkit_usuario_home_destino "$nome")
+    grupos=$(id -nG -- "$nome" 2>/dev/null | tr ' ' ',')
+    msg_info "$(t rmu.excluindo "$nome")"
+    # 1. Sessões do Samba (o userdel recusa usuário com processo)
+    if ! debkit_samba_encerrar_sessoes "$nome"; then
+        msg_erro "$(t rmu.falhou "$nome" "$(t rmu.f_sessoes)")"
+        debkit_auditar usuario_excluir "nome=$nome resultado=falha motivo=sessoes"
+        return 1
+    fi
+    [ ${#DEBKIT_SES_PIDS[@]} -gt 0 ] && msg_info "$(t rmu.sessoes_encerradas "${#DEBKIT_SES_PIDS[@]}")"
+    # 2. Usuário Linux (tira também dos grupos; o grupo pessoal sai junto)
+    if ! userdel -- "$nome" >/dev/null 2>&1 || getent passwd "$nome" >/dev/null 2>&1; then
+        msg_erro "$(t rmu.falhou "$nome" "$(t rmu.f_userdel)")"
+        debkit_auditar usuario_excluir "nome=$nome resultado=falha motivo=userdel"
+        return 1
+    fi
+    # 3. Conta Samba
+    if debkit_samba_conta_existe "$nome"; then
+        if ! debkit_pdbedit -x -u "$nome" >/dev/null 2>&1 || debkit_samba_conta_existe "$nome"; then
+            msg_aviso "$(t rmu.f_samba "$nome")"; avisos=1
+        fi
+    fi
+    # 4. Pasta pessoal
+    case "$destino" in
+        apagar)
+            if rm -rf --one-file-system -- "$home" && [ ! -e "$home" ]; then
+                msg_info "$(t rmu.home_apagada "$home")"
+            else
+                msg_aviso "$(t rmu.f_home "$home")"; avisos=1
+            fi ;;
+        manter:*) msg_aviso "$(t rmu.home_mantida "$home" "${destino#manter:}")" ;;
+    esac
+    # 5. Grupo pessoal que sobrou (o userdel não apaga se for o principal de outro)
+    if getent group "$nome" >/dev/null 2>&1 && [ "$(getent group "$nome" | cut -d: -f3)" == "$gid" ]; then
+        if [ -z "$(getent group "$nome" | cut -d: -f4)" ] && [ -z "$(debkit_grupo_principais "$nome")" ]; then
+            groupdel -- "$nome" >/dev/null 2>&1
+        else
+            msg_aviso "$(t rmu.grupo_mantido "$nome")"
+        fi
+    fi
+    debkit_auditar usuario_excluir "nome=$nome uid=$uid grupos=$grupos home=$home pasta=${destino%%:*} avisos=$avisos resultado=ok"
+    msg_ok "$(t rmu.excluido "$nome")"
+}
+
 # ── Grupos: regras e consultas ──────────────────────────────────────────────
 # Decisão de 19/10/2026 (planejamento, 3.6). Nome do grupo: as regras do
 # login, sem os reservados, sem o que já existe (grupo ou usuário) e sem
@@ -1833,6 +2011,24 @@ debkit_samba_grupo_usos() {
         END { for (s in usa) print s }' | sort
 }
 
+# Compartilhamentos que citam o USUÁRIO pelo nome (sem @ + &) nas listas de
+# usuários, ou em force user (um por linha)
+debkit_samba_usuario_usos() {
+    testparm -s "$DEBKIT_SMB_CONF" 2>/dev/null | awk -v u="$1" '
+        /^\[/ { sec = substr($0, 2, length($0) - 2); next }
+        {
+            linha = $0; sub(/^[ \t]+/, "", linha)
+            p = linha; sub(/[ \t]*=.*/, "", p); p = tolower(p)
+            v = linha; if (!sub(/^[^=]*=[ \t]*/, "", v)) next
+            if (p == "force user") { if (v == u) usa[sec] = 1 }
+            else if (p ~ /^(valid users|invalid users|read list|write list|admin users)$/) {
+                n = split(v, tok, /[ ,]+/)
+                for (i = 1; i <= n; i++) { x = tok[i]; gsub(/"/, "", x); if (x == u) usa[sec] = 1 }
+            }
+        }
+        END { for (s in usa) print s }' | sort
+}
+
 # Pastas onde procurar arquivos de um grupo: a base das pastas pessoais e os
 # caminhos dos compartilhamentos (sem variáveis como %U), sem repetir pasta
 # que já está dentro de outra da lista
@@ -1857,16 +2053,23 @@ debkit_samba_pastas_dados() {
 }
 
 DEBKIT_GRP_ARQUIVOS_MAX=1000
-# Conta (até GRP_ARQUIVOS_MAX) os arquivos e pastas com o GID <gid> nas
-# pastas de dados. Imprime o número.
-debkit_grupo_contar_arquivos() {
-    local gid="$1" p
+# debkit_contar_arquivos <-group|-user> <número> [pasta a ignorar]
+# Conta (até GRP_ARQUIVOS_MAX) os arquivos e pastas do GID/UID nas pastas de
+# dados, sem entrar na pasta a ignorar (ex: a pasta pessoal que vai ser
+# apagada). Imprime o número.
+debkit_contar_arquivos() {
+    local teste="$1" id="$2" ignorar="${3:-}" p
     local -a pastas=()
     mapfile -t pastas < <(debkit_samba_pastas_dados)
     for p in "${pastas[@]}"; do
-        find "$p" -xdev -group "$gid" -printf '.\n' 2>/dev/null
+        if [ -n "$ignorar" ]; then
+            find "$p" -xdev -path "$ignorar" -prune -o "$teste" "$id" -printf '.\n' 2>/dev/null
+        else
+            find "$p" -xdev "$teste" "$id" -printf '.\n' 2>/dev/null
+        fi
     done | head -n "$DEBKIT_GRP_ARQUIVOS_MAX" | wc -l
 }
+debkit_grupo_contar_arquivos() { debkit_contar_arquivos -group "$1"; }
 
 # ── Sessões do Samba ────────────────────────────────────────────────────────
 # O Samba lê os grupos do usuário só quando a sessão começa (e o Windows
@@ -1886,34 +2089,43 @@ debkit_samba_conectados() {
     return 0
 }
 
-# Encerra as sessões abertas dos usuários (smbcontrol <pid> shutdown; se não
+# Encerra as sessões abertas do usuário (smbcontrol <pid> shutdown; se não
 # adiantar, TERM no processo, só se for um smbd) e confere que acabaram.
-# Retorna 1 se alguma sessão não foi encerrada.
+# Deixa em DEBKIT_SES_PIDS os PIDs encontrados. Retorna 1 se alguma ficou.
+debkit_samba_encerrar_sessoes() {
+    local pid i vivos=""
+    mapfile -t DEBKIT_SES_PIDS < <(debkit_samba_sessoes "$1")
+    [ ${#DEBKIT_SES_PIDS[@]} -gt 0 ] || return 0
+    for pid in "${DEBKIT_SES_PIDS[@]}"; do
+        smbcontrol -s "$DEBKIT_SMB_CONF" "$pid" shutdown >/dev/null 2>&1
+    done
+    for (( i = 0; i < 25; i++ )); do
+        vivos=""
+        for pid in "${DEBKIT_SES_PIDS[@]}"; do kill -0 "$pid" 2>/dev/null && vivos+=" $pid"; done
+        [ -z "$vivos" ] && return 0
+        [ "$i" -eq 10 ] && for pid in $vivos; do
+            [[ "$(cat "/proc/$pid/comm" 2>/dev/null)" == smbd* ]] && kill -TERM "$pid" 2>/dev/null
+        done
+        sleep 0.2
+    done
+    return 1
+}
+
+# Refaz as sessões abertas dos usuários (o Windows reconecta com os grupos
+# novos). Retorna 1 se alguma sessão não foi encerrada.
 debkit_samba_reconectar() {
-    local u pid i vivos rc=0
-    local -a pids=()
+    local u rc=0 pids
     for u in "$@"; do
-        mapfile -t pids < <(debkit_samba_sessoes "$u")
-        [ ${#pids[@]} -gt 0 ] || continue
-        for pid in "${pids[@]}"; do
-            smbcontrol -s "$DEBKIT_SMB_CONF" "$pid" shutdown >/dev/null 2>&1
-        done
-        for (( i = 0; i < 25; i++ )); do
-            vivos=""
-            for pid in "${pids[@]}"; do kill -0 "$pid" 2>/dev/null && vivos+=" $pid"; done
-            [ -z "$vivos" ] && break
-            [ "$i" -eq 10 ] && for pid in $vivos; do
-                [[ "$(cat "/proc/$pid/comm" 2>/dev/null)" == smbd* ]] && kill -TERM "$pid" 2>/dev/null
-            done
-            sleep 0.2
-        done
-        if [ -n "$vivos" ]; then
-            msg_aviso "$(t ses.falhou "$u")"
-            debkit_auditar samba_reconectar "usuario=$u pids=$(IFS=,; echo "${pids[*]}") resultado=falha"
-            rc=1
+        if debkit_samba_encerrar_sessoes "$u"; then
+            [ ${#DEBKIT_SES_PIDS[@]} -gt 0 ] || continue
+            pids=$(IFS=,; echo "${DEBKIT_SES_PIDS[*]}")
+            msg_info "$(t ses.reconectado "$u" "${#DEBKIT_SES_PIDS[@]}")"
+            debkit_auditar samba_reconectar "usuario=$u pids=$pids resultado=ok"
         else
-            msg_info "$(t ses.reconectado "$u" "${#pids[@]}")"
-            debkit_auditar samba_reconectar "usuario=$u pids=$(IFS=,; echo "${pids[*]}") resultado=ok"
+            pids=$(IFS=,; echo "${DEBKIT_SES_PIDS[*]}")
+            msg_aviso "$(t ses.falhou "$u")"
+            debkit_auditar samba_reconectar "usuario=$u pids=$pids resultado=falha"
+            rc=1
         fi
     done
     return "$rc"
@@ -2244,6 +2456,51 @@ debkit_samba_tela_pastas_pessoais() {
     pausar
 }
 
+# Tela: escolhe o usuário, mostra o que será perdido e pede UMA confirmação (s/n)
+debkit_samba_tela_excluir_usuario() {
+    local nome tipo problema destino home n uid rc
+    local -a nomes=() rotulos=() grupos=() usos=() sessoes=()
+    titulo "$(t rmu.titulo)"
+    if ! debkit_samba_ambiente_pronto; then msg_erro "$(t usr.ambiente_nao_pronto)"; pausar; return 1; fi
+    while IFS='|' read -r nome _ tipo _ _ _ _; do
+        if [ -z "$tipo" ] || [ "$tipo" == "admin" ] || [ "$nome" == "$(debkit_quem_roda)" ]; then continue; fi
+        nomes+=("$nome"); rotulos+=("$(debkit_pad "$nome" 20) $(t "lst.t_$tipo")")
+    done < <(debkit_samba_usuarios_dados)
+    if [ ${#nomes[@]} -eq 0 ]; then msg_info "$(t rmu.sem_usuarios)"; pausar; return 0; fi
+    echo "  $(t sen.titulo_usuarios)"
+    debkit_numerar "${rotulos[@]}"
+    debkit_escolher_um nome "$(t sen.p_usuario)" "${nomes[@]}" || { msg_aviso "$(t usr.cancelado)"; return 1; }
+    echo ""
+    if ! problema=$(debkit_usuario_exclusao_problema "$nome"); then msg_erro "$problema"; pausar; return 1; fi
+    IFS=: read -r _ _ uid _ _ home _ < <(getent passwd "$nome")
+    mapfile -t grupos < <(id -nG -- "$nome" 2>/dev/null | tr ' ' '\n' | grep -vxF -e "$nome" -e "$DEBKIT_GRUPO_USUARIOS")
+    mapfile -t usos < <(debkit_samba_usuario_usos "$nome")
+    mapfile -t sessoes < <(debkit_samba_sessoes "$nome")
+    destino=$(debkit_usuario_home_destino "$nome")
+    echo "  $(t rmu.titulo_perde "$nome")"
+    echo "    $(t usr.r_tipo "$(t "lst.t_$(debkit_usuario_tipo "$nome")")")"
+    if debkit_samba_conta_existe "$nome"; then echo "    $(t rmu.r_contas)"; else echo "    $(t rmu.r_contas_linux)"; fi
+    echo "    $(t usr.r_grupos "$(debkit_juntar "${grupos[@]}")")"
+    case "$destino" in
+        apagar)   echo "    $(t rmu.r_home_apagar "$home")" ;;
+        nenhuma)  echo "    $(t rmu.r_home_nenhuma)" ;;
+        manter:*) echo "    $(t rmu.r_home_manter "$home" "${destino#manter:}")" ;;
+    esac
+    [ ${#sessoes[@]} -gt 0 ] && msg_aviso "$(t rmu.aviso_sessoes "${#sessoes[@]}")"
+    [ ${#usos[@]} -gt 0 ] && msg_aviso "$(t rmu.aviso_usos "$DEBKIT_SMB_CONF" "$(printf '[%s] ' "${usos[@]}")")"
+    msg_info "$(t rmu.procurando "$uid")"
+    if [ "$destino" == "apagar" ]; then n=$(debkit_contar_arquivos -user "$uid" "$home"); else n=$(debkit_contar_arquivos -user "$uid"); fi
+    if [ "$n" -ge "$DEBKIT_GRP_ARQUIVOS_MAX" ]; then msg_aviso "$(t rmu.aviso_arquivos_muitos "$n" "$uid")"
+    elif [ "$n" -gt 0 ]; then msg_aviso "$(t rmu.aviso_arquivos "$n" "$uid")"
+    else msg_info "$(t rmu.sem_arquivos)"
+    fi
+    echo ""
+    if ! confirmar "$(t rmu.p_confirmar "$nome")"; then msg_aviso "$(t usr.cancelado)"; pausar; return 1; fi
+    debkit_usuario_excluir "$nome"; rc=$?
+    pausar
+    return "$rc"
+}
+
 # ── Grupos: telas ───────────────────────────────────────────────────────────
 # Escolhe UM item numerado: debkit_escolher_um <variável> <prompt> <itens...>.
 # Retorna 1 se cancelar (Enter vazio ou fim da entrada).
@@ -2428,9 +2685,9 @@ debkit_samba_tela_membros() {
 }
 
 # Tela: escolhe o grupo, mostra o que será perdido (membros, smb.conf,
-# arquivos) e pede UMA confirmação digitando o nome do grupo
+# arquivos) e pede UMA confirmação (s/n)
 debkit_samba_tela_remover_grupo() {
-    local grupo gid n resp rc
+    local grupo gid n rc
     local -a grupos=() membros=() usos=() principais=()
     titulo "$(t grp.titulo_remover)"
     if ! debkit_samba_ambiente_pronto; then msg_erro "$(t usr.ambiente_nao_pronto)"; pausar; return 1; fi
@@ -2466,8 +2723,7 @@ debkit_samba_tela_remover_grupo() {
         msg_info "$(t grp.sem_arquivos)"
     fi
     echo ""
-    debkit_ler resp "$(t grp.p_confirmar_remover "$grupo")" || { msg_aviso "$(t usr.cancelado)"; return 1; }
-    if [ "$resp" != "$grupo" ]; then msg_aviso "$(t usr.cancelado)"; pausar; return 1; fi
+    if ! confirmar "$(t grp.p_confirmar_remover "$grupo")"; then msg_aviso "$(t usr.cancelado)"; pausar; return 1; fi
     debkit_grupo_remover "$grupo"; rc=$?
     pausar
     return "$rc"
@@ -2530,6 +2786,7 @@ debkit_samba_menu_usuarios() {
         echo "  2) $(t samba.criar_usuario)"
         echo "  3) $(t samba.trocar_senha)"
         echo "  4) $(t samba.criar_home)"
+        echo "  5) $(t samba.excluir_usuario)"
         echo ""
         echo "  0) $(t geral.voltar)"
         echo ""
@@ -2540,6 +2797,7 @@ debkit_samba_menu_usuarios() {
             2)  debkit_samba_tela_criar_usuario ;;
             3)  debkit_samba_tela_trocar_senha ;;
             4)  debkit_samba_tela_home_existente ;;
+            5)  debkit_samba_tela_excluir_usuario ;;
             0)  return 0 ;;
             *)  msg_erro "$(t geral.opcao_invalida "$opcao")"; pausar ;;
         esac

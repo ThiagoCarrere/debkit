@@ -116,11 +116,11 @@ caso "recusas: nada muda"
 gpasswd -M dkt_a,dkt_b dkt_g1 >/dev/null
 contem "já é membro" "$(alterar dkt_g1 "dkt_a" "")"
 contem "não é membro" "$(alterar dkt_g1 "" "dkt_c")"
-contem "entrar e sair ao mesmo tempo" "$(alterar dkt_g1 "dkt_c" "dkt_c")"
+contem "adicionado e removido ao mesmo tempo" "$(alterar dkt_g1 "dkt_c" "dkt_c")"
 contem "não é um usuário comum" "$(alterar dkt_g1 "daemon" "")"
 contem "não é um usuário comum" "$(alterar dkt_g1 "" "daemon")" "membro de sistema não sai pelo debkit"
 contem "não é um usuário comum" "$(alterar dkt_g1 "dkt_nao_existe" "")"
-contem "Nenhum usuário para colocar ou tirar" "$(alterar dkt_g1 "" "")"
+contem "Nenhum usuário para adicionar ou remover" "$(alterar dkt_g1 "" "")"
 igual "dkt_a,dkt_b" "$(membros dkt_g1)" "membros iguais"
 caso "recusas: grupos que o debkit não gerencia"
 for g in sudo users daemon "$GRUPO_TESTE" dkt_a dkt_nao_existe; do
@@ -270,13 +270,13 @@ contem "Membros de dkt_rh atualizados" "$saida"; igual "dkt_c" "$(membros dkt_rh
 caso "tela membros: principal e de sistema aparecem, mas não saem"
 gpasswd -a daemon dkt_gp >/dev/null
 saida=$(tela debkit_samba_tela_membros "$(idx_g dkt_gp)" 2 "")
-contem "Grupo principal de: dkt_p" "$saida"; contem "Outros membros (de sistema; o debkit não mexe): daemon" "$saida"
+contem "Grupo principal de: dkt_p (não podem ser removidos)" "$saida"; contem "Outros membros (de sistema; o debkit não mexe): daemon" "$saida"
 nao_contem "2) daemon" "$saida"; contem "Cancelado" "$saida"
 caso "tela membros: confirmação negada não muda nada"
 saida=$(tela debkit_samba_tela_membros "$(idx_g dkt_rh)" 2 1 n "")
 contem "Cancelado" "$saida"; igual "dkt_c" "$(membros dkt_rh)"
 
-caso "tela remover: avisos (membros, smb.conf, arquivos) e nome errado cancela"
+caso "tela remover: avisos (membros, smb.conf, arquivos) e 'n' cancela"
 rm -rf -- "$AREIA/dados/rh" "$AREIA/homes" "$AREIA/fora/w"      # arquivos do dkt_g1 removido (GID pode voltar)
 cat >> "$AREIA/smb.conf" <<EOF
 
@@ -285,19 +285,19 @@ cat >> "$AREIA/smb.conf" <<EOF
    valid users = @dkt_rh
 EOF
 chgrp dkt_rh "$AREIA/dados/vendas"
-saida=$(tela debkit_samba_tela_remover_grupo "$(idx_g dkt_rh)" "dkt_rh_errado" "")
+saida=$(tela debkit_samba_tela_remover_grupo "$(idx_g dkt_rh)" n "")
 contem "1 membro(s) perdem o acesso dado por este grupo: dkt_c" "$saida"
 contem "nos compartilhamentos: [dkt_teste]" "$saida"
 contem "1 arquivo(s)/pasta(s) pertencem ao grupo" "$saida"
 contem "Cancelado" "$saida"; verdadeiro "continua" getent group dkt_rh
-caso "tela remover: nome certo remove"
-saida=$(tela debkit_samba_tela_remover_grupo "$(idx_g dkt_rh)" "dkt_rh" "")
+caso "tela remover: 's' remove"
+saida=$(tela debkit_samba_tela_remover_grupo "$(idx_g dkt_rh)" s "")
 contem "Grupo dkt_rh removido" "$saida"; verdadeiro "removido" bash -c "! getent group dkt_rh"
 caso "tela remover: grupo sem membros e sem arquivos"
-saida=$(tela debkit_samba_tela_remover_grupo "$(idx_g dkt_rh2)" "dkt_rh2" "")
+saida=$(tela debkit_samba_tela_remover_grupo "$(idx_g dkt_rh2)" s "")
 contem "O grupo não tem membros" "$saida"; contem "Nenhum arquivo do grupo" "$saida"; contem "removido" "$saida"
 caso "tela remover: grupo principal é recusado antes de perguntar"
-saida=$(tela debkit_samba_tela_remover_grupo "$(idx_g dkt_gp)" "dkt_gp" "")
+saida=$(tela debkit_samba_tela_remover_grupo "$(idx_g dkt_gp)" s "")
 contem "é o grupo principal de: dkt_p" "$saida"; nao_contem "Procurando arquivos" "$saida" "para antes dos avisos"
 verdadeiro "continua" getent group dkt_gp
 

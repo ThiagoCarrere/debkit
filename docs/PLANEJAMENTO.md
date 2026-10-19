@@ -157,21 +157,37 @@ Decisão de 16/10/2026:
 
 ### 3.4 Remover x desativar
 
-Decisão de 19/10/2026 (Thiago): na prática o ciclo é criar → colocar em
+Decisão de 19/10/2026 (Thiago): na prática o ciclo é criar → adicionar a
 um ou mais grupos → excluir quando a pessoa sai. **Desativar/reativar sai
 da Fase 1** (contas desativadas só poluiriam as listagens); fica registrado
 abaixo para o caso de um dia fazer falta. A próxima tarefa é **remover**.
 
 - **Desativar** (reversível): bloqueia o acesso (flag `D` no Samba) e mantém
   tudo; reativar volta com a mesma senha.
-- **Remover** (definitivo): apaga do **Linux, do Samba e a pasta pessoal, se
-  houver** — sem perguntas separadas, com UMA confirmação digitando o nome
-  do usuário. Antes mostra o que será perdido e sugere desativar.
+- **Remover / Excluir** (definitivo; feito em 19/10/2026): apaga do **Linux,
+  do Samba e a pasta pessoal, se houver** — sem perguntas separadas, com
+  UMA confirmação **s/n** (decisão do Thiago: não digitar o login). Antes
+  mostra o que será perdido (tipo, contas, grupos, pasta pessoal).
+  - Não exclui administradores (`sudo`) nem quem está rodando o debkit.
   - Sessões Samba abertas: mostra e encerra (necessário para o `userdel`).
-  - A home só é apagada se estiver dentro de `HOMES_BASE` ou de `/home` e
-    não for de outro usuário; fora disso é mantida e o debkit avisa.
-  - Arquivos do usuário nos compartilhamentos NÃO são apagados.
-  - Recusa se o grupo pessoal do usuário é usado no `smb.conf`.
+    Outros processos do usuário (ex.: SSH aberto): **recusa** e não mata
+    (o `userdel` também recusaria - testado).
+  - Ordem: sessões → `userdel` (nunca `-r`; se falhar, nada foi apagado) →
+    conta Samba → pasta pessoal → grupo pessoal que sobrar vazio (o
+    `userdel` não o apaga se for o principal de outro usuário - testado).
+  - A home só é apagada se for `<HOMES_BASE ou /home>/<pasta>`, pasta de
+    verdade (não link), do próprio usuário e de mais ninguém; fora disso é
+    mantida e o debkit avisa.
+  - Arquivos do usuário nos compartilhamentos NÃO são apagados: o debkit
+    mostra quantos são, porque ficam com o UID e um usuário criado depois
+    pode receber o mesmo UID e virar dono deles (comprovado no `t14`).
+  - Recusa se o grupo pessoal do usuário é usado no `smb.conf`; avisa se
+    o login é citado nos compartilhamentos.
+  - Achado na prova real: com `map to guest = Bad User` (padrão do Debian),
+    entrar com o nome de quem foi excluído vira sessão de convidado
+    (`nobody`) em vez de ser recusado. Sem compartilhamento `guest ok` não
+    dá acesso a nada; **decidir na Fase 2** (ex.: a preparação mudar para
+    `map to guest = Never`).
 - **Consistência:** contas só no Linux ou só no Samba aparecem marcadas,
   com opção de corrigir (criar a senha Samba / limpar a conta Samba órfã).
 
@@ -187,7 +203,7 @@ Decisão de 19/10/2026 (Thiago):
   `debkit`. O `groupadd` sozinho aceita `Dkt.G` (testado): quem controla o
   nome é o debkit.
 - **Criar:** confere o nome, cria o grupo comum (GID na faixa do
-  `login.defs`), oferece colocar membros, resumo e UMA confirmação; confere
+  `login.defs`), oferece adicionar membros, resumo e UMA confirmação; confere
   no fim o grupo e os membros (se algo falhar, desfaz).
 - **Grupos gerenciados:** só os comuns (GID na faixa), sem os grupos
   pessoais, o `debkit_usuarios` (depende do tipo da conta: mexer nele
@@ -195,8 +211,9 @@ Decisão de 19/10/2026 (Thiago):
   e os grupos citados no sudoers (`%grupo`, `%#gid`, também no
   `sudoers.d`): entrar neles daria sudo. Também não cria grupo com nome já
   citado no sudoers. (Achado na revisão da tarefa.)
-- **Entrar e sair:** tela por grupo (escolhe o grupo, vê os membros,
-  adiciona ou tira). Membros: os usuários comuns, inclusive admins. A lista
+- **Adicionar e remover membros** (termos da tela, decisão do Thiago em
+  19/10/2026): tela por grupo (escolhe o grupo, vê os membros, adiciona ou
+  remove). Membros: os usuários comuns, inclusive admins. A lista
   é trocada de uma vez (`gpasswd -M`, que recusa tudo se um nome não
   existe) e conferida; se não conferir, volta a anterior.
 - **Efeito na hora (decisão de 19/10/2026, Thiago: sempre automático):** o
@@ -220,7 +237,8 @@ Decisão de 19/10/2026 (Thiago):
     e se há arquivos do grupo na base das pastas pessoais e nos caminhos
     dos compartilhamentos (mostra quantos: o GID pode ser reaproveitado por
     um grupo novo, que herdaria o acesso);
-  - pede UMA confirmação digitando o nome do grupo.
+  - pede UMA confirmação **s/n** (decisão do Thiago em 19/10/2026: digitar
+    o nome ficaria cansativo; o mesmo vale para excluir usuário).
 
 ## 4. O que o debkit gerencia
 
@@ -354,7 +372,7 @@ debkit/
 | Fase | Conteúdo |
 |---|---|
 | 0. Fundação | 0.1 esqueleto ✔ · 0.2 detecção do ambiente ✔ · 0.3 preparação do ambiente e backups ✔ · 0.4 proteção SSH ✔ · 0.5 firewall ✔ |
-| 1. Usuários e grupos | 1.0 reestruturar ✔ (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário ✔ (tipos, nome completo, grupos; sem home) · 1.1b pasta pessoal ✔ (base no disco de dados, na criação ou depois, `[homes]`) · listar ✔ · trocar senha ✔ · grupos ✔ (criar, remover, entrar/sair) · menu em submenus ✔ · remover (excluir) · consistência Linux x Samba · ~~desativar/reativar~~ (adiado, 3.4) |
+| 1. Usuários e grupos | 1.0 reestruturar ✔ (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário ✔ (tipos, nome completo, grupos; sem home) · 1.1b pasta pessoal ✔ (base no disco de dados, na criação ou depois, `[homes]`) · listar ✔ · trocar senha ✔ · grupos ✔ (criar, remover, entrar/sair) · menu em submenus ✔ · excluir usuário ✔ · consistência Linux x Samba · ~~desativar/reativar~~ (adiado, 3.4) |
 | 2. Compartilhamentos | criar, listar, permissões de pasta, remover (inclusive os já existentes); pastas pessoais e `[homes]`; avaliar acesso somente leitura por grupo |
 | 3. Diagnóstico | falhas de login, sessões ativas, saúde do Samba, consulta à auditoria |
 | 4. Publicação | comandos diretos completos, `install.sh`, **desinstalação**, README, mensagens em inglês, testes automáticos e CI |
@@ -516,8 +534,12 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
     criar pasta pessoal) · 2) Grupos (listar, criar, membros, remover) ·
     3) Compartilhamentos (por enquanto só pastas pessoais/`[homes]`; o
     resto na Fase 2). Desativar/reativar adiado (3.4).
-16. **Próxima tarefa:** remover (excluir) usuário (seção 3.4), no submenu
-    Usuários.
+16. ✔ Excluir usuário (Samba → Usuários → 5; regras na seção 3.4).
+    Prova real (`t14b`): a sessão aberta no Samba é encerrada e o usuário
+    some do Linux e da base real; com SSH aberto a exclusão é recusada.
+17. **Pendente para a Fase 2:** `map to guest = Bad User` (seção 3.4).
+18. **Próxima tarefa:** consistência Linux x Samba (contas só no Linux ou
+    só no Samba, seção 3.4) - última da Fase 1.
 
 **VM limpa de novo:** `dev/vmnova.sh` → (reinicia) → `dev/vmprepara.sh` →
 `./debkit --preparar` → testes.
@@ -553,7 +575,10 @@ confere que nenhuma montagem sobrou). Com os scripts da VM e a listagem:
 automática: 1303 + 116, com usuários e grupos de demonstração na VM (o
 `t07` confere cada grupo comum real, então o total varia com eles). A VM
 pode guardar dados de demonstração (nomes sem `dkt_`); os testes não
-dependem de o servidor estar sem grupos (o `t09` cria o próprio).
+dependem de o servidor estar sem grupos (o `t09` cria o próprio). Com excluir
+usuário: 1412 + 139 (`t14_excluir.sh` e a prova real `t14b_excluir_real.sh`).
+Os testes também acusam se alguém usar o debkit na VM enquanto rodam (o
+log e a trava reais mudam): não usar o debkit durante a suíte.
 
 Os testes funcionam com o servidor preparado ou não: em vez de exigir que
 os arquivos reais do debkit não existam, conferem que não mudaram

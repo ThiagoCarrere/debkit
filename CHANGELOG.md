@@ -58,14 +58,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   procura o `include` pelo caminho exato da areia.
 
 ### Adicionado
+- **Excluir usuário** (Samba → Usuários → 5): apaga do Linux, do Samba e
+  a pasta pessoal (só se for da base das pastas pessoais ou de `/home`, do
+  próprio usuário), com uma confirmação s/n depois de mostrar o que será
+  perdido. Encerra as sessões do Samba; recusa administradores, quem roda
+  o debkit, usuário com processos fora do Samba (ex.: SSH aberto) e grupo
+  pessoal usado no `smb.conf`. Avisa os arquivos que ficam nos
+  compartilhamentos (UID pode ser reaproveitado) e as citações do login no
+  `smb.conf`.
 - **Grupos** (menu Samba, opção 6): listar (GID, membros, grupo principal
   e uso no Samba), criar (nome com as regras do login, sem reservados,
   `debkit*`, nomes já usados ou citados no sudoers; membros na criação;
-  tudo ou nada), colocar e tirar membros (lista trocada de uma vez com
+  tudo ou nada), adicionar e remover membros (lista trocada de uma vez com
   `gpasswd -M` e conferida; se não conferir, volta a anterior) e remover
   (recusa grupo principal de alguém; avisa os membros, o uso no `smb.conf`
-  e os arquivos do grupo nas pastas de dados; confirmação digitando o
-  nome). Ficam de fora os grupos de sistema, os pessoais, o
+  e os arquivos do grupo nas pastas de dados; confirmação s/n). Ficam de fora os grupos de sistema, os pessoais, o
   `debkit_usuarios` e os citados no sudoers (entrar neles daria sudo).
   Efeito na hora: as sessões abertas no Samba só dos usuários afetados são
   refeitas (o Windows reconecta sozinho, já com os grupos novos), com
