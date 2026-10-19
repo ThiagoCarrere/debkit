@@ -18,6 +18,7 @@ impressao_digital() {
     echo "sshd_config.d:   $(ls -A /etc/ssh/sshd_config.d 2>/dev/null | tr '\n' ' ')"
     echo "grupos debkit:      $(getent group | cut -d: -f1 | grep -E '^(debkitt?|dkt)_' | tr '\n' ' ')"
     echo "usuários debkitt:   $(getent passwd | cut -d: -f1 | grep -E '^dkt_' | tr '\n' ' ')"
+    echo "outros grupos:   $(getent group | grep -vE '^dkt_' | md5sum) $(getent gshadow | grep -vE '^dkt_' | md5sum)"
     echo "Samba debkitt:      $(pdbedit -L 2>/dev/null | cut -d: -f1 | grep -E '^dkt_' | tr '\n' ' ')"
     echo "pacotes:         $(dpkg-query -W -f='${binary:Package}=${db:Status-Abbrev} ' samba samba-common-bin samba-ad-dc winbind libpam-winbind libnss-winbind openssh-server ufw 2>/dev/null)"
     echo "PAM/NSS:         $(cat /etc/pam.d/common-* /etc/nsswitch.conf 2>/dev/null | md5sum)"

@@ -337,7 +337,7 @@ debkit/
 | Fase | Conteúdo |
 |---|---|
 | 0. Fundação | 0.1 esqueleto ✔ · 0.2 detecção do ambiente ✔ · 0.3 preparação do ambiente e backups ✔ · 0.4 proteção SSH ✔ · 0.5 firewall ✔ |
-| 1. Usuários e grupos | 1.0 reestruturar ✔ (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário ✔ (tipos, nome completo, grupos; sem home) · 1.1b pasta pessoal ✔ (base no disco de dados, na criação ou depois, `[homes]`) · listar ✔ · trocar senha ✔ · grupos (criar, remover, entrar/sair) · desativar/reativar · remover · consistência Linux x Samba |
+| 1. Usuários e grupos | 1.0 reestruturar ✔ (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário ✔ (tipos, nome completo, grupos; sem home) · 1.1b pasta pessoal ✔ (base no disco de dados, na criação ou depois, `[homes]`) · listar ✔ · trocar senha ✔ · grupos ✔ (criar, remover, entrar/sair) · desativar/reativar · remover · consistência Linux x Samba |
 | 2. Compartilhamentos | criar, listar, permissões de pasta, remover (inclusive os já existentes); pastas pessoais e `[homes]`; avaliar acesso somente leitura por grupo |
 | 3. Diagnóstico | falhas de login, sessões ativas, saúde do Samba, consulta à auditoria |
 | 4. Publicação | comandos diretos completos, `install.sh`, **desinstalação**, README, mensagens em inglês, testes automáticos e CI |
@@ -376,7 +376,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 
 ## 11. Situação atual e próximos passos
 
-*Atualizado em 16/10/2026.*
+*Atualizado em 19/10/2026.*
 
 - Nome decidido: **debkit**; renomeação gsb → debkit feita (arquivos,
   variáveis, funções, grupo `debkit_usuarios`, `/etc/debkit`, testes). As
@@ -417,6 +417,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | Scripts da VM de desenvolvimento | `7e20a14` |
 | Listar usuários | `8ff61b1` |
 | Trocar senha (+ unix password sync desligado) | `64ab68c` |
+| Grupos (criar, membros, remover) | `aa7f084` |
 
 **Próximos passos:**
 
@@ -485,7 +486,13 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 13. **Pendente (pedido do Thiago):** repaginar o README do GitHub - está
     simples demais para o projeto (apresentação, destaques, telas/exemplos,
     instalação, segurança, status). Não é urgente, mas precisa ser feito.
-14. **Próxima tarefa:** grupos (criar, remover, entrar/sair).
+14. ✔ Grupos (menu Samba, opção 6: listar, criar, membros, remover;
+    decisões na seção 3.6). Prova real na VM (`t13b`): o grupo dá o acesso
+    a um compartilhamento `valid users = @grupo`; entrar/sair vale nas
+    conexões novas e a sessão já aberta só muda ao reconectar; o smb.conf
+    real volta idêntico. Achado na revisão: grupos citados no sudoers ficam
+    fora (entrar neles daria sudo).
+15. **Próxima tarefa:** desativar/reativar usuário (seção 3.4).
 
 **VM limpa de novo:** `dev/vmnova.sh` → (reinicia) → `dev/vmprepara.sh` →
 `./debkit --preparar` → testes.
@@ -516,7 +523,8 @@ de estado para a areia). Com a correção dos pacotes de domínio: 733 + 48
 de teste de verdade - arquivos ext4 em loop, um somente leitura e um tmpfs
 - em `/mnt/dkt-teste.*` e desmonta no fim; a impressão digital do `run.sh`
 confere que nenhuma montagem sobrou). Com os scripts da VM e a listagem:
-994 + 65. Com trocar senha: 1082 + 78.
+994 + 65. Com trocar senha: 1082 + 78. Com grupos: 1278 + 106
+(`t13_grupos.sh` e a prova real `t13b_grupos_real.sh`).
 
 Os testes funcionam com o servidor preparado ou não: em vez de exigir que
 os arquivos reais do debkit não existam, conferem que não mudaram
@@ -565,3 +573,13 @@ os arquivos reais do debkit não existam, conferem que não mudaram
 - no bash, `[a-z]` em pt_BR aceita letras acentuadas: listar as letras;
 - `read -p` não mostra a pergunta quando a entrada não é um terminal:
   textos de pergunta se testam com `pty`.
+
+**Cuidados aprendidos na tarefa de grupos:**
+
+- um teste chegou a ter `gpasswd -M dkt_a daemon` (trocaria os membros do
+  grupo de sistema `daemon`), pego na revisão antes de rodar: agora a
+  impressão digital do `run.sh` inclui os grupos que não são `dkt_*`
+  (`/etc/group` e `/etc/gshadow`) - qualquer mudança neles reprova;
+- `groupdel` apaga grupo com membros sem avisar e `groupadd` aceita nomes
+  como `Dkt.G`: as travas são do debkit;
+- grupo comum citado no sudoers dá sudo a quem entra: fica fora das telas.
