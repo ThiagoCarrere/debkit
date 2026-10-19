@@ -217,7 +217,7 @@ MSG_pt_BR+=(
     [homes.p_criar]="Criar o compartilhamento [homes] no smb.conf (cada usuário vê só a própria pasta, com escrita)?"
     [homes.p_liberar]="Liberar a escrita no compartilhamento [homes] (\"read only = no\"; cada usuário continua vendo só a própria pasta)?"
     [homes.feito]="Compartilhamento [homes] pronto."
-    [homes.aviso_depois]="Para a pasta aparecer no Windows, ajuste o compartilhamento [homes] em \"5) Pastas pessoais\" no menu do Samba."
+    [homes.aviso_depois]="Para a pasta aparecer no Windows, ajuste o compartilhamento [homes] em Samba > Compartilhamentos > \"Pastas pessoais\"."
 )
 # shellcheck disable=SC2034  # catálogo do núcleo
 MSG_en+=(
@@ -407,13 +407,18 @@ MSG_en+=(
     [homes.p_criar]="Create the [homes] share in smb.conf (each user only sees their own folder, writable)?"
     [homes.p_liberar]="Allow writing in the [homes] share (\"read only = no\"; each user still only sees their own folder)?"
     [homes.feito]="[homes] share ready."
-    [homes.aviso_depois]="For the folder to show up in Windows, adjust the [homes] share in \"Home folders\" in the Samba menu."
+    [homes.aviso_depois]="For the folder to show up in Windows, adjust the [homes] share in Samba > Shares > \"Home folders\"."
 )
 
 # shellcheck disable=SC2034  # catálogo do núcleo
 MSG_pt_BR+=(
-    [samba.grupos]="Grupos: criar, membros e remover"
-    [grp.titulo]="Grupos"
+    [samba.grupos]="Grupos"
+    [samba.usuarios]="Usuários"
+    [samba.compartilhamentos]="Compartilhamentos"
+    [samba.titulo_usuarios]="Samba: usuários"
+    [samba.titulo_compartilhamentos]="Samba: compartilhamentos"
+    [samba.compartilhamentos_depois]="(criar, listar, permissões e remover compartilhamentos: próxima fase)"
+    [grp.titulo]="Samba: grupos"
     [grp.listar]="Listar grupos"
     [grp.criar]="Criar grupo"
     [grp.membros]="Membros: colocar ou tirar usuários"
@@ -488,8 +493,13 @@ MSG_pt_BR+=(
 )
 # shellcheck disable=SC2034  # catálogo do núcleo
 MSG_en+=(
-    [samba.grupos]="Groups: create, members and remove"
-    [grp.titulo]="Groups"
+    [samba.grupos]="Groups"
+    [samba.usuarios]="Users"
+    [samba.compartilhamentos]="Shares"
+    [samba.titulo_usuarios]="Samba: users"
+    [samba.titulo_compartilhamentos]="Samba: shares"
+    [samba.compartilhamentos_depois]="(create, list, permissions and remove shares: next phase)"
+    [grp.titulo]="Samba: groups"
     [grp.listar]="List groups"
     [grp.criar]="Create group"
     [grp.membros]="Members: add or remove users"
@@ -2489,16 +2499,37 @@ debkit_samba_menu_grupos() {
 }
 
 # ── Menu ────────────────────────────────────────────────────────────────────
+# Samba: Usuários, Grupos e Compartilhamentos, cada um com o seu submenu
 debkit_samba_menu() {
     local opcao
     while true; do
         titulo "$(t samba.titulo)"
+        echo "  1) $(t samba.usuarios)"
+        echo "  2) $(t samba.grupos)"
+        echo "  3) $(t samba.compartilhamentos)"
+        echo ""
+        echo "  0) $(t geral.voltar)"
+        echo ""
+        ler_opcao opcao
+        case "$opcao" in
+            "") continue ;;
+            1)  debkit_samba_menu_usuarios ;;
+            2)  debkit_samba_menu_grupos ;;
+            3)  debkit_samba_menu_compartilhamentos ;;
+            0)  return 0 ;;
+            *)  msg_erro "$(t geral.opcao_invalida "$opcao")"; pausar ;;
+        esac
+    done
+}
+
+debkit_samba_menu_usuarios() {
+    local opcao
+    while true; do
+        titulo "$(t samba.titulo_usuarios)"
         echo "  1) $(t samba.listar_usuarios)"
         echo "  2) $(t samba.criar_usuario)"
         echo "  3) $(t samba.trocar_senha)"
         echo "  4) $(t samba.criar_home)"
-        echo "  5) $(t samba.pastas_pessoais)"
-        echo "  6) $(t samba.grupos)"
         echo ""
         echo "  0) $(t geral.voltar)"
         echo ""
@@ -2509,8 +2540,27 @@ debkit_samba_menu() {
             2)  debkit_samba_tela_criar_usuario ;;
             3)  debkit_samba_tela_trocar_senha ;;
             4)  debkit_samba_tela_home_existente ;;
-            5)  debkit_samba_tela_pastas_pessoais ;;
-            6)  debkit_samba_menu_grupos ;;
+            0)  return 0 ;;
+            *)  msg_erro "$(t geral.opcao_invalida "$opcao")"; pausar ;;
+        esac
+    done
+}
+
+# Compartilhamentos: por enquanto só o [homes] (Fase 2: criar, listar,
+# permissões, remover)
+debkit_samba_menu_compartilhamentos() {
+    local opcao
+    while true; do
+        titulo "$(t samba.titulo_compartilhamentos)"
+        echo "  1) $(t samba.pastas_pessoais)"
+        printf '  %s%s%s\n' "$C_CINZA" "$(t samba.compartilhamentos_depois)" "$C_RESET"
+        echo ""
+        echo "  0) $(t geral.voltar)"
+        echo ""
+        ler_opcao opcao
+        case "$opcao" in
+            "") continue ;;
+            1)  debkit_samba_tela_pastas_pessoais ;;
             0)  return 0 ;;
             *)  msg_erro "$(t geral.opcao_invalida "$opcao")"; pausar ;;
         esac

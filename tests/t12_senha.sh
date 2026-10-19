@@ -169,8 +169,8 @@ caso "tela: senhas diferentes e fim da entrada cancelam sem trocar"
 nt_antes=$(nt_hash dkt_sa)
 saida=$(tela "$(idx dkt_sa)" "Uma12345" "Outra1234")
 contem "As senhas não conferem" "$saida"; contem "Cancelado" "$saida"; igual "$nt_antes" "$(nt_hash dkt_sa)"
-caso "menu do Samba: 3) Trocar senha"
-contem "Trocar senha" "$(pty 0.6 "bash $DEBKIT" 1 3 "" 0 0)"
+caso "menu Samba > Usuários > 3) Trocar senha"
+contem "Usuários:" "$(pty 0.6 "bash $DEBKIT" 1 1 3 "" 0 0 0)" "abre a tela"
 
 limpar_usuarios
 caso "limpeza"

@@ -275,7 +275,7 @@ contem "Seguindo sem pasta pessoal" "$saida" "recusou a base"; contem "Cancelado
 nao_contem "HOMES_BASE=/" "$(cat "$AREIA/debkit.conf")" "nada gravado"
 caso "tela criar usuário (terminal): a base sugerida é <primeiro disco>/homes"
 sug="$(h debkit_samba_discos_dados | head -1)/homes"
-saida=$(pty 0.7 "bash $DEBKIT" 1 2 "" dkt_t2 "" "" s "" n "senha12" "senha12" n "" 0 0)
+saida=$(pty 0.7 "bash $DEBKIT" 1 1 2 "" dkt_t2 "" "" s "" n "senha12" "senha12" n "" 0 0 0)
 contem "Base [$sug]:" "$saida" "sugestão no prompt"; contem "Usar $sug como base das pastas pessoais" "$saida"
 nao_contem "HOMES_BASE=/" "$(cat "$AREIA/debkit.conf")" "recusou: nada gravado"
 caso "tela criar usuário: sem disco de dados - segue sem pasta"
@@ -295,9 +295,10 @@ contem "Opção inválida: '999'" "$saida"; contem "Cancelado" "$saida"
 caso "tela pastas pessoais: mostra a base e o [homes]"
 saida=$(tela debkit_samba_tela_pastas_pessoais "")
 contem "Base das pastas pessoais: $BASE" "$saida"; contem "Compartilhamento [homes]: ativo e com escrita" "$saida"
-caso "menu do Samba: opções 4 e 5"
-saida=$(pty 0.6 "bash $DEBKIT" 1 5 "" 0 0)
-contem "4) Criar pasta pessoal para um usuário existente" "$saida"; contem "5) Pastas pessoais: base e compartilhamento [homes]" "$saida"
+caso "menu: Usuários > 4) Criar pasta pessoal; Compartilhamentos > 1) Pastas pessoais"
+contem "4) Criar pasta pessoal para um usuário existente" "$(pty 0.6 "bash $DEBKIT" 1 1 0 0 0)"
+saida=$(pty 0.6 "bash $DEBKIT" 1 3 1 "" 0 0 0)
+contem "1) Pastas pessoais: base e compartilhamento [homes]" "$saida"; contem "próxima fase" "$saida"
 contem "Base das pastas pessoais: $BASE" "$saida"
 
 # ── Limpeza ──────────────────────────────────────────────────────────────────

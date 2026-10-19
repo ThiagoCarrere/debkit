@@ -306,9 +306,9 @@ groupadd dkt_rh; gpasswd -M dkt_a,dkt_b dkt_rh >/dev/null
 saida=$(p "debkit_samba_listar_grupos")
 contem "dkt_rh" "$saida"; contem "dkt_a, dkt_b" "$saida"; contem "usado no Samba: [dkt_teste]" "$saida"
 contem "dkt_p (principal)" "$saida"; nao_contem "$GRUPO_TESTE" "$saida"
-caso "menu do Samba: 6) Grupos"
-saida=$(pty 0.6 "bash $DEBKIT" 1 6 1 "" 0 0 0)
-contem "Grupos: criar, membros e remover" "$saida"; contem "Grupos do servidor" "$saida"
+caso "menu Samba > 2) Grupos"
+saida=$(pty 0.6 "bash $DEBKIT" 1 2 1 "" 0 0 0)
+contem "Samba: grupos" "$saida"; contem "Grupos do servidor" "$saida"
 caso "inglês"
 contem "Group dkt_en created." "$(p "DEBKIT_IDIOMA=en; DEBKIT_G_NOME=dkt_en; DEBKIT_G_MEMBROS=(); debkit_grupo_criar")"
 

@@ -96,8 +96,8 @@ caso "tabela em inglês"
 saida=$(l "DEBKIT_IDIOMA=en; debkit_samba_listar_usuarios")
 contem "Full name" "$saida"; contem "files" "$saida"; contem "Samba only" "$saida"; contem "Attention:" "$saida"
 
-caso "menu do Samba: 1) Listar usuários"
-saida=$(pty 0.6 "bash $DEBKIT" 1 1 "" 0 0)
+caso "menu Samba > Usuários > 1) Listar usuários"
+saida=$(pty 0.6 "bash $DEBKIT" 1 1 1 "" 0 0 0)
 contem "Usuários do servidor" "$saida"; contem "dkt_la" "$saida"; contem "Atenção:" "$saida"
 
 limpar_usuarios

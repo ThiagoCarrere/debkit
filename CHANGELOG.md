@@ -6,6 +6,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 ## [Não lançado]
 
 ### Alterado
+- **Menu do Samba em submenus:** 1) Usuários (listar, criar, trocar senha,
+  criar pasta pessoal), 2) Grupos (listar, criar, membros, remover) e
+  3) Compartilhamentos (por enquanto, pastas pessoais e `[homes]`).
 - **Reestruturação (tarefa 1.0):** o `debkit.sh` virou o ponto de entrada
   `debkit` + o núcleo `lib/nucleo.sh` + o módulo `modulos/samba.sh`. Rodar
   com `./debkit` (ou pelo link `/usr/local/sbin/debkit`, quando instalado).

@@ -157,6 +157,11 @@ Decisão de 16/10/2026:
 
 ### 3.4 Remover x desativar
 
+Decisão de 19/10/2026 (Thiago): na prática o ciclo é criar → colocar em
+um ou mais grupos → excluir quando a pessoa sai. **Desativar/reativar sai
+da Fase 1** (contas desativadas só poluiriam as listagens); fica registrado
+abaixo para o caso de um dia fazer falta. A próxima tarefa é **remover**.
+
 - **Desativar** (reversível): bloqueia o acesso (flag `D` no Samba) e mantém
   tudo; reativar volta com a mesma senha.
 - **Remover** (definitivo): apaga do **Linux, do Samba e a pasta pessoal, se
@@ -349,7 +354,7 @@ debkit/
 | Fase | Conteúdo |
 |---|---|
 | 0. Fundação | 0.1 esqueleto ✔ · 0.2 detecção do ambiente ✔ · 0.3 preparação do ambiente e backups ✔ · 0.4 proteção SSH ✔ · 0.5 firewall ✔ |
-| 1. Usuários e grupos | 1.0 reestruturar ✔ (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário ✔ (tipos, nome completo, grupos; sem home) · 1.1b pasta pessoal ✔ (base no disco de dados, na criação ou depois, `[homes]`) · listar ✔ · trocar senha ✔ · grupos ✔ (criar, remover, entrar/sair) · desativar/reativar · remover · consistência Linux x Samba |
+| 1. Usuários e grupos | 1.0 reestruturar ✔ (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário ✔ (tipos, nome completo, grupos; sem home) · 1.1b pasta pessoal ✔ (base no disco de dados, na criação ou depois, `[homes]`) · listar ✔ · trocar senha ✔ · grupos ✔ (criar, remover, entrar/sair) · menu em submenus ✔ · remover (excluir) · consistência Linux x Samba · ~~desativar/reativar~~ (adiado, 3.4) |
 | 2. Compartilhamentos | criar, listar, permissões de pasta, remover (inclusive os já existentes); pastas pessoais e `[homes]`; avaliar acesso somente leitura por grupo |
 | 3. Diagnóstico | falhas de login, sessões ativas, saúde do Samba, consulta à auditoria |
 | 4. Publicação | comandos diretos completos, `install.sh`, **desinstalação**, README, mensagens em inglês, testes automáticos e CI |
@@ -505,7 +510,13 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
     valem na hora, inclusive com a sessão aberta (o debkit refaz a sessão
     dos usuários afetados); o smb.conf real volta idêntico. Achado na revisão: grupos citados no sudoers ficam
     fora (entrar neles daria sudo).
-15. **Próxima tarefa:** desativar/reativar usuário (seção 3.4).
+15. ✔ Menu do Samba em submenus (decisão de 19/10/2026, Thiago: estava
+    tudo misturado): Samba → 1) Usuários (listar, criar, trocar senha,
+    criar pasta pessoal) · 2) Grupos (listar, criar, membros, remover) ·
+    3) Compartilhamentos (por enquanto só pastas pessoais/`[homes]`; o
+    resto na Fase 2). Desativar/reativar adiado (3.4).
+16. **Próxima tarefa:** remover (excluir) usuário (seção 3.4), no submenu
+    Usuários.
 
 **VM limpa de novo:** `dev/vmnova.sh` → (reinicia) → `dev/vmprepara.sh` →
 `./debkit --preparar` → testes.
