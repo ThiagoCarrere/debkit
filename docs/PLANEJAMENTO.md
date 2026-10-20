@@ -718,7 +718,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | Testes: "caixa de areia" vira sandbox | `7e5f8dd` |
 | 3.1 Sessões ativas (ver e desconectar) | `2ebdf36` |
 | 3.2 Logins (falhas e último login) | `ac6ee3b` |
-| 3.3 Saúde do Samba (relatório) | (este commit) |
+| 3.3 Saúde do Samba (relatório) | `09c0512` |
 
 **Próximos passos:**
 
