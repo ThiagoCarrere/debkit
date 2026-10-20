@@ -89,14 +89,16 @@ Samba
 │     ├── Criar grupo
 │     ├── Membros: adicionar ou remover usuários
 │     └── Remover grupo
-└── 3) Compartilhamentos
-      ├── Listar compartilhamentos
-      ├── Criar compartilhamento (vinculado a um grupo)
-      ├── Trocar o grupo de um compartilhamento
-      ├── Ajustar as permissões do conteúdo
-      ├── Remover compartilhamento (os arquivos ficam)
-      ├── Trazer um compartilhamento feito à mão para o padrão
-      └── Pastas pessoais: base e compartilhamento [homes]
+├── 3) Compartilhamentos
+│     ├── Listar compartilhamentos
+│     ├── Criar compartilhamento (vinculado a um grupo)
+│     ├── Trocar o grupo de um compartilhamento
+│     ├── Ajustar as permissões do conteúdo
+│     ├── Remover compartilhamento (os arquivos ficam)
+│     ├── Trazer um compartilhamento feito à mão para o padrão
+│     └── Pastas pessoais: base e compartilhamento [homes]
+└── 4) Diagnóstico
+      └── Sessões ativas: quem está conectado; desconectar uma sessão
 ```
 
 Listar usuários (exemplo com dados fictícios):
@@ -119,6 +121,7 @@ Listar usuários (exemplo com dados fictícios):
 | **Usuários** | criar (dois tipos de conta, nome completo, grupos, pasta pessoal), listar, trocar senha, excluir, verificar e corrigir contas |
 | **Grupos** | criar, listar, adicionar/remover membros com efeito imediato, remover |
 | **Pastas pessoais** | no disco de dados (backup junto com o resto), na criação ou depois, e o compartilhamento `[homes]` |
+| **Diagnóstico** | sessões ativas (quem está conectado, de qual máquina, arquivos abertos) e desconectar uma sessão |
 | **Compartilhamentos** | listar (inclusive os feitos à mão, com alertas), criar vinculado a um grupo, cujos membros têm acesso total (pasta em `/mnt` ou `/srv`), trocar o grupo, ajustar as permissões do conteúdo, remover (os arquivos ficam no disco) e trazer os feitos à mão para o padrão |
 
 ## Instalação (para testar)
@@ -165,7 +168,7 @@ sudo DEBKIT_TESTE_REAL=1 tests/run.sh t13b_grupos_real.sh   # uma prova real
 | 0. Fundação | detecção e preparação do ambiente, backups, proteção SSH, firewall | ✅ |
 | 1. Usuários e grupos | usuários, pastas pessoais, grupos, consistência Linux x Samba | ✅ |
 | 2. Compartilhamentos | criar, listar, permissões de pasta, remover, os já existentes | ✅ |
-| 3. Diagnóstico | falhas de login, sessões ativas, saúde do Samba, auditoria | ⏳ |
+| 3. Diagnóstico | falhas de login, sessões ativas, saúde do Samba, auditoria | 🚧 |
 | 4. Publicação | comandos diretos, instalador e desinstalação, inglês, CI | ⏳ |
 
 As decisões e o porquê de cada uma estão no

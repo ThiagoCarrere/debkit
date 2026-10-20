@@ -63,6 +63,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   procura o `include` pelo caminho exato do sandbox.
 
 ### Adicionado
+- **Diagnóstico → Sessões ativas** (Samba → 4 → 1): quem está conectado
+  agora (usuário, máquina, desde quando, arquivos abertos e
+  compartilhamentos) e desconectar uma sessão (só aquela máquina), com
+  confirmação e auditoria.
 - **Log de autenticação do Samba** (item da preparação): o Samba passa a
   registrar cada login, com e sem sucesso (usuário, IP, máquina e
   resultado), em `/var/log/samba/debkit-auth.json`; o nível de log do

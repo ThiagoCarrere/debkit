@@ -598,6 +598,27 @@ MSG_pt_BR+=(
     [samba.compartilhamentos]="Compartilhamentos"
     [samba.titulo_usuarios]="Samba: usuários"
     [samba.titulo_compartilhamentos]="Samba: compartilhamentos"
+    [samba.diagnostico]="Diagnóstico"
+    [samba.titulo_diagnostico]="Samba: diagnóstico"
+    [diag.sessoes]="Sessões ativas (quem está conectado agora)"
+    [diag.titulo_sessoes]="Sessões ativas"
+    [diag.nenhuma]="Ninguém conectado ao Samba agora."
+    [diag.c_usuario]="Usuário"
+    [diag.c_maquina]="Máquina"
+    [diag.c_desde]="Desde"
+    [diag.c_arquivos]="Arquivos"
+    [diag.c_compartilhamentos]="Compartilhamentos"
+    [diag.total]="%d sessão(ões)."
+    [diag.p_desconectar]="Desconectar uma sessão (número; Enter volta): "
+    [diag.r_sessao]="Sessão: %s em %s (desde %s)"
+    [diag.r_compartilhamentos]="Compartilhamentos abertos: %s"
+    [diag.aviso_arquivos]="%d arquivo(s) aberto(s): %s - alterações não salvas podem ser perdidas."
+    [diag.explica]="Só esta sessão (esta máquina) é encerrada. Se a pessoa ainda tiver acesso, o Windows reconecta sozinho; para tirar o acesso, mude os grupos (Samba > Grupos)."
+    [diag.p_confirmar]="Desconectar a sessão de %s em %s?"
+    [diag.desconectada]="Sessão de %s em %s desconectada."
+    [diag.desconectar_falhou]="Não foi possível desconectar a sessão de %s em %s: %s"
+    [diag.f_nao_existe]="a sessão (PID %s) não existe mais"
+    [diag.f_continua]="a sessão continua aberta"
     [grp.titulo]="Samba: grupos"
     [grp.listar]="Listar grupos"
     [grp.criar]="Criar grupo"
@@ -841,6 +862,27 @@ MSG_en+=(
     [samba.compartilhamentos]="Shares"
     [samba.titulo_usuarios]="Samba: users"
     [samba.titulo_compartilhamentos]="Samba: shares"
+    [samba.diagnostico]="Diagnostics"
+    [samba.titulo_diagnostico]="Samba: diagnostics"
+    [diag.sessoes]="Active sessions (who is connected now)"
+    [diag.titulo_sessoes]="Active sessions"
+    [diag.nenhuma]="Nobody is connected to Samba now."
+    [diag.c_usuario]="User"
+    [diag.c_maquina]="Machine"
+    [diag.c_desde]="Since"
+    [diag.c_arquivos]="Files"
+    [diag.c_compartilhamentos]="Shares"
+    [diag.total]="%d session(s)."
+    [diag.p_desconectar]="Disconnect a session (number; Enter goes back): "
+    [diag.r_sessao]="Session: %s on %s (since %s)"
+    [diag.r_compartilhamentos]="Open shares: %s"
+    [diag.aviso_arquivos]="%d open file(s): %s - unsaved changes may be lost."
+    [diag.explica]="Only this session (this machine) is closed. If the person still has access, Windows reconnects by itself; to remove the access, change the groups (Samba > Groups)."
+    [diag.p_confirmar]="Disconnect the session of %s on %s?"
+    [diag.desconectada]="Session of %s on %s disconnected."
+    [diag.desconectar_falhou]="Could not disconnect the session of %s on %s: %s"
+    [diag.f_nao_existe]="the session (PID %s) no longer exists"
+    [diag.f_continua]="the session is still open"
     [grp.titulo]="Samba: groups"
     [grp.listar]="List groups"
     [grp.criar]="Create group"
@@ -2609,19 +2651,25 @@ debkit_samba_conectados() {
     return 0
 }
 
-# Encerra as sessões abertas do usuário (smbcontrol <pid> shutdown; se não
-# adiantar, TERM no processo, só se for um smbd) e confere que acabaram.
-# Deixa em DEBKIT_SES_PIDS os PIDs encontrados. Retorna 1 se alguma ficou.
+# Encerra as sessões abertas do usuário e confere que acabaram. Deixa em
+# DEBKIT_SES_PIDS os PIDs encontrados. Retorna 1 se alguma ficou.
 debkit_samba_encerrar_sessoes() {
-    local pid i vivos=""
     mapfile -t DEBKIT_SES_PIDS < <(debkit_samba_sessoes "$1")
-    [ ${#DEBKIT_SES_PIDS[@]} -gt 0 ] || return 0
-    for pid in "${DEBKIT_SES_PIDS[@]}"; do
+    debkit_samba_encerrar_pids "${DEBKIT_SES_PIDS[@]}"
+}
+
+# Encerra sessões pelo PID do smbd (smbcontrol <pid> shutdown; se não
+# adiantar, TERM no processo, só se for um smbd) e confere que acabaram.
+# Retorna 1 se alguma ficou.
+debkit_samba_encerrar_pids() {
+    local pid i vivos=""
+    [ $# -gt 0 ] || return 0
+    for pid in "$@"; do
         smbcontrol -s "$DEBKIT_SMB_CONF" "$pid" shutdown >/dev/null 2>&1
     done
     for (( i = 0; i < 25; i++ )); do
         vivos=""
-        for pid in "${DEBKIT_SES_PIDS[@]}"; do kill -0 "$pid" 2>/dev/null && vivos+=" $pid"; done
+        for pid in "$@"; do kill -0 "$pid" 2>/dev/null && vivos+=" $pid"; done
         [ -z "$vivos" ] && return 0
         [ "$i" -eq 10 ] && for pid in $vivos; do
             [[ "$(cat "/proc/$pid/comm" 2>/dev/null)" == smbd* ]] && kill -TERM "$pid" 2>/dev/null
@@ -2649,6 +2697,76 @@ debkit_samba_reconectar() {
         fi
     done
     return "$rc"
+}
+
+# ── Diagnóstico: sessões ativas ─────────────────────────────────────────────
+# Decisão de 20/10/2026 (Fase 3, seção 3.8): ver quem está conectado e
+# desconectar uma sessão. Lido do texto do smbstatus (sem dependência nova);
+# os campos que podem ter espaços (nome do compartilhamento, pasta, arquivo)
+# são lidos a partir da direita.
+
+# Sessões (smbstatus -p): pid|usuário|IP|protocolo (um PID uma vez só)
+debkit_diag_sessoes() {
+    LC_ALL=C smbstatus -s "$DEBKIT_SMB_CONF" -p 2>/dev/null \
+        | awk '$1 ~ /^[0-9]+$/ && NF >= 6 && !visto[$1]++ { print $1 "|" $2 "|" $4 "|" $6 }'
+}
+
+# Compartilhamentos abertos (smbstatus -S; sem o IPC$): pid|nome|data
+# (data "DD Mon AAAA HH:MM:SS"; da direita: assinatura, criptografia, fuso,
+# ano, hora, dia, mês, dia da semana, máquina, pid)
+debkit_diag_conexoes() {
+    LC_ALL=C smbstatus -s "$DEBKIT_SMB_CONF" -S 2>/dev/null | awk 'NF >= 11 && $(NF-9) ~ /^[0-9]+$/ {
+        n = NF; c = $1; for (i = 2; i <= n - 10; i++) c = c " " $i
+        if (toupper(c) == "IPC$") next
+        print $(n-9) "|" c "|" $(n-5) " " $(n-6) " " $(n-3) " " $(n-4) }'
+}
+
+# Arquivos abertos (smbstatus -L; sem a própria pasta "."): pid|pasta|arquivo
+# (pasta e arquivo vêm separados por 3 espaços, depois de 6 campos e antes
+# da data em 5 partes)
+debkit_diag_arquivos() {
+    LC_ALL=C smbstatus -s "$DEBKIT_SMB_CONF" -L 2>/dev/null | awk '$1 ~ /^[0-9]+$/ && NF >= 13 {
+        l = $0; for (i = 1; i <= 6; i++) sub(/^[ \t]*[^ \t]+/, "", l)
+        sub(/^[ \t]+/, "", l); for (i = 1; i <= 5; i++) sub(/[ \t]+[^ \t]+[ \t]*$/, "", l)
+        p = index(l, "   "); if (!p) next
+        nome = substr(l, p); sub(/^[ \t]+/, "", nome)
+        if (nome == ".") next
+        print $1 "|" substr(l, 1, p - 1) "|" nome }'
+}
+
+# Uma linha por sessão: pid|usuário|IP|compartilhamentos (", ")|arquivos
+# abertos|desde (dd/mm/aaaa hh:mm, a conexão mais antiga)
+debkit_diag_resumo() {
+    local pid u ip c d e
+    local -A comps=() desde=() narq=()
+    while IFS='|' read -r pid c d; do
+        comps[$pid]+="${comps[$pid]:+, }$c"
+        e=$(date -d "$d" +%s 2>/dev/null) || continue
+        if [ -z "${desde[$pid]:-}" ] || [ "$e" -lt "${desde[$pid]}" ]; then desde[$pid]=$e; fi
+    done < <(debkit_diag_conexoes)
+    while IFS='|' read -r pid _; do narq[$pid]=$(( ${narq[$pid]:-0} + 1 )); done < <(debkit_diag_arquivos)
+    while IFS='|' read -r pid u ip _; do
+        d=""; [ -n "${desde[$pid]:-}" ] && d=$(date -d "@${desde[$pid]}" '+%d/%m/%Y %H:%M')
+        printf '%s|%s|%s|%s|%s|%s\n' "$pid" "$u" "$ip" "${comps[$pid]:-}" "${narq[$pid]:-0}" "$d"
+    done < <(debkit_diag_sessoes)
+}
+
+# Desconecta uma sessão (só esse PID, que tem de estar entre as sessões do
+# Samba agora), confere e audita. debkit_diag_desconectar <pid>
+debkit_diag_desconectar() {
+    local pid="$1" linha u ip
+    linha=$(debkit_diag_sessoes | awk -F'|' -v p="$pid" '$1 == p')
+    if [[ ! "$pid" =~ ^[0-9]+$ ]] || [ -z "$linha" ]; then
+        msg_erro "$(t diag.desconectar_falhou "?" "?" "$(t diag.f_nao_existe "$pid")")"; return 1
+    fi
+    IFS='|' read -r _ u ip _ <<< "$linha"
+    if ! debkit_samba_encerrar_pids "$pid"; then
+        msg_erro "$(t diag.desconectar_falhou "$u" "$ip" "$(t diag.f_continua)")"
+        debkit_auditar sessao_desconectar "usuario=$u ip=$ip pid=$pid resultado=falha"
+        return 1
+    fi
+    debkit_auditar sessao_desconectar "usuario=$u ip=$ip pid=$pid resultado=ok"
+    msg_ok "$(t diag.desconectada "$u" "$ip")"
 }
 
 # ── Grupos: criar ───────────────────────────────────────────────────────────
@@ -3989,6 +4107,47 @@ debkit_shr_tela_padronizar() {
     return "$rc"
 }
 
+# ── Diagnóstico: telas ──────────────────────────────────────────────────────
+# Tela: tabela das sessões e, se escolher uma, resumo (compartilhamentos,
+# arquivos abertos) e UMA confirmação para desconectar
+debkit_diag_tela_sessoes() {
+    local l pid u ip c n d i=0 wu=7 wm=7 rc escolhido
+    local -a linhas=() pids=() arquivos=()
+    titulo "$(t diag.titulo_sessoes)"
+    mapfile -t linhas < <(debkit_diag_resumo)
+    if [ ${#linhas[@]} -eq 0 ]; then msg_info "$(t diag.nenhuma)"; pausar; return 0; fi
+    for l in "${linhas[@]}"; do
+        IFS='|' read -r _ u ip _ _ _ <<< "$l"
+        [ "${#u}" -gt "$wu" ] && wu=${#u}; [ "${#ip}" -gt "$wm" ] && wm=${#ip}
+    done
+    printf '  %s    %s  %s  %s  %s  %s%s\n' "$C_NEGRITO" "$(debkit_pad "$(t diag.c_usuario)" "$wu")" "$(debkit_pad "$(t diag.c_maquina)" "$wm")" \
+        "$(debkit_pad "$(t diag.c_desde)" 16)" "$(debkit_pad "$(t diag.c_arquivos)" 8)" "$(t diag.c_compartilhamentos)" "$C_RESET"
+    for l in "${linhas[@]}"; do
+        IFS='|' read -r pid u ip c n d <<< "$l"
+        i=$((i + 1)); pids+=("$pid")
+        printf '  %2d) %s  %s  %s  %s  %s\n' "$i" "$(debkit_pad "$u" "$wu")" "$(debkit_pad "$ip" "$wm")" \
+            "$(debkit_pad "${d:-—}" 16)" "$(debkit_pad "$n" 8)" "${c:-—}"
+    done
+    echo ""
+    echo "  $(t diag.total "${#linhas[@]}")"
+    echo ""
+    debkit_escolher_um escolhido "$(t diag.p_desconectar)" "${pids[@]}" || return 0
+    l=$(printf '%s\n' "${linhas[@]}" | awk -F'|' -v p="$escolhido" '$1 == p')
+    IFS='|' read -r pid u ip c n d <<< "$l"
+    echo ""
+    echo "  $(t usr.titulo_resumo)"
+    echo "    $(t diag.r_sessao "$u" "$ip" "${d:-—}")"
+    echo "    $(t diag.r_compartilhamentos "${c:-—}")"
+    mapfile -t arquivos < <(debkit_diag_arquivos | awk -F'|' -v p="$pid" '$1 == p { print $3 }' | head -10)
+    [ "$n" -gt 0 ] && msg_aviso "$(t diag.aviso_arquivos "$n" "$(debkit_juntar "${arquivos[@]}")")"
+    msg_info "$(t diag.explica)"
+    echo ""
+    if ! confirmar "$(t diag.p_confirmar "$u" "$ip")"; then msg_aviso "$(t usr.cancelado)"; pausar; return 1; fi
+    debkit_diag_desconectar "$pid"; rc=$?
+    pausar
+    return "$rc"
+}
+
 # ── Grupos: telas ───────────────────────────────────────────────────────────
 # Escolhe UM item numerado: debkit_escolher_um <variável> <prompt> <itens...>.
 # Retorna 1 se cancelar (Enter vazio ou fim da entrada).
@@ -4251,6 +4410,7 @@ debkit_samba_menu() {
         echo "  1) $(t samba.usuarios)"
         echo "  2) $(t samba.grupos)"
         echo "  3) $(t samba.compartilhamentos)"
+        echo "  4) $(t samba.diagnostico)"
         echo ""
         echo "  0) $(t geral.voltar)"
         echo ""
@@ -4260,6 +4420,27 @@ debkit_samba_menu() {
             1)  debkit_samba_menu_usuarios ;;
             2)  debkit_samba_menu_grupos ;;
             3)  debkit_samba_menu_compartilhamentos ;;
+            4)  debkit_samba_menu_diagnostico ;;
+            0)  return 0 ;;
+            *)  msg_erro "$(t geral.opcao_invalida "$opcao")"; pausar ;;
+        esac
+    done
+}
+
+# Diagnóstico (Fase 3): sessões ativas (logins, saúde e auditoria vêm nas
+# próximas tarefas)
+debkit_samba_menu_diagnostico() {
+    local opcao
+    while true; do
+        titulo "$(t samba.titulo_diagnostico)"
+        echo "  1) $(t diag.sessoes)"
+        echo ""
+        echo "  0) $(t geral.voltar)"
+        echo ""
+        ler_opcao opcao
+        case "$opcao" in
+            "") continue ;;
+            1)  debkit_diag_tela_sessoes ;;
             0)  return 0 ;;
             *)  msg_erro "$(t geral.opcao_invalida "$opcao")"; pausar ;;
         esac
