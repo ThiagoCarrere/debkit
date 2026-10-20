@@ -547,7 +547,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | 2.0 map to guest = never (+ decisões da Fase 2) | `01658d6` |
 | 2.1 Compartilhamentos: criar e listar | `b976033` |
 | Compartilhamentos: um grupo só, com acesso total | `92ebf2f` |
-| 2.2 Compartilhamentos: trocar o grupo e ajustar o conteúdo | (este commit) |
+| 2.2 Compartilhamentos: trocar o grupo e ajustar o conteúdo | `b11457a` |
 
 **Próximos passos:**
 
