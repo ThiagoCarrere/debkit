@@ -15,7 +15,7 @@ if [ "${DEBKIT_TESTE_REAL:-}" != "1" ]; then
     echo "  (pulado: teste com o Samba e o SSH reais - rode com DEBKIT_TESTE_REAL=1)"
     exit 0
 fi
-caixa_de_areia
+sandbox
 
 ARQ=dkt_xarq; SRV=dkt_xsrv; SENHA="Excluir#Teste1"
 for x in "$ARQ" "$SRV"; do
@@ -35,16 +35,16 @@ limpar_real() {
         id "$x" >/dev/null 2>&1 && userdel "$x"
         getent group "$x" >/dev/null && groupdel "$x"
     done
-    rm -rf -- "${AREIA:?}"
+    rm -rf -- "${SANDBOX:?}"
 }
 trap limpar_real EXIT
 trap '' PIPE
 
-( umask 027; : > "$AREIA/debkit.log" )   # senão o plano pediria para criá-lo
-s() { env -u DEBKIT_APT -u DEBKIT_DPKG_ADMIN bash -c "source '$DEBKIT'; debkit_conf_carregar /etc/debkit/debkit.conf >/dev/null; debkit_ler_login_defs; DEBKIT_LOG='$AREIA/debkit.log'; $1" 2>&1; }
+( umask 027; : > "$SANDBOX/debkit.log" )   # senão o plano pediria para criá-lo
+s() { env -u DEBKIT_APT -u DEBKIT_DPKG_ADMIN bash -c "source '$DEBKIT'; debkit_conf_carregar /etc/debkit/debkit.conf >/dev/null; debkit_ler_login_defs; DEBKIT_LOG='$SANDBOX/debkit.log'; $1" 2>&1; }
 smb_login() {
-    printf 'username = %s\npassword = %s\n' "$1" "$SENHA" > "$AREIA/auth"; chmod 600 "$AREIA/auth"
-    timeout 20 smbclient -L //127.0.0.1 -A "$AREIA/auth" 2>&1; echo "RC=$?"
+    printf 'username = %s\npassword = %s\n' "$1" "$SENHA" > "$SANDBOX/auth"; chmod 600 "$SANDBOX/auth"
+    timeout 20 smbclient -L //127.0.0.1 -A "$SANDBOX/auth" 2>&1; echo "RC=$?"
 }
 SSH_OPCOES=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PubkeyAuthentication=no
             -o PreferredAuthentications=password -o NumberOfPasswordPrompts=1 -o ConnectTimeout=5 -o LogLevel=ERROR)
@@ -53,17 +53,17 @@ SSH_OPCOES=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o Pubke
 # Debian, quem não existe viraria convidado, nobody; a preparação do debkit
 # muda para "never" e o login é recusado).
 quem_entra() {
-    printf 'username = %s\npassword = %s\n' "$1" "$SENHA" > "$AREIA/auth"; chmod 600 "$AREIA/auth"
-    rm -f "$AREIA/q"; mkfifo "$AREIA/q"
-    ( timeout 20 smbclient '//127.0.0.1/IPC$' -A "$AREIA/auth" < "$AREIA/q" > /dev/null 2>&1 ) &
+    printf 'username = %s\npassword = %s\n' "$1" "$SENHA" > "$SANDBOX/auth"; chmod 600 "$SANDBOX/auth"
+    rm -f "$SANDBOX/q"; mkfifo "$SANDBOX/q"
+    ( timeout 20 smbclient '//127.0.0.1/IPC$' -A "$SANDBOX/auth" < "$SANDBOX/q" > /dev/null 2>&1 ) &
     local pid=$!
-    exec 4> "$AREIA/q"; echo "help" >&4; sleep 2
+    exec 4> "$SANDBOX/q"; echo "help" >&4; sleep 2
     LC_ALL=C smbstatus -p 2>/dev/null | awk '$1 ~ /^[0-9]+$/ {print $2}' | sort -u
     echo "quit" >&4; exec 4>&-; wait "$pid" 2>/dev/null
 }
 ssh_cmd() {  # ssh_cmd <usuário> <comando>
-    printf '#!/bin/sh\necho "%s"\n' "$SENHA" > "$AREIA/askpass"; chmod 700 "$AREIA/askpass"
-    SSH_ASKPASS="$AREIA/askpass" SSH_ASKPASS_REQUIRE=force DISPLAY=:0 \
+    printf '#!/bin/sh\necho "%s"\n' "$SENHA" > "$SANDBOX/askpass"; chmod 700 "$SANDBOX/askpass"
+    SSH_ASKPASS="$SANDBOX/askpass" SSH_ASKPASS_REQUIRE=force DISPLAY=:0 \
         timeout 40 setsid -w ssh "${SSH_OPCOES[@]}" "$1@127.0.0.1" "$2" </dev/null 2>&1
     echo "RC=$?"
 }
@@ -78,10 +78,10 @@ contem "RC=0" "$(s "DEBKIT_U_NOME=$SRV; DEBKIT_U_TIPO=servidor; DEBKIT_U_GECOS='
 contem "RC=0" "$(smb_login "$ARQ")" "login no Samba antes"
 
 caso "usuário conectado ao Samba: a sessão é encerrada e ele é excluído"
-rm -f "$AREIA/sessao"; mkfifo "$AREIA/sessao"
-( timeout 60 smbclient '//127.0.0.1/IPC$' -A "$AREIA/auth" < "$AREIA/sessao" > "$AREIA/sessao.out" 2>&1 ) &
+rm -f "$SANDBOX/sessao"; mkfifo "$SANDBOX/sessao"
+( timeout 60 smbclient '//127.0.0.1/IPC$' -A "$SANDBOX/auth" < "$SANDBOX/sessao" > "$SANDBOX/sessao.out" 2>&1 ) &
 PID_SESSAO=$!
-exec 3> "$AREIA/sessao"; echo "help" >&3; sleep 2
+exec 3> "$SANDBOX/sessao"; echo "help" >&3; sleep 2
 SMBD=$(s "debkit_samba_sessoes $ARQ")
 verdadeiro "sessão aberta encontrada" test -n "$SMBD"
 saida=$(s "debkit_usuario_excluir $ARQ; echo RC=\$?")
@@ -95,7 +95,7 @@ verdadeiro "sumiu do Linux e da base REAL do Samba" bash -c "! getent passwd $AR
 nao_contem "$ARQ" "$(getent group debkit_usuarios)" "saiu do grupo de proteção real"
 
 caso "SSH aberto: a exclusão é recusada e nada é apagado"
-( ssh_cmd "$SRV" "sleep 25" > "$AREIA/ssh.out" ) &
+( ssh_cmd "$SRV" "sleep 25" > "$SANDBOX/ssh.out" ) &
 PID_SSH=$!
 for (( i = 0; i < 20; i++ )); do pgrep -u "$SRV" >/dev/null && break; sleep 0.5; done
 verdadeiro "sessão SSH aberta" pgrep -u "$SRV"

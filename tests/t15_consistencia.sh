@@ -3,31 +3,31 @@
 # 3.1/3.2): conta só no Samba, só no Linux, shell sem login fora do grupo
 # de proteção e usuário de arquivos com senha do Linux utilizável.
 # Usuários/grupos dkt_* reais (removidos no fim); base do Samba e smb.conf
-# da areia. Nas telas, só os itens dkt_* (os usuários reais do servidor
-# também aparecem na areia, cujo grupo de proteção é outro).
+# do sandbox. Nas telas, só os itens dkt_* (os usuários reais do servidor
+# também aparecem no sandbox, cujo grupo de proteção é outro).
 source "$(dirname "$0")/lib.sh"
-caixa_de_areia
+sandbox
 
 if getent passwd | cut -d: -f1 | grep -q '^dkt_'; then echo "  já existem usuários dkt_* - abortando"; exit 1; fi
 limpar_usuarios() {   # limpar_usuarios [manter_grupo_teste]
     local x
     for x in $(getent passwd | cut -d: -f1 | grep '^dkt_'); do userdel "$x" >/dev/null 2>&1; done
-    for x in $(pdbedit -s "$AREIA/smb.conf" -L 2>/dev/null | cut -d: -f1 | grep '^dkt_'); do pdbedit -s "$AREIA/smb.conf" -x -u "$x" >/dev/null 2>&1; done
+    for x in $(pdbedit -s "$SANDBOX/smb.conf" -L 2>/dev/null | cut -d: -f1 | grep '^dkt_'); do pdbedit -s "$SANDBOX/smb.conf" -x -u "$x" >/dev/null 2>&1; done
     for x in $(getent group | cut -d: -f1 | grep '^dkt_'); do
         [ -n "${1:-}" ] && [ "$x" == "$GRUPO_TESTE" ] && continue
         groupdel "$x" >/dev/null 2>&1
     done
 }
-trap 'limpar_usuarios; rm -rf -- "${AREIA:?}"' EXIT
+trap 'limpar_usuarios; rm -rf -- "${SANDBOX:?}"' EXIT
 
-copiar_smb_conf "$AREIA/smb.conf"
-preparar_areia
+copiar_smb_conf "$SANDBOX/smb.conf"
+preparar_sandbox
 CFG="debkit_conf_carregar \"\$DEBKIT_CONF_ARQUIVO\" >/dev/null; debkit_ler_login_defs;
-     debkit_samba_recarregar() { echo reload >> '$AREIA/reloads'; };"
+     debkit_samba_recarregar() { echo reload >> '$SANDBOX/reloads'; };"
 p() { bash -c "source '$DEBKIT'; $CFG $1" 2>&1; }
-PDB() { pdbedit -s "$AREIA/smb.conf" "$@" 2>/dev/null; }
-SMBPW() { printf '%s\n%s\n' "$2" "$2" | smbpasswd -c "$AREIA/smb.conf" -s -a "$1" >/dev/null; }
-LOG() { cat "$AREIA/debkit.log" 2>/dev/null; }
+PDB() { pdbedit -s "$SANDBOX/smb.conf" "$@" 2>/dev/null; }
+SMBPW() { printf '%s\n%s\n' "$2" "$2" | smbpasswd -c "$SANDBOX/smb.conf" -s -a "$1" >/dev/null; }
+LOG() { cat "$SANDBOX/debkit.log" 2>/dev/null; }
 nt_hash() { PDB -w -u "$1" | cut -d: -f4; }
 shadow() { getent shadow "$1" | cut -d: -f2; }
 itens() { p "debkit_samba_inconsistencias" | grep '|dkt_'; }
@@ -58,7 +58,7 @@ igual 5 "$(wc -l <<< "$saida")" "5 itens"
 caso "só no Samba: apaga a conta órfã"
 saida=$(corrigir so_samba dkt_orfao)
 contem "RC=0" "$saida"; contem "Conta Samba de dkt_orfao apagada" "$saida"
-verdadeiro "conta apagada" bash -c "! pdbedit -s '$AREIA/smb.conf' -u dkt_orfao"
+verdadeiro "conta apagada" bash -c "! pdbedit -s '$SANDBOX/smb.conf' -u dkt_orfao"
 contem "consistencia acao=so_samba nome=dkt_orfao resultado=ok" "$(LOG)"
 caso "só no Samba: com usuário no Linux de novo, não apaga"
 useradd -M -s /usr/sbin/nologin dkt_volta; SMBPW dkt_volta Volta123
@@ -85,7 +85,7 @@ caso "só no Linux: smbpasswd falha"
 useradd -M -s /bin/bash dkt_smbfalha
 saida=$(corrigir so_linux dkt_smbfalha "smbpasswd() { cat >/dev/null; return 1; };")
 contem "RC=1" "$saida"; contem "não foi possível criar a conta no Samba" "$saida"
-verdadeiro "sem conta" bash -c "! pdbedit -s '$AREIA/smb.conf' -u dkt_smbfalha"
+verdadeiro "sem conta" bash -c "! pdbedit -s '$SANDBOX/smb.conf' -u dkt_smbfalha"
 
 caso "túnel: põe no grupo de proteção (vira usuário de arquivos)"
 saida=$(corrigir tunel dkt_tunel)
@@ -133,7 +133,7 @@ contem "Tudo certo" "$(tela "")"
 caso "tela: senha cancelada pula o item"
 useradd -M -s /bin/bash dkt_t3
 saida=$(tela s "abc")
-contem "Mantido como está" "$saida"; verdadeiro "sem conta" bash -c "! pdbedit -s '$AREIA/smb.conf' -u dkt_t3"
+contem "Mantido como está" "$saida"; verdadeiro "sem conta" bash -c "! pdbedit -s '$SANDBOX/smb.conf' -u dkt_t3"
 caso "menu Samba > Usuários > 6"
 contem "6) Verificar e corrigir contas (Linux x Samba)" "$(pty 0.6 "bash $DEBKIT" 1 1 0 0 0)"
 caso "inglês"
@@ -142,6 +142,6 @@ contem "Samba account of dkt_t3 created." "$(p "DEBKIT_IDIOMA=en; DEBKIT_U_SENHA
 limpar_usuarios
 caso "limpeza"
 verdadeiro "nenhum usuário dkt_" bash -c "! getent passwd | grep -q '^dkt_'"
-verdadeiro "nenhuma conta Samba dkt_ na areia" bash -c "! pdbedit -s '$AREIA/smb.conf' -L 2>/dev/null | grep -q '^dkt_'"
+verdadeiro "nenhuma conta Samba dkt_ no sandbox" bash -c "! pdbedit -s '$SANDBOX/smb.conf' -L 2>/dev/null | grep -q '^dkt_'"
 real_intacto
 resumo

@@ -2,11 +2,11 @@
 # Testes de criar e listar compartilhamentos (Fase 2, tarefa 2.1; decisões
 # na seção 3.7): nome, descrição, pasta só em /mnt ou /srv, base, um grupo
 # com acesso total, criação tudo ou nada e listagem
-# (inclusive dos feitos à mão). smb.conf e base do Samba da areia; pastas em
+# (inclusive dos feitos à mão). smb.conf e base do Samba do sandbox; pastas em
 # /srv/dkt-teste.* (apagadas no fim). A prova com o Samba de verdade está
 # em t17b_compartilhar_real.sh.
 source "$(dirname "$0")/lib.sh"
-caixa_de_areia
+sandbox
 
 if getent passwd | cut -d: -f1 | grep -q '^dkt_'; then echo "  já existem usuários dkt_* - abortando"; exit 1; fi
 T=$(mktemp -d /srv/dkt-teste.XXXXXX); chmod 755 "$T"
@@ -15,22 +15,22 @@ limpar_tudo() {
     mountpoint -q "$T/tmpfs" && umount "$T/tmpfs"
     for x in $(getent passwd | cut -d: -f1 | grep '^dkt_'); do userdel "$x" >/dev/null 2>&1; done
     for x in $(getent group | cut -d: -f1 | grep '^dkt_'); do groupdel "$x" >/dev/null 2>&1; done
-    rm -rf -- "${T:?}" "${AREIA:?}"
+    rm -rf -- "${T:?}" "${SANDBOX:?}"
 }
 trap limpar_tudo EXIT
 
-copiar_smb_conf "$AREIA/smb.conf"
+copiar_smb_conf "$SANDBOX/smb.conf"
 # Só as seções padrão: os compartilhamentos que já existam na VM (ex: os de
 # demonstração) não interferem nos nomes nem na contagem
 awk '/^[ \t]*\[/ { s = tolower($0); gsub(/[ \t\[\]]/, "", s); fora = (s != "global" && s != "homes" && s != "printers" && s != "print$") } !fora' \
-    "$AREIA/smb.conf" > "$AREIA/smb.conf.novo" && cat "$AREIA/smb.conf.novo" > "$AREIA/smb.conf" && rm -f "$AREIA/smb.conf.novo"
-preparar_areia
+    "$SANDBOX/smb.conf" > "$SANDBOX/smb.conf.novo" && cat "$SANDBOX/smb.conf.novo" > "$SANDBOX/smb.conf" && rm -f "$SANDBOX/smb.conf.novo"
+preparar_sandbox
 CFG="debkit_conf_carregar \"\$DEBKIT_CONF_ARQUIVO\" >/dev/null; debkit_ler_login_defs;
-     debkit_samba_recarregar() { echo reload >> '$AREIA/reloads'; };"
+     debkit_samba_recarregar() { echo reload >> '$SANDBOX/reloads'; };"
 p() { bash -c "source '$DEBKIT'; $CFG $1" 2>&1; }
-LOG() { cat "$AREIA/debkit.log" 2>/dev/null; }
-efetivo() { testparm -s "$AREIA/smb.conf" 2>/dev/null; }
-param() { testparm -s --section-name="$1" --parameter-name="$2" "$AREIA/smb.conf" 2>/dev/null; }
+LOG() { cat "$SANDBOX/debkit.log" 2>/dev/null; }
+efetivo() { testparm -s "$SANDBOX/smb.conf" 2>/dev/null; }
+param() { testparm -s --section-name="$1" --parameter-name="$2" "$SANDBOX/smb.conf" 2>/dev/null; }
 sem_secao() { awk -v s="[$1]" '/^\[/ { em = ($0 == s) } !em'; }
 groupadd dkt_fin; groupadd dkt_dir; groupadd dkt_ti
 useradd -M -s /usr/sbin/nologin -U dkt_u1
@@ -48,7 +48,7 @@ contem "use de 2 a 32" "$(nome a)"; contem "use de 2 a 32" "$(nome "$(printf 'a%
 contem "Informe o nome" "$(nome '')"
 caso "nome: reservados e seções que já existem (sem diferenciar maiúsculas)"
 for n in global homes printers; do contem "nome reservado do Samba" "$(nome "$n")" "$n"; done
-printf '\n[Manual_X]\n   path = %s\n' "$T" >> "$AREIA/smb.conf"
+printf '\n[Manual_X]\n   path = %s\n' "$T" >> "$SANDBOX/smb.conf"
 contem "Já existe um compartilhamento" "$(nome manual_x)"
 caso "descrição"
 contem "RC=0" "$(p "debkit_shr_comentario_problema 'Setor Financeiro - Contábil'; echo RC=\$?")"
@@ -76,7 +76,7 @@ H="DEBKIT_HOMES_BASE='$T/homes';"
 contem "base das pastas pessoais" "$(pasta "$T/homes" "$H")"; contem "base das pastas pessoais" "$(pasta "$T/homes/x" "$H")"
 contem "base das pastas pessoais" "$(pasta "$T" "$H")" "contém a base"
 contem "pasta de outro compartilhamento" "$(pasta "$T")" "o [Manual_X] usa $T"
-sed -i "/^\[Manual_X\]/,\$d" "$AREIA/smb.conf"
+sed -i "/^\[Manual_X\]/,\$d" "$SANDBOX/smb.conf"
 contem "RC=0" "$(pasta "$T/livre")"
 
 caso "base: sugestão (disco de dados em /mnt ou /srv/samba) e definir"
@@ -85,7 +85,7 @@ igual "/srv/samba" "$(p "debkit_samba_discos_dados() { :; }; debkit_shr_sugerir_
 saida=$(p "debkit_shr_definir_base '$T/base'; echo RC=\$?")
 contem "RC=0" "$saida"; contem "Base dos compartilhamentos: $T/base" "$saida"
 igual "0 0 755" "$(stat -c '%u %g %a' "$T/base")" "base root 755"
-contem "SHARES_BASE=$T/base" "$(cat "$AREIA/debkit.conf")"
+contem "SHARES_BASE=$T/base" "$(cat "$SANDBOX/debkit.conf")"
 contem "dentro de /mnt ou /srv" "$(p "debkit_shr_definir_base /home/base")"
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -96,7 +96,7 @@ criar() {  # criar <nome> <pasta> <grupo> [prefixo]
        DEBKIT_S_GRUPO='$3'; debkit_shr_criar; echo RC=\$?"
 }
 caso "criar: pasta nova, um grupo com acesso total"
-antes=$(efetivo); : > "$AREIA/reloads"
+antes=$(efetivo); : > "$SANDBOX/reloads"
 saida=$(COMENT="Setor Financeiro" criar financeiro "$T/base/financeiro" "dkt_fin")
 contem "RC=0" "$saida"; contem "Compartilhamento financeiro criado" "$saida"
 igual "0 $GFIN 2770" "$(stat -c '%u %g %a' "$T/base/financeiro")" "pasta root:grupo 2770"
@@ -107,9 +107,9 @@ igual "dkt_fin" "$(param financeiro 'force group')"
 igual "0660" "$(param financeiro 'create mask')"; igual "02770" "$(param financeiro 'directory mask')"
 igual "Setor Financeiro" "$(param financeiro comment)"
 igual "$(sem_secao financeiro <<< "$antes")" "$(efetivo | sem_secao financeiro)" "o resto do smb.conf não mudou"
-contem "# debkit: compartilhamento criado em" "$(cat "$AREIA/smb.conf")"
-igual 1 "$(grep -c reload "$AREIA/reloads")" "Samba recarregado"
-verdadeiro "backup do smb.conf" test -n "$(find "$AREIA/conf-bkp" -name 'smb.conf.*')"
+contem "# debkit: compartilhamento criado em" "$(cat "$SANDBOX/smb.conf")"
+igual 1 "$(grep -c reload "$SANDBOX/reloads")" "Samba recarregado"
+verdadeiro "backup do smb.conf" test -n "$(find "$SANDBOX/conf-bkp" -name 'smb.conf.*')"
 contem "shr_criar nome=financeiro pasta=$T/base/financeiro grupo=dkt_fin resultado=ok" "$(LOG)"
 caso "criar: o mesmo grupo pode ter mais de um compartilhamento"
 contem "RC=0" "$(criar consulta "$T/base/consulta" "dkt_fin")"
@@ -120,7 +120,7 @@ contem "RC=0" "$(criar existente "$T/existente" "dkt_ti")"
 igual "0 $(getent group dkt_ti | cut -d: -f3) 2770" "$(stat -c '%u %g %a' "$T/existente")"
 
 caso "criar: recusas antes de mexer em qualquer coisa"
-md5=$(md5sum < "$AREIA/smb.conf")
+md5=$(md5sum < "$SANDBOX/smb.conf")
 contem "Informe o grupo" "$(criar r1 "$T/r1" "")"
 for g in sudo users daemon dkt_u1 "$GRUPO_TESTE" dkt_nao_existe "dkt_fin dkt_ti"; do
     contem "não é um grupo comum que o debkit gerencia" "$(criar r1 "$T/r1" "$g")" "$g"
@@ -130,23 +130,23 @@ contem "Nome inválido" "$(criar R1 "$T/r1" "dkt_fin")"
 contem "dentro de /mnt ou /srv" "$(criar r1 /home/r1 "dkt_fin")"
 contem "pasta de outro compartilhamento" "$(criar r1 "$T/base/financeiro/sub" "dkt_fin")"
 contem "Descrição inválida" "$(COMENT='50%' criar r1 "$T/r1" "dkt_fin")"
-igual "$md5" "$(md5sum < "$AREIA/smb.conf")" "smb.conf intacto"; verdadeiro "nenhuma pasta criada" test ! -e "$T/r1"
+igual "$md5" "$(md5sum < "$SANDBOX/smb.conf")" "smb.conf intacto"; verdadeiro "nenhuma pasta criada" test ! -e "$T/r1"
 caso "criar: conferência do smb.conf falha - nada fica (pasta nova apagada)"
 saida=$(criar r2 "$T/r2" "dkt_fin" "debkit_shr_conferir_criar() { return 1; };")
 contem "RC=1" "$saida"; contem "mais do que o pretendido" "$saida"
-verdadeiro "pasta apagada" test ! -e "$T/r2"; igual "$md5" "$(md5sum < "$AREIA/smb.conf")" "smb.conf intacto"
+verdadeiro "pasta apagada" test ! -e "$T/r2"; igual "$md5" "$(md5sum < "$SANDBOX/smb.conf")" "smb.conf intacto"
 contem "shr_criar nome=r2 resultado=falha" "$(LOG)"
 caso "criar: reload falha - smb.conf restaurado e pasta já existente volta como era"
 mkdir "$T/r3"; chown dkt_u1:dkt_u1 "$T/r3"; chmod 750 "$T/r3"
 saida=$(criar r3 "$T/r3" "dkt_fin" "debkit_samba_recarregar() { return 1; };")
 contem "RC=1" "$saida"; contem "restaurado do backup" "$saida"
-igual "$md5" "$(md5sum < "$AREIA/smb.conf")" "smb.conf de volta"
+igual "$md5" "$(md5sum < "$SANDBOX/smb.conf")" "smb.conf de volta"
 igual "$(id -u dkt_u1) $(id -g dkt_u1) 750" "$(stat -c '%u %g %a' "$T/r3")" "dono e permissões de antes"
 
 # ════════════════════════════════════════════════════════════════════════════
 # Listar (inclusive feitos à mão)
 # ════════════════════════════════════════════════════════════════════════════
-cat >> "$AREIA/smb.conf" <<EOF
+cat >> "$SANDBOX/smb.conf" <<EOF
 
 [manual1]
    path = $T/existente
@@ -185,7 +185,7 @@ contem "manual2: aberto para convidado" "$saida"; contem "manual2: a pasta $T/na
 contem "manual2: sem \"valid users\"" "$saida"
 igual "" "$(grep '^    ! ' <<< "$saida" | grep -E 'total\).|senha.|Samba acessa.')" "cada alerta uma vez (nada repetido depois da mensagem)"
 contem "7 compartilhamento(s)" "$saida"
-sed -i "/^\[manual1\]/,\$d" "$AREIA/smb.conf"
+sed -i "/^\[manual1\]/,\$d" "$SANDBOX/smb.conf"
 
 # ════════════════════════════════════════════════════════════════════════════
 # Telas
@@ -203,17 +203,17 @@ caso "tela: número inválido repete a pergunta; 'n' cancela; Enter no grupo can
 saida=$(tela "rh" "" "" "99" "x" "$(idx_g dkt_fin)" n "")
 contem "Opção inválida" "$saida"; contem "Cancelado" "$saida"
 contem "Cancelado" "$(tela "rh" "" "" "")"
-verdadeiro "nada criado" bash -c "! testparm -s '$AREIA/smb.conf' 2>/dev/null | grep -qx '\[rh\]' && test ! -e '$T/base/rh'"
+verdadeiro "nada criado" bash -c "! testparm -s '$SANDBOX/smb.conf' 2>/dev/null | grep -qx '\[rh\]' && test ! -e '$T/base/rh'"
 caso "tela: pasta que já tem arquivos avisa"
 mkdir "$T/cheia"; touch "$T/cheia/x"
 saida=$(tela "cheia" "" "$T/cheia" "$(idx_g dkt_fin)" n "")
 contem "já existe; dono e permissões da pasta serão ajustados" "$saida"; contem "já tem arquivos" "$saida"
 caso "tela: primeira vez pergunta a base e grava"
-sed -i '/^SHARES_BASE=/d' "$AREIA/debkit.conf"
+sed -i '/^SHARES_BASE=/d' "$SANDBOX/debkit.conf"
 saida=$(tela "doc" "" "$T/base2" s "" "$(idx_g dkt_fin)" s "")
 contem "Os compartilhamentos ficam numa base dentro de /mnt ou /srv" "$saida"
 contem "Base dos compartilhamentos: $T/base2" "$saida"; contem "Compartilhamento doc criado ($T/base2/doc)" "$saida"
-contem "SHARES_BASE=$T/base2" "$(cat "$AREIA/debkit.conf")"
+contem "SHARES_BASE=$T/base2" "$(cat "$SANDBOX/debkit.conf")"
 caso "tela: sem grupo para dar acesso"
 contem "crie um grupo antes" "$(PRE="debkit_samba_grupos_comuns() { :; };" tela "")"
 caso "menu Samba > Compartilhamentos > 1) Listar"

@@ -3,17 +3,17 @@
 # Não toca no SSH real. A prova com login de verdade fica em
 # t04b_ssh_real.sh (só roda com DEBKIT_TESTE_REAL=1).
 source "$(dirname "$0")/lib.sh"
-caixa_de_areia
+sandbox
 
-DROPIN="$AREIA/sshd_config.d/debkit.conf"
-mkdir -p "$AREIA/sshd_config.d"
-printf 'Include %s/sshd_config.d/*.conf\nPasswordAuthentication yes\n' "$AREIA" > "$AREIA/sshd_config"
+DROPIN="$SANDBOX/sshd_config.d/debkit.conf"
+mkdir -p "$SANDBOX/sshd_config.d"
+printf 'Include %s/sshd_config.d/*.conf\nPasswordAuthentication yes\n' "$SANDBOX" > "$SANDBOX/sshd_config"
 
 # sshd simulado: "sshd -t" falha se o arquivo do debkit tiver "QUEBRADO";
 # "sshd -T" mostra denygroups lido do arquivo do debkit (se existir), a menos
 # que FAKE_SEM_DENY esteja definido. Recargas são registradas em reloads.
 FAKE="export FAKE_SEM_DENY=\${FAKE_SEM_DENY:-};
-  DEBKIT_SSH_DROPIN='$DROPIN'; DEBKIT_ARQ_SSHD_CONFIG='$AREIA/sshd_config'; DEBKIT_BACKUP_DIR='$AREIA/backups'; DEBKIT_GRUPO_USUARIOS='$GRUPO_TESTE';
+  DEBKIT_SSH_DROPIN='$DROPIN'; DEBKIT_ARQ_SSHD_CONFIG='$SANDBOX/sshd_config'; DEBKIT_BACKUP_DIR='$SANDBOX/backups'; DEBKIT_GRUPO_USUARIOS='$GRUPO_TESTE';
   sshd() {
     case \"\$1\" in
       -t) grep -q QUEBRADO '$DROPIN' 2>/dev/null && { echo '$DROPIN line 3: Bad configuration option: QUEBRADO'; return 255; }; return 0 ;;
@@ -22,22 +22,22 @@ FAKE="export FAKE_SEM_DENY=\${FAKE_SEM_DENY:-};
           return 0 ;;
     esac
   };
-  debkit_ssh_recarregar() { echo reload >> '$AREIA/reloads'; };"
+  debkit_ssh_recarregar() { echo reload >> '$SANDBOX/reloads'; };"
 s() { bash -c "source '$DEBKIT'; debkit_conf_carregar \"\$DEBKIT_CONF_ARQUIVO\"; $FAKE $1" 2>&1; }
-limpar_ssh() { rm -f "$DROPIN" "$AREIA/reloads"; rm -rf "${AREIA:?}/backups"; }
+limpar_ssh() { rm -f "$DROPIN" "$SANDBOX/reloads"; rm -rf "${SANDBOX:?}/backups"; }
 
 # ── Detecção ─────────────────────────────────────────────────────────────────
 caso "Include antes de qualquer Match: aceito"
 igual 0 "$(s 'debkit_ssh_aceita_dropin; echo $?')"
 caso "Include DEPOIS de um Match: retorna 2 e a verificação avisa"
-printf 'PasswordAuthentication yes\nMatch User alguem\n  X11Forwarding no\nInclude %s/sshd_config.d/*.conf\n' "$AREIA" > "$AREIA/sshd_config"
+printf 'PasswordAuthentication yes\nMatch User alguem\n  X11Forwarding no\nInclude %s/sshd_config.d/*.conf\n' "$SANDBOX" > "$SANDBOX/sshd_config"
 igual 2 "$(s 'debkit_ssh_aceita_dropin; echo $?')"
 saida=$(s 'debkit_verificar_ambiente >/dev/null; printf "%s\n" "${DEBKIT_VERIF[@]}"; echo "DROPIN=$DEBKIT_SSH_DROPIN_OK"')
 contem "só DEPOIS de um bloco Match" "$saida"; contem "DROPIN=0" "$saida"
 caso "Match comentado não conta"
-printf '# Match User alguem\nInclude %s/sshd_config.d/*.conf\n' "$AREIA" > "$AREIA/sshd_config"
+printf '# Match User alguem\nInclude %s/sshd_config.d/*.conf\n' "$SANDBOX" > "$SANDBOX/sshd_config"
 igual 0 "$(s 'debkit_ssh_aceita_dropin; echo $?')"
-printf 'Include %s/sshd_config.d/*.conf\nPasswordAuthentication yes\n' "$AREIA" > "$AREIA/sshd_config"
+printf 'Include %s/sshd_config.d/*.conf\nPasswordAuthentication yes\n' "$SANDBOX" > "$SANDBOX/sshd_config"
 
 caso "proteção ativa só se o grupo estiver em denygroups (sshd -T)"
 limpar_ssh
@@ -57,9 +57,9 @@ contem "ssh_protecao" "$(plano_ssh)"
 caso "plano não inclui sem servidor SSH"
 nao_contem "ssh_protecao" "$(plano_ssh 'debkit_tem_comando() { [ "$1" == sshd ] && return 1; command -v "$1" >/dev/null; };')"
 caso "plano não inclui com Include depois de Match"
-printf 'Match User x\n  X11Forwarding no\nInclude %s/sshd_config.d/*.conf\n' "$AREIA" > "$AREIA/sshd_config"
+printf 'Match User x\n  X11Forwarding no\nInclude %s/sshd_config.d/*.conf\n' "$SANDBOX" > "$SANDBOX/sshd_config"
 nao_contem "ssh_protecao" "$(plano_ssh)"
-printf 'Include %s/sshd_config.d/*.conf\nPasswordAuthentication yes\n' "$AREIA" > "$AREIA/sshd_config"
+printf 'Include %s/sshd_config.d/*.conf\nPasswordAuthentication yes\n' "$SANDBOX" > "$SANDBOX/sshd_config"
 caso "plano não inclui quando já está protegido"
 printf '%s\nDenyGroups %s\n' "# debkit - Gerenciador Samba: bloqueio SSH dos usuários do servidor de arquivos" "$GRUPO_TESTE" > "$DROPIN"
 nao_contem "ssh_protecao" "$(plano_ssh)"
@@ -72,14 +72,14 @@ contem "RC=0" "$saida"
 igual 644 "$(stat -c %a "$DROPIN")" "arquivo 644"
 contem "DenyGroups $GRUPO_TESTE" "$(cat "$DROPIN")"
 contem "# debkit - Gerenciador Samba: bloqueio SSH" "$(head -1 "$DROPIN")" "marca de autoria"
-igual 1 "$(grep -c reload "$AREIA/reloads")" "SSH recarregado 1 vez"
+igual 1 "$(grep -c reload "$SANDBOX/reloads")" "SSH recarregado 1 vez"
 
 caso "configuração inválida: NÃO recarrega e o desfazer remove o arquivo"
 limpar_ssh
 saida=$(s 'DEBKIT_GRUPO_USUARIOS="QUEBRADO"; debkit_acao_ssh_protecao; echo RC=$?; debkit_desfazer ssh_protecao')
 contem "RC=1" "$saida"; contem "o SSH NÃO foi recarregado" "$saida"
 contem "Bad configuration option" "$saida" "mostra o erro do sshd"
-verdadeiro "nenhuma recarga" test ! -s "$AREIA/reloads"
+verdadeiro "nenhuma recarga" test ! -s "$SANDBOX/reloads"
 verdadeiro "arquivo removido" test ! -e "$DROPIN"
 
 caso "regra não confirmada no sshd -T: falha e desfaz"
@@ -122,7 +122,7 @@ groupadd "$GRUPO_TESTE"; usermod -aG "$GRUPO_TESTE" nobody
 saida=$(SUDO_USER=nobody s 'DEBKIT_PLANO=(ssh_protecao); debkit_executar_plano; echo RC=$?')
 contem "RC=1" "$saida"
 igual "$antes" "$(cat "$DROPIN")" "arquivo anterior intacto"
-verdadeiro "nenhuma recarga" test ! -s "$AREIA/reloads"
+verdadeiro "nenhuma recarga" test ! -s "$SANDBOX/reloads"
 gpasswd -d nobody "$GRUPO_TESTE" >/dev/null; groupdel "$GRUPO_TESTE"
 
 caso "remover proteção do debkit"
@@ -131,7 +131,7 @@ s 'debkit_acao_ssh_protecao' >/dev/null
 saida=$(s 'debkit_ssh_remover_protecao; echo RC=$?')
 contem "RC=0" "$saida"
 verdadeiro "arquivo removido" test ! -e "$DROPIN"
-verdadeiro "backup guardado" test -n "$(find "$AREIA/backups" -name 'debkit.conf.*')"
+verdadeiro "backup guardado" test -n "$(find "$SANDBOX/backups" -name 'debkit.conf.*')"
 caso "remover sem proteção aplicada: nada a fazer"
 igual "RC=0" "$(s 'debkit_ssh_remover_protecao; echo RC=$?')"
 

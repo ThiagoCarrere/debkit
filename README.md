@@ -144,7 +144,7 @@ outra pessoa possa alterar. A configuração fica em
 
 ## Qualidade
 
-- **Mais de 1.400 verificações automáticas** numa caixa de areia: log,
+- **Mais de 1.400 verificações automáticas** num sandbox: log,
   configuração, `smb.conf`, base de senhas do Samba e pacotes ficam
   isolados. Uma trava compara o sistema real antes e depois de cada
   arquivo de teste e reprova qualquer vazamento.

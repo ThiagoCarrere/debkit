@@ -3,10 +3,10 @@
 # travas, ordem (sessões → Linux → Samba → pasta pessoal → grupo pessoal),
 # pasta pessoal apagada só quando pode, avisos e tela (confirmação s/n).
 # Usuários/grupos dkt_* reais (removidos no fim); base do Samba e smb.conf
-# da areia (as regras de teste vão no smb.conf DA AREIA: um smb.conf solto
+# do sandbox (as regras de teste vão no smb.conf DO SANDBOX: um smb.conf solto
 # não isola a base de senhas).
 source "$(dirname "$0")/lib.sh"
-caixa_de_areia
+sandbox
 
 if getent passwd | cut -d: -f1 | grep -q '^dkt_'; then echo "  já existem usuários dkt_* - abortando"; exit 1; fi
 if [ -e /home/dkt_hx ]; then echo "  /home/dkt_hx já existe - abortando"; exit 1; fi
@@ -14,26 +14,26 @@ limpar_usuarios() {
     local x
     pkill -u "$(getent passwd | awk -F: '/^dkt_/ {print $1}' | paste -sd,)" 2>/dev/null
     for x in $(getent passwd | cut -d: -f1 | grep '^dkt_'); do userdel "$x" >/dev/null 2>&1; done
-    for x in $(pdbedit -s "$AREIA/smb.conf" -L 2>/dev/null | cut -d: -f1 | grep '^dkt_'); do pdbedit -s "$AREIA/smb.conf" -x -u "$x" >/dev/null 2>&1; done
+    for x in $(pdbedit -s "$SANDBOX/smb.conf" -L 2>/dev/null | cut -d: -f1 | grep '^dkt_'); do pdbedit -s "$SANDBOX/smb.conf" -x -u "$x" >/dev/null 2>&1; done
     for x in $(getent group | cut -d: -f1 | grep '^dkt_'); do groupdel "$x" >/dev/null 2>&1; done
     rm -rf /home/dkt_hx
 }
-trap 'limpar_usuarios; rm -rf -- "${AREIA:?}"' EXIT
+trap 'limpar_usuarios; rm -rf -- "${SANDBOX:?}"' EXIT
 
-copiar_smb_conf "$AREIA/smb.conf"
-preparar_areia
-cp "$AREIA/smb.conf" "$AREIA/smb.conf.limpo"
-BASE="$AREIA/homes"; mkdir -p "$BASE" "$AREIA/dados" "$AREIA/outra"
-cat >> "$AREIA/smb.conf" <<EOF
+copiar_smb_conf "$SANDBOX/smb.conf"
+preparar_sandbox
+cp "$SANDBOX/smb.conf" "$SANDBOX/smb.conf.limpo"
+BASE="$SANDBOX/homes"; mkdir -p "$BASE" "$SANDBOX/dados" "$SANDBOX/outra"
+cat >> "$SANDBOX/smb.conf" <<EOF
 
 [dkt_dados]
-   path = $AREIA/dados
+   path = $SANDBOX/dados
 EOF
 CFG="debkit_conf_carregar \"\$DEBKIT_CONF_ARQUIVO\" >/dev/null; debkit_ler_login_defs; DEBKIT_HOMES_BASE='$BASE';
-     debkit_samba_recarregar() { echo reload >> '$AREIA/reloads'; };"
+     debkit_samba_recarregar() { echo reload >> '$SANDBOX/reloads'; };"
 p() { bash -c "source '$DEBKIT'; $CFG $1" 2>&1; }
-PDB() { pdbedit -s "$AREIA/smb.conf" "$@" 2>/dev/null; }
-LOG() { cat "$AREIA/debkit.log" 2>/dev/null; }
+PDB() { pdbedit -s "$SANDBOX/smb.conf" "$@" 2>/dev/null; }
+LOG() { cat "$SANDBOX/debkit.log" 2>/dev/null; }
 criar() {  # criar <login> <tipo> [grupos]
     p "DEBKIT_U_NOME='$1'; DEBKIT_U_TIPO='$2'; DEBKIT_U_GECOS=''; DEBKIT_U_GRUPOS=(${3:-}); DEBKIT_U_HOME=0;
        DEBKIT_U_SENHA='Inicial1'; DEBKIT_U_SENHA_LINUX='Inicial1'; debkit_usuario_criar" >/dev/null
@@ -65,25 +65,25 @@ contem "RC=0" "$(excluir dkt_e2)"; verdadeiro "sumiu" sumiu dkt_e2
 
 caso "pasta pessoal na base: apagada; arquivos dele fora dela ficam"
 criar dkt_e3 arquivos; com_home dkt_e3 "$BASE/dkt_e3"
-touch "$BASE/dkt_e3/doc.txt" "$AREIA/dados/dele.txt"; chown dkt_e3 "$BASE/dkt_e3/doc.txt" "$AREIA/dados/dele.txt"
+touch "$BASE/dkt_e3/doc.txt" "$SANDBOX/dados/dele.txt"; chown dkt_e3 "$BASE/dkt_e3/doc.txt" "$SANDBOX/dados/dele.txt"
 saida=$(excluir dkt_e3)
 contem "RC=0" "$saida"; contem "Pasta pessoal $BASE/dkt_e3 apagada" "$saida"
 verdadeiro "pasta apagada" test ! -e "$BASE/dkt_e3"
-verdadeiro "arquivo no compartilhamento fica" test -f "$AREIA/dados/dele.txt"
+verdadeiro "arquivo no compartilhamento fica" test -f "$SANDBOX/dados/dele.txt"
 verdadeiro "base continua" test -d "$BASE"
 caso "pasta pessoal em /home: apagada"
 criar dkt_hx arquivos; com_home dkt_hx /home/dkt_hx
 contem "RC=0" "$(excluir dkt_hx)"; verdadeiro "apagada" test ! -e /home/dkt_hx
 caso "pasta pessoal fora da base e de /home: mantida, com aviso"
-criar dkt_e4 arquivos; com_home dkt_e4 "$AREIA/outra/dkt_e4"
+criar dkt_e4 arquivos; com_home dkt_e4 "$SANDBOX/outra/dkt_e4"
 saida=$(excluir dkt_e4)
 contem "RC=0" "$saida"; contem "mantida (fora da base das pastas pessoais e de /home)" "$saida"
-verdadeiro "mantida" test -d "$AREIA/outra/dkt_e4"; verdadeiro "usuário sumiu" sumiu dkt_e4
+verdadeiro "mantida" test -d "$SANDBOX/outra/dkt_e4"; verdadeiro "usuário sumiu" sumiu dkt_e4
 contem "nome=dkt_e4" "$(LOG)"; contem "pasta=manter" "$(LOG)"
 caso "pasta pessoal que é link: mantida (e o destino também)"
-criar dkt_e5 arquivos; mkdir -p "$AREIA/outra/alvo"; touch "$AREIA/outra/alvo/x"; ln -s "$AREIA/outra/alvo" "$BASE/dkt_e5"; usermod -d "$BASE/dkt_e5" dkt_e5
+criar dkt_e5 arquivos; mkdir -p "$SANDBOX/outra/alvo"; touch "$SANDBOX/outra/alvo/x"; ln -s "$SANDBOX/outra/alvo" "$BASE/dkt_e5"; usermod -d "$BASE/dkt_e5" dkt_e5
 contem "não é uma pasta comum" "$(excluir dkt_e5)"
-verdadeiro "link e destino intactos" test -L "$BASE/dkt_e5" -a -f "$AREIA/outra/alvo/x"
+verdadeiro "link e destino intactos" test -L "$BASE/dkt_e5" -a -f "$SANDBOX/outra/alvo/x"
 caso "pasta pessoal de outro dono ou de outro usuário também: mantida"
 criar dkt_e6 arquivos; mkdir -p "$BASE/dkt_e6"; usermod -d "$BASE/dkt_e6" dkt_e6          # dono root
 contem "o dono não é o usuário" "$(excluir dkt_e6)"; verdadeiro "mantida" test -d "$BASE/dkt_e6"
@@ -112,11 +112,11 @@ contem "é quem está rodando o debkit" "$(excluir dkt_t1 "SUDO_USER=dkt_t1;")";
 for x in root daemon nobody dkt_nao_existe; do contem "não é um usuário comum" "$(excluir "$x")" "$x"; done
 verdadeiro "root e daemon intactos" bash -c "getent passwd root && getent passwd daemon"
 caso "recusa: grupo pessoal usado no smb.conf"
-printf '   valid users = @dkt_t1\n' >> "$AREIA/smb.conf"
+printf '   valid users = @dkt_t1\n' >> "$SANDBOX/smb.conf"
 saida=$(excluir dkt_t1)
 contem "RC=1" "$saida"; contem "O grupo pessoal de dkt_t1 é usado no Samba ([dkt_dados])" "$saida"
 verdadeiro "intacto" intacto dkt_t1
-sed -i '/valid users = @dkt_t1/d' "$AREIA/smb.conf"
+sed -i '/valid users = @dkt_t1/d' "$SANDBOX/smb.conf"
 caso "recusa: processo do usuário fora do Samba (ex: SSH)"
 su -s /bin/sh dkt_t1 -c 'exec sleep 60' >/dev/null 2>&1 & sleep 0.5
 saida=$(excluir dkt_t1)
@@ -162,22 +162,22 @@ PDB -x -u dkt_t2 >/dev/null
 # ════════════════════════════════════════════════════════════════════════════
 caso "login citado no smb.conf (nome solto e force user; @grupo não conta)"
 criar dkt_t3 arquivos
-cat >> "$AREIA/smb.conf" <<EOF
+cat >> "$SANDBOX/smb.conf" <<EOF
 
 [dkt_a]
-   path = $AREIA/dados
+   path = $SANDBOX/dados
    valid users = dkt_t3, dkt_t30
 [dkt_b]
-   path = $AREIA/dados
+   path = $SANDBOX/dados
    force user = dkt_t3
 [dkt_c]
-   path = $AREIA/dados
+   path = $SANDBOX/dados
    write list = @dkt_t3x, dkt_t3x
 EOF
 igual "$(printf '%s\n' dkt_a dkt_b)" "$(p "debkit_samba_usuario_usos dkt_t3")"
 caso "arquivos do usuário: conta fora da pasta pessoal"
 com_home dkt_t3 "$BASE/dkt_t3"; U3=$(id -u dkt_t3)
-touch "$BASE/dkt_t3/a" "$BASE/dkt_t3/b" "$AREIA/dados/c"; chown dkt_t3 "$BASE/dkt_t3/a" "$BASE/dkt_t3/b" "$AREIA/dados/c"
+touch "$BASE/dkt_t3/a" "$BASE/dkt_t3/b" "$SANDBOX/dados/c"; chown dkt_t3 "$BASE/dkt_t3/a" "$BASE/dkt_t3/b" "$SANDBOX/dados/c"
 igual 4 "$(p "debkit_contar_arquivos -user $U3")" "pasta + a + b + c"
 igual 1 "$(p "debkit_contar_arquivos -user $U3 '$BASE/dkt_t3'")" "sem a pasta pessoal"
 
@@ -203,16 +203,16 @@ nao_contem "dkt_vizinho " "$(printf '\n' | p "SUDO_USER=dkt_vizinho; debkit_samb
 saida=$(tela "$(idx dkt_t3)" s "")
 contem "Usuário dkt_t3 excluído" "$saida"; verdadeiro "sumiu" sumiu dkt_t3; verdadeiro "pasta apagada" test ! -e "$BASE/dkt_t3"
 caso "tela: UID reaproveitado herda os arquivos que ficaram (o aviso mostra)"
-criar dkt_r9 arquivos; touch "$AREIA/dados/heranca.txt"; chown dkt_r9 "$AREIA/dados/heranca.txt"; U9=$(id -u dkt_r9)
+criar dkt_r9 arquivos; touch "$SANDBOX/dados/heranca.txt"; chown dkt_r9 "$SANDBOX/dados/heranca.txt"; U9=$(id -u dkt_r9)
 contem "RC=0" "$(excluir dkt_r9)"
-igual "$U9" "$(stat -c %u "$AREIA/dados/heranca.txt")" "arquivo fica com o número"
+igual "$U9" "$(stat -c %u "$SANDBOX/dados/heranca.txt")" "arquivo fica com o número"
 useradd -M -U -s /usr/sbin/nologin -u "$U9" -G "$GRUPO_TESTE" dkt_herdeiro
-igual "dkt_herdeiro" "$(stat -c %U "$AREIA/dados/heranca.txt")" "o usuário novo com o mesmo UID vira dono"
+igual "dkt_herdeiro" "$(stat -c %U "$SANDBOX/dados/heranca.txt")" "o usuário novo com o mesmo UID vira dono"
 saida=$(tela "$(idx dkt_herdeiro)" n "")
 contem "dele nos compartilhamentos NÃO serão apagados" "$saida" "o aviso mostra"; contem "Contas: Linux (sem conta no Samba)" "$saida"
 criar dkt_t4 arquivos
 caso "tela: sem pasta e sem arquivos"
-rm -rf -- "${BASE:?}"/* "$AREIA/dados"/*
+rm -rf -- "${BASE:?}"/* "$SANDBOX/dados"/*
 saida=$(tela "$(idx dkt_t4)" s "")
 contem "Pasta pessoal: não tem" "$saida"; contem "Nenhum arquivo dele" "$saida"; contem "excluído" "$saida"
 caso "tela: recusa antes de perguntar (processo aberto)"
@@ -221,7 +221,7 @@ saida=$(tela "$(idx dkt_t5)" s "")
 contem "tem processos em execução" "$saida"; nao_contem "Será excluído" "$saida"; verdadeiro "intacto" intacto dkt_t5
 pkill -u dkt_t5; sleep 0.5
 caso "menu Samba > Usuários > 5) Excluir usuário"
-cp "$AREIA/smb.conf.limpo" "$AREIA/smb.conf"
+cp "$SANDBOX/smb.conf.limpo" "$SANDBOX/smb.conf"
 saida=$(pty 0.6 "bash $DEBKIT" 1 1 5 "" 0 0 0)
 contem "5) Excluir usuário" "$saida"; contem "Excluir usuário" "$saida"; contem "Cancelado" "$saida"
 caso "inglês"
@@ -230,7 +230,7 @@ contem "User dkt_t5 deleted." "$(p "DEBKIT_IDIOMA=en; debkit_usuario_excluir dkt
 limpar_usuarios
 caso "limpeza"
 verdadeiro "nenhum usuário dkt_" bash -c "! getent passwd | grep -q '^dkt_'"
-verdadeiro "nenhuma conta Samba dkt_ na areia" bash -c "! pdbedit -s '$AREIA/smb.conf' -L 2>/dev/null | grep -q '^dkt_'"
+verdadeiro "nenhuma conta Samba dkt_ no sandbox" bash -c "! pdbedit -s '$SANDBOX/smb.conf' -L 2>/dev/null | grep -q '^dkt_'"
 nao_contem "dkt_" "$(getent group sudo)"
 verdadeiro "/home/dkt_hx não existe" test ! -e /home/dkt_hx
 real_intacto

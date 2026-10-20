@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Biblioteca mínima de testes do debkit (sem dependências externas).
 #
-# Cada arquivo tests/t*.sh carrega esta biblioteca, chama "caixa_de_areia"
+# Cada arquivo tests/t*.sh carrega esta biblioteca, chama "sandbox"
 # e usa as afirmações abaixo. Os testes NUNCA tocam no que já existe no
 # servidor: log, trava e configuração ficam numa pasta temporária.
 
@@ -63,15 +63,15 @@ estado_real() {
     done
 }
 
-# Afirmação: nenhum arquivo real do debkit mudou desde a caixa_de_areia
+# Afirmação: nenhum arquivo real do debkit mudou desde a sandbox
 real_intacto() {
-    caso "nada fora da caixa de areia"
+    caso "nada fora do sandbox"
     igual "$_ESTADO_REAL_INICIO" "$(estado_real)" "arquivos reais do debkit iguais ao início"
 }
 
 # Cópia do smb.conf real para <destino>, SEM as linhas do "include" antigo
 # do debkit (marca + include): elas apontam para o arquivo REAL, que a
-# preparação removeria. Os testes do include antigo montam o seu, na areia.
+# preparação removeria. Os testes do include antigo montam o seu, no sandbox.
 # A base de senhas e as pastas de estado do Samba apontam para <destino>.samba/
 # (logo depois do [global]): um smbpasswd/pdbedit de teste NUNCA grava na
 # base real.
@@ -86,7 +86,7 @@ copiar_smb_conf() {
         printf '[global]\n   server role = standalone server\n' > "$1"
     fi
     isolar_smb_conf "$1"
-    # Log de autenticação (tarefa 3.0) como no servidor real, mas na areia:
+    # Log de autenticação (tarefa 3.0) como no servidor real, mas no sandbox:
     # log e regra do logrotate ao lado da cópia
     local d
     d=$(dirname -- "$1")
@@ -114,39 +114,39 @@ isolar_smb_conf() {
 # aponta para dentro dela: log, trava, backups, uma CÓPIA do smb.conf, os
 # backups do smb.conf e um grupo de teste. Assim nenhum teste consegue
 # mexer no Samba real, nem respondendo "s" ao assistente.
-caixa_de_areia() {
+sandbox() {
     _ESTADO_REAL_INICIO=$(estado_real)
-    AREIA=$(mktemp -d /tmp/debkit-teste.XXXXXX)
-    chmod 755 "$AREIA"
-    copiar_smb_conf "$AREIA/smb.conf"
+    SANDBOX=$(mktemp -d /tmp/debkit-teste.XXXXXX)
+    chmod 755 "$SANDBOX"
+    copiar_smb_conf "$SANDBOX/smb.conf"
     {
-        echo "LOG=$AREIA/debkit.log"
-        echo "TRAVA=$AREIA/debkit.lock"
-        echo "BACKUP_DIR=$AREIA/backups"
-        echo "SMB_CONF=$AREIA/smb.conf"
-        echo "SMB_BACKUP_DIR=$AREIA/conf-bkp"
-        echo "AUTH_LOG=$AREIA/debkit-auth.json"
-        echo "AUTH_LOGROTATE=$AREIA/logrotate-debkit-samba-auth"
+        echo "LOG=$SANDBOX/debkit.log"
+        echo "TRAVA=$SANDBOX/debkit.lock"
+        echo "BACKUP_DIR=$SANDBOX/backups"
+        echo "SMB_CONF=$SANDBOX/smb.conf"
+        echo "SMB_BACKUP_DIR=$SANDBOX/conf-bkp"
+        echo "AUTH_LOG=$SANDBOX/debkit-auth.json"
+        echo "AUTH_LOGROTATE=$SANDBOX/logrotate-debkit-samba-auth"
         echo "GRUPO_USUARIOS=$GRUPO_TESTE"
         # Fora do Include do sshd_config real: a proteção SSH nunca é
         # aplicada no SSH de verdade pelos testes comuns
-        echo "SSH_DROPIN=$AREIA/sshd_debkit.conf"
-    } > "$AREIA/debkit.conf"
-    chmod 644 "$AREIA/debkit.conf"
-    export DEBKIT_CONF_ARQUIVO="$AREIA/debkit.conf"
-    # apt e base do dpkg da areia: nenhum teste instala ou remove pacote de
-    # verdade (o apt da areia recusa tudo e anota a tentativa; a base vazia
+        echo "SSH_DROPIN=$SANDBOX/sshd_debkit.conf"
+    } > "$SANDBOX/debkit.conf"
+    chmod 644 "$SANDBOX/debkit.conf"
+    export DEBKIT_CONF_ARQUIVO="$SANDBOX/debkit.conf"
+    # apt e base do dpkg do sandbox: nenhum teste instala ou remove pacote de
+    # verdade (o apt do sandbox recusa tudo e anota a tentativa; a base vazia
     # = nada instalado). Testes de pacotes usam o seu apt falso.
-    printf '#!/bin/sh\necho "apt-get $*" >> "%s/apt-bloqueado.log"\necho "apt bloqueado nos testes" >&2\nexit 100\n' "$AREIA" > "$AREIA/apt-bloqueado"
-    chmod 755 "$AREIA/apt-bloqueado"
-    mkdir -p "$AREIA/dpkg/info"; : > "$AREIA/dpkg/status"
-    export DEBKIT_APT="$AREIA/apt-bloqueado" DEBKIT_DPKG_ADMIN="$AREIA/dpkg"
+    printf '#!/bin/sh\necho "apt-get $*" >> "%s/apt-bloqueado.log"\necho "apt bloqueado nos testes" >&2\nexit 100\n' "$SANDBOX" > "$SANDBOX/apt-bloqueado"
+    chmod 755 "$SANDBOX/apt-bloqueado"
+    mkdir -p "$SANDBOX/dpkg/info"; : > "$SANDBOX/dpkg/status"
+    export DEBKIT_APT="$SANDBOX/apt-bloqueado" DEBKIT_DPKG_ADMIN="$SANDBOX/dpkg"
     export NO_COLOR=1
-    trap 'rm -rf -- "${AREIA:?}"; getent group "$GRUPO_TESTE" >/dev/null && groupdel "$GRUPO_TESTE"' EXIT
+    trap 'rm -rf -- "${SANDBOX:?}"; getent group "$GRUPO_TESTE" >/dev/null && groupdel "$GRUPO_TESTE"' EXIT
 }
 
-# Prepara o ambiente DA AREIA (para testar o menu sem cair no assistente)
-preparar_areia() {
+# Prepara o ambiente DO SANDBOX (para testar o menu sem cair no assistente)
+preparar_sandbox() {
     printf 's\n' | bash "$DEBKIT" --preparar >/dev/null 2>&1
 }
 

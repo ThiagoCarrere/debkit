@@ -17,16 +17,16 @@ if [ "${DEBKIT_TESTE_REAL:-}" != "1" ]; then
     echo "  (pulado: teste com o Samba real - rode com DEBKIT_TESTE_REAL=1)"
     exit 0
 fi
-caixa_de_areia
+sandbox
 
 U1=dkt_rg1; U2=dkt_rg2; G=dkt_rgp; SHARE=dkt_teste_grupo; SENHA="Grupo#Teste1"
 for x in "$U1" "$U2" "$G"; do
     if getent passwd "$x" >/dev/null || getent group "$x" >/dev/null || pdbedit -u "$x" >/dev/null 2>&1; then echo "  $x já existe - abortando"; exit 1; fi
 done
-SMB_ANTES="$AREIA/smb.conf.real"
+SMB_ANTES="$SANDBOX/smb.conf.real"
 cp -p /etc/samba/smb.conf "$SMB_ANTES"
 MD5_ANTES=$(md5sum < /etc/samba/smb.conf)
-PASTA="$AREIA/compartilhado"; PASTA_LIVRE="$AREIA/livre"; SHARE_LIVRE=dkt_teste_livre
+PASTA="$SANDBOX/compartilhado"; PASTA_LIVRE="$SANDBOX/livre"; SHARE_LIVRE=dkt_teste_livre
 
 limpar_real() {
     local x i
@@ -43,18 +43,18 @@ limpar_real() {
         cat "$SMB_ANTES" > /etc/samba/smb.conf
         systemctl reload smbd
     fi
-    rm -rf -- "${AREIA:?}"
+    rm -rf -- "${SANDBOX:?}"
 }
 trap limpar_real EXIT
 
-# Configuração REAL (smb.conf, base do Samba, grupo de proteção); só o log vai para a areia
-s() { env -u DEBKIT_APT -u DEBKIT_DPKG_ADMIN bash -c "source '$DEBKIT'; debkit_conf_carregar /etc/debkit/debkit.conf >/dev/null; debkit_ler_login_defs; DEBKIT_LOG='$AREIA/debkit.log'; $1" 2>&1; }
+# Configuração REAL (smb.conf, base do Samba, grupo de proteção); só o log vai para o sandbox
+s() { env -u DEBKIT_APT -u DEBKIT_DPKG_ADMIN bash -c "source '$DEBKIT'; debkit_conf_carregar /etc/debkit/debkit.conf >/dev/null; debkit_ler_login_defs; DEBKIT_LOG='$SANDBOX/debkit.log'; $1" 2>&1; }
 smb() {  # smb <usuário> <comandos>
-    printf 'username = %s\npassword = %s\n' "$1" "$SENHA" > "$AREIA/auth.$1"; chmod 600 "$AREIA/auth.$1"
-    ( cd "$AREIA" && timeout 20 smbclient "//127.0.0.1/$SHARE" -A "$AREIA/auth.$1" -c "$2" 2>&1 ); echo "RC=$?"
+    printf 'username = %s\npassword = %s\n' "$1" "$SENHA" > "$SANDBOX/auth.$1"; chmod 600 "$SANDBOX/auth.$1"
+    ( cd "$SANDBOX" && timeout 20 smbclient "//127.0.0.1/$SHARE" -A "$SANDBOX/auth.$1" -c "$2" 2>&1 ); echo "RC=$?"
 }
 
-( umask 027; : > "$AREIA/debkit.log" )   # senão o plano pediria para criá-lo
+( umask 027; : > "$SANDBOX/debkit.log" )   # senão o plano pediria para criá-lo
 caso "ambiente real preparado pelo debkit"
 s 'debkit_samba_ambiente_pronto' >/dev/null || { echo "  o ambiente real não está preparado (rode: debkit --preparar) - abortando"; exit 1; }
 _passou "pronto"
@@ -73,16 +73,16 @@ mkdir -p "$PASTA" "$PASTA_LIVRE"; chown root:"$G" "$PASTA"; chmod 2770 "$PASTA";
 printf '\n[%s]\n   path = %s\n   valid users = @%s\n   read only = no\n' "$SHARE" "$PASTA" "$G" >> /etc/samba/smb.conf
 printf '\n[%s]\n   path = %s\n   valid users = %s %s\n   read only = no\n' "$SHARE_LIVRE" "$PASTA_LIVRE" "$U1" "$U2" >> /etc/samba/smb.conf
 systemctl reload smbd; sleep 1
-echo "conteudo" > "$AREIA/a.txt"
+echo "conteudo" > "$SANDBOX/a.txt"
 
 # Sessão aberta (smbclient lendo comandos de um fifo): abrir <usuário> <compartilhamento>
 trap '' PIPE
 abrir() {
-    rm -f "$AREIA/sessao"; mkfifo "$AREIA/sessao"
-    printf 'username = %s\npassword = %s\n' "$1" "$SENHA" > "$AREIA/auth.$1"; chmod 600 "$AREIA/auth.$1"
-    ( cd "$AREIA" && timeout 60 smbclient "//127.0.0.1/$2" -A "$AREIA/auth.$1" < "$AREIA/sessao" > "$AREIA/sessao.out" 2>&1 ) &
+    rm -f "$SANDBOX/sessao"; mkfifo "$SANDBOX/sessao"
+    printf 'username = %s\npassword = %s\n' "$1" "$SENHA" > "$SANDBOX/auth.$1"; chmod 600 "$SANDBOX/auth.$1"
+    ( cd "$SANDBOX" && timeout 60 smbclient "//127.0.0.1/$2" -A "$SANDBOX/auth.$1" < "$SANDBOX/sessao" > "$SANDBOX/sessao.out" 2>&1 ) &
     PID_SESSAO=$!
-    exec 3> "$AREIA/sessao"
+    exec 3> "$SANDBOX/sessao"
 }
 enviar() { echo "$1" >&3 2>/dev/null; sleep 2; }
 fechar() { echo "quit" >&3 2>/dev/null; exec 3>&-; wait "$PID_SESSAO" 2>/dev/null; PID_SESSAO=""; }
@@ -107,7 +107,7 @@ contem "RC=0" "$saida"; contem "$U2: 1 sessão(ões) do Samba reconectada(s)" "$
 verdadeiro "a sessão antiga acabou" bash -c "! kill -0 $SMBD_ANTES"
 fechar
 saida=$(smb "$U2" "put a.txt a2.txt; ls"); contem "RC=0" "$saida" "acessa o compartilhamento do grupo na hora"; contem "a2.txt" "$saida"
-contem "samba_reconectar usuario=$U2 pids=$SMBD_ANTES resultado=ok" "$(cat "$AREIA/debkit.log")"
+contem "samba_reconectar usuario=$U2 pids=$SMBD_ANTES resultado=ok" "$(cat "$SANDBOX/debkit.log")"
 
 caso "sair com sessão aberta: perde o acesso na hora (inclusive a sessão aberta)"
 abrir "$U1" "$SHARE"; enviar "put a.txt b1.txt"

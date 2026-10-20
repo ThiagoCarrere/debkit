@@ -2,7 +2,7 @@
 # Testes da tarefa 0.1 - esqueleto: linha de comando, configuração,
 # catálogo de mensagens, menu, trava, auditoria e limpeza.
 source "$(dirname "$0")/lib.sh"
-caixa_de_areia
+sandbox
 
 # ── Qualidade do código ──────────────────────────────────────────────────────
 caso "sintaxe"
@@ -27,7 +27,7 @@ igual "debkit 0.1.0-dev" "$(bash "$DEBKIT" -v)"
 
 caso "--ajuda em pt_BR e en"
 contem "Uso: debkit" "$(bash "$DEBKIT" --ajuda)"
-contem "$AREIA/debkit.conf" "$(bash "$DEBKIT" --ajuda)" "mostra o arquivo de configuração"
+contem "$SANDBOX/debkit.conf" "$(bash "$DEBKIT" --ajuda)" "mostra o arquivo de configuração"
 contem "Usage: debkit" "$(DEBKIT_IDIOMA=en bash "$DEBKIT" --help)"
 
 caso "opção desconhecida"
@@ -45,9 +45,9 @@ saida=$(bash -c "source '$DEBKIT'; echo carregou; declare -F t >/dev/null && ech
 igual "carregou"$'\n'"tem_t" "$saida"
 
 # ── Configuração ─────────────────────────────────────────────────────────────
-conf() { printf '%b' "$1" > "$AREIA/c.conf"; chmod "${2:-644}" "$AREIA/c.conf"; }
+conf() { printf '%b' "$1" > "$SANDBOX/c.conf"; chmod "${2:-644}" "$SANDBOX/c.conf"; }
 # carregar '<expressão com variáveis>' -> "rc=<código> <expressão avaliada>" + erros/avisos
-carregar() { bash -c "source '$DEBKIT'; debkit_conf_carregar '$AREIA/c.conf'; rc=\$?; eval \"echo rc=\$rc \$1\"; printf 'E:%s\nA:%s\n' \"\$DEBKIT_CONF_ERROS\" \"\$DEBKIT_CONF_AVISOS\"" _ "$1"; }
+carregar() { bash -c "source '$DEBKIT'; debkit_conf_carregar '$SANDBOX/c.conf'; rc=\$?; eval \"echo rc=\$rc \$1\"; printf 'E:%s\nA:%s\n' \"\$DEBKIT_CONF_ERROS\" \"\$DEBKIT_CONF_AVISOS\"" _ "$1"; }
 
 caso "configuração ausente usa padrões"
 saida=$(bash -c "source '$DEBKIT'; debkit_conf_carregar /nao/existe.conf; echo \"rc=\$? \$DEBKIT_SENHA_MIN \$DEBKIT_GRUPO_USUARIOS \$DEBKIT_SMB_CONF\"")
@@ -93,16 +93,16 @@ conf 'SENHA_MIN=6' 664
 contem "não ter escrita para grupo/outros" "$(carregar '')" "664"
 conf 'SENHA_MIN=6' 600
 contem "rc=0" "$(carregar '')" "600 aceito"
-conf 'SENHA_MIN=6' 644; chown 65534 "$AREIA/c.conf"
+conf 'SENHA_MIN=6' 644; chown 65534 "$SANDBOX/c.conf"
 contem "precisa pertencer ao root" "$(carregar '')" "dono não-root"
-chown 0 "$AREIA/c.conf"
+chown 0 "$SANDBOX/c.conf"
 
 caso "configuração inválida impede abrir o menu, mas não a ajuda"
-cp "$AREIA/debkit.conf" "$AREIA/debkit.conf.bom"; echo "SENHA_MIN=zero" >> "$AREIA/debkit.conf"
+cp "$SANDBOX/debkit.conf" "$SANDBOX/debkit.conf.bom"; echo "SENHA_MIN=zero" >> "$SANDBOX/debkit.conf"
 saida=$(bash "$DEBKIT" 2>&1 </dev/null); cod=$?
 contem "Configuração inválida" "$saida"; igual 1 "$cod" "código 1"
 igual 0 "$(bash "$DEBKIT" --ajuda >/dev/null 2>&1; echo $?)" "--ajuda continua funcionando"
-cp "$AREIA/debkit.conf.bom" "$AREIA/debkit.conf"
+cp "$SANDBOX/debkit.conf.bom" "$SANDBOX/debkit.conf"
 
 # ── Catálogo de mensagens ────────────────────────────────────────────────────
 caso "catálogo pt_BR e en com as mesmas chaves"
@@ -117,7 +117,7 @@ igual "chave.que.nao.existe" "$(bash -c "source '$DEBKIT'; t chave.que.nao.exist
 igual "Opção inválida: '100%s %d'" "$(bash -c "source '$DEBKIT'; t geral.opcao_invalida '100%s %d'")"
 
 # ── Menu ─────────────────────────────────────────────────────────────────────
-preparar_areia
+preparar_sandbox
 caso "menu: abrir, opção inválida, Enter vazio e sair"
 saida=$(pty 0.6 "bash $DEBKIT" "" 7 "" 0)
 contem "debkit - administração de servidores Debian" "$saida"; contem "Opção inválida: '7'" "$saida"
@@ -131,30 +131,30 @@ printf '7\n' | timeout 10 bash "$DEBKIT" >/dev/null 2>&1; igual 0 "$?" "após op
 
 # ── Auditoria ────────────────────────────────────────────────────────────────
 caso "auditoria registra início e fim (saída normal, Ctrl+D e Ctrl+C)"
-: > "$AREIA/debkit.log"
+: > "$SANDBOX/debkit.log"
 pty 0.6 "bash $DEBKIT" 0 >/dev/null
 printf '' | timeout 10 bash "$DEBKIT" >/dev/null 2>&1
 timeout --preserve-status -s INT 2 bash "$DEBKIT" < <(sleep 5) >/dev/null 2>&1; cod=$?
 igual 130 "$cod" "Ctrl+C sai com 130"
-log=$(cat "$AREIA/debkit.log")
+log=$(cat "$SANDBOX/debkit.log")
 igual 3 "$(grep -c ' sessao_inicio v0.1.0-dev' <<< "$log")" "3 inícios"
 contem "sessao_fim motivo=normal" "$log"
 contem "sessao_fim motivo=fim_da_entrada" "$log"
 contem "sessao_fim motivo=interrompida" "$log"
-igual 640 "$(stat -c %a "$AREIA/debkit.log" 2>/dev/null || echo ausente)" "log criado com 640"
-: > "$AREIA/debkit.log"; rm -f "$AREIA/debkit.log"
-bash -c "source '$DEBKIT'; DEBKIT_LOG='$AREIA/debkit.log'; debkit_auditar teste 'a'"
-igual 640 "$(stat -c %a "$AREIA/debkit.log")" "log novo criado com 640"
+igual 640 "$(stat -c %a "$SANDBOX/debkit.log" 2>/dev/null || echo ausente)" "log criado com 640"
+: > "$SANDBOX/debkit.log"; rm -f "$SANDBOX/debkit.log"
+bash -c "source '$DEBKIT'; DEBKIT_LOG='$SANDBOX/debkit.log'; debkit_auditar teste 'a'"
+igual 640 "$(stat -c %a "$SANDBOX/debkit.log")" "log novo criado com 640"
 
 caso "auditoria: quebra de linha não forja linhas falsas"
-bash -c "source '$DEBKIT'; DEBKIT_LOG='$AREIA/debkit.log'; debkit_auditar 'acao
+bash -c "source '$DEBKIT'; DEBKIT_LOG='$SANDBOX/debkit.log'; debkit_auditar 'acao
 falsa' \$'detalhe\n2026-01-01 root[1] linha_forjada'"
-igual 2 "$(wc -l < "$AREIA/debkit.log")" "continua 1 linha por registro"
-contem "acao_falsa detalhe 2026-01-01" "$(tail -1 "$AREIA/debkit.log")"
+igual 2 "$(wc -l < "$SANDBOX/debkit.log")" "continua 1 linha por registro"
+contem "acao_falsa detalhe 2026-01-01" "$(tail -1 "$SANDBOX/debkit.log")"
 
 caso "auditoria registra o usuário real (sudo)"
-bash -c "source '$DEBKIT'; DEBKIT_LOG='$AREIA/debkit.log'; SUDO_USER=fulano debkit_auditar teste x"
-contem " fulano[" "$(tail -1 "$AREIA/debkit.log")"
+bash -c "source '$DEBKIT'; DEBKIT_LOG='$SANDBOX/debkit.log'; SUDO_USER=fulano debkit_auditar teste x"
+contem " fulano[" "$(tail -1 "$SANDBOX/debkit.log")"
 
 caso "auditoria com log impossível de gravar retorna erro"
 igual 1 "$(bash -c "source '$DEBKIT'; DEBKIT_LOG=/proc/nao_pode/debkit.log; debkit_auditar teste x; echo \$?")"
@@ -163,7 +163,7 @@ igual 1 "$(bash -c "source '$DEBKIT'; DEBKIT_LOG=/proc/nao_pode/debkit.log; debk
 caso "trava: segunda sessão é recusada mostrando o PID da primeira"
 ( sleep 6 | timeout 10 bash "$DEBKIT" >/dev/null 2>&1 ) &
 sleep 1.5
-pid1=$(cat "$AREIA/debkit.lock" 2>/dev/null)
+pid1=$(cat "$SANDBOX/debkit.lock" 2>/dev/null)
 saida=$(printf '0\n' | timeout 10 bash "$DEBKIT" 2>&1); cod=$?
 contem "já está em uso por outra sessão (PID $pid1)" "$saida"; igual 1 "$cod" "código 1"
 wait
@@ -171,10 +171,10 @@ saida=$(printf '0\n' | timeout 10 bash "$DEBKIT" 2>&1); cod=$?
 igual 0 "$cod" "liberada quando a primeira termina"
 
 caso "trava em local impossível"
-sed -i "s#^TRAVA=.*#TRAVA=/proc/nao_pode/debkit.lock#" "$AREIA/debkit.conf"
+sed -i "s#^TRAVA=.*#TRAVA=/proc/nao_pode/debkit.lock#" "$SANDBOX/debkit.conf"
 saida=$(printf '0\n' | timeout 10 bash "$DEBKIT" 2>&1); cod=$?
 contem "Não foi possível criar o arquivo de trava" "$saida"; igual 1 "$cod"
-cp "$AREIA/debkit.conf.bom" "$AREIA/debkit.conf"
+cp "$SANDBOX/debkit.conf.bom" "$SANDBOX/debkit.conf"
 
 # ── Temporários ──────────────────────────────────────────────────────────────
 caso "temporários: 600 e apagados ao sair (normal e Ctrl+C)"
@@ -182,11 +182,11 @@ saida=$(bash -c "source '$DEBKIT'; trap debkit_ao_sair EXIT; a=\$(debkit_temp); 
 perm=$(head -1 <<< "$saida"); arq=$(tail -1 <<< "$saida")
 igual 600 "$perm" "criado com 600"
 verdadeiro "apagado na saída normal" test ! -e "$arq"
-bash -c "source '$DEBKIT'; trap debkit_ao_sair EXIT; trap 'exit 130' INT; a=\$(debkit_temp); DEBKIT_TEMPORARIOS+=(\"\$a\"); echo \"\$a\" > '$AREIA/tmpnome'; sleep 5" &
+bash -c "source '$DEBKIT'; trap debkit_ao_sair EXIT; trap 'exit 130' INT; a=\$(debkit_temp); DEBKIT_TEMPORARIOS+=(\"\$a\"); echo \"\$a\" > '$SANDBOX/tmpnome'; sleep 5" &
 sleep 1; kill -INT $! 2>/dev/null; wait $! 2>/dev/null
-verdadeiro "apagado no Ctrl+C" test ! -e "$(cat "$AREIA/tmpnome")"
+verdadeiro "apagado no Ctrl+C" test ! -e "$(cat "$SANDBOX/tmpnome")"
 
-# ── Nada fora da caixa de areia ──────────────────────────────────────────────
+# ── Nada fora do sandbox ──────────────────────────────────────────────
 real_intacto
 
 resumo

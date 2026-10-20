@@ -427,7 +427,7 @@ Prova real (`t21b`): ligado pelo debkit no smb.conf real, o smbd passa a
 registrar a classe (`smbcontrol smbd debuglevel`); senha errada, usuário
 inexistente e sucesso aparecem com o IP; `logrotate -f` gira e o login
 seguinte cai no arquivo novo. Os testes espelham no sandbox o estado do
-servidor real (`copiar_smb_conf` aponta a linha e a regra para a areia).
+servidor real (`copiar_smb_conf` aponta a linha e a regra para o sandbox).
 A VM real foi preparada pelo próprio debkit em 20/10/2026.
 
 Ordem: 3.0 log de autenticação (preparação e verificação) → 3.1 sessões
@@ -769,7 +769,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 **Como rodar os testes (só na VM):**
 
 ```
-tests/run.sh                                         # suíte normal (caixa de areia)
+tests/run.sh                                         # suíte normal (sandbox)
 DEBKIT_TESTE_REAL=1 tests/run.sh t04b_ssh_real.sh    # prova com o SSH real
 DEBKIT_TESTE_REAL=1 tests/run.sh t05b_ufw_real.sh    # prova com o ufw real (instalado e INATIVO)
 DEBKIT_TESTE_REAL=1 tests/run.sh t07b_usuario_real.sh  # login real no Samba e no SSH (ambiente real preparado)
@@ -785,9 +785,9 @@ preparado pelo debkit (16/10/2026): 316 + 26, todas passando. Ao fim da
 tarefa 1.0: 521 + 26, todas passando; `shellcheck` sem avisos nos três
 arquivos do programa. Ao fim da 1.1: 688 + 47 (provas reais: `t04b`,
 `t05b` e `t07b_usuario_real.sh`). Os testes da 1.1 criam usuários Linux
-`dkt_*` reais (removidos no fim); a base de senhas do Samba da areia é
+`dkt_*` reais (removidos no fim); a base de senhas do Samba do sandbox é
 separada da real (`copiar_smb_conf` aponta `passdb backend` e as pastas
-de estado para a areia). Com a correção dos pacotes de domínio: 733 + 48
+de estado para o sandbox). Com a correção dos pacotes de domínio: 733 + 48
 (`t08_dominio.sh`). Ao fim da 1.1b: 898 + 65 (`t09_home.sh` monta discos
 de teste de verdade - arquivos ext4 em loop, um somente leitura e um tmpfs
 - em `/mnt/dkt-teste.*` e desmonta no fim; a impressão digital do `run.sh`
@@ -820,7 +820,7 @@ os arquivos reais do debkit não existam, conferem que não mudaram
 
 **Cuidados aprendidos na Fase 0** (valem para as próximas tarefas):
 
-- a caixa de areia dos testes precisa isolar TUDO que o debkit pode alterar
+- o sandbox dos testes precisa isolar TUDO que o debkit pode alterar
   (smb.conf, backups, grupo, `SSH_DROPIN`...): numa tarefa um teste chegou a
   criar o arquivo SSH real; daí nasceu a trava do `run.sh`;
 - testar o comportamento real das ferramentas antes de codificar
@@ -831,16 +831,16 @@ os arquivos reais do debkit não existam, conferem que não mudaram
 
 **Cuidados aprendidos na tarefa 1.0:**
 
-- a cópia do `smb.conf` real na caixa de areia traz caminhos REAIS (o
+- a cópia do `smb.conf` real no sandbox traz caminhos REAIS (o
   `include` antigo apontava para `/etc/samba/debkit-shares.conf`): a cópia
   agora sai sem essas linhas (`copiar_smb_conf`), e a ação só apaga o
   arquivo antigo se ele estiver na mesma pasta do `smb.conf` e tiver o
   cabeçalho do debkit - foi essa trava que protegeu o arquivo real quando
   um teste ainda copiava o `smb.conf` sem limpar;
 - toda chave de configuração nova precisa ir também para a configuração da
-  areia (`tests/lib.sh` e o `CFG` dos testes): um teste montava a
+  sandbox (`tests/lib.sh` e o `CFG` dos testes): um teste montava a
   configuração à mão sem `SMB_BACKUP_DIR` e criou `/etc/samba/conf-bkp`
-  real (só com cópias da areia; apagada, e a pasta agora está na
+  real (só com cópias do sandbox; apagada, e a pasta agora está na
   impressão digital do `run.sh`);
 - rotação de backups com nomes reaproveitáveis: o nome liberado pela
   rotação voltava a ser usado e o backup novo era apagado logo depois de
@@ -848,16 +848,16 @@ os arquivos reais do debkit não existam, conferem que não mudaram
 
 **Cuidados aprendidos na tarefa 1.1:**
 
-- a caixa de areia não isolava o apt nem a base do dpkg: com o item novo
+- o sandbox não isolava o apt nem a base do dpkg: com o item novo
   de remover pacotes de domínio, um `--preparar` de teste respondendo "s"
   rodou o `apt-get purge` REAL (removeu os pacotes que já iam ser
-  removidos, mas por um teste). Agora a areia usa um apt que recusa tudo
+  removidos, mas por um teste). Agora o sandbox usa um apt que recusa tudo
   (`DEBKIT_APT`) e uma base do dpkg vazia (`DEBKIT_DPKG_ADMIN`), e a
   impressão digital do `run.sh` inclui pacotes, PAM e `nsswitch.conf`.
   Regra: toda ação nova que mexa em algo do sistema precisa, junto, do
-  isolamento na areia e de uma linha na impressão digital;
-- a cópia do `smb.conf` na areia apontava a base de senhas REAL do Samba:
-  agora `passdb backend` e as pastas de estado vão para a areia;
+  isolamento no sandbox e de uma linha na impressão digital;
+- a cópia do `smb.conf` no sandbox apontava a base de senhas REAL do Samba:
+  agora `passdb backend` e as pastas de estado vão para o sandbox;
 - no bash, `[a-z]` em pt_BR aceita letras acentuadas: listar as letras;
 - `read -p` não mostra a pergunta quando a entrada não é um terminal:
   textos de pergunta se testam com `pty`.

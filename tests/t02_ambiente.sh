@@ -3,7 +3,7 @@
 # Os cenários são simulados (comandos "faltando", outros sistemas, sshd_config
 # e smb.conf de teste); nada no servidor é alterado.
 source "$(dirname "$0")/lib.sh"
-caixa_de_areia
+sandbox
 
 # verif [código bash a rodar antes] -> imprime as linhas da verificação,
 # "BLOQ=<n>", "PAC=<pacotes>" e "RC=<código>"
@@ -37,8 +37,8 @@ contem "precisa ser executado como root" "$saida"; igual 1 "$cod"
 
 caso "--verificar não usa trava nem auditoria"
 bash "$DEBKIT" --verificar >/dev/null 2>&1
-verdadeiro "sem log" test ! -e "$AREIA/debkit.log"
-verdadeiro "sem trava" test ! -e "$AREIA/debkit.lock"
+verdadeiro "sem log" test ! -e "$SANDBOX/debkit.log"
+verdadeiro "sem trava" test ! -e "$SANDBOX/debkit.lock"
 
 # ── Dependências faltando (simulado) ─────────────────────────────────────────
 caso "faltam smbd, testparm, chpasswd e useradd"
@@ -69,7 +69,7 @@ saida=$(DEBKIT_DIR_SYSTEMD=/nao/existe verif)
 contem "systemd não está em execução" "$saida"; contem "RC=1" "$saida"
 
 # ── Sistema (os-release) ─────────────────────────────────────────────────────
-osr() { printf '%b' "$1" > "$AREIA/os-release"; verif "DEBKIT_ARQ_OS_RELEASE='$AREIA/os-release';"; }
+osr() { printf '%b' "$1" > "$SANDBOX/os-release"; verif "DEBKIT_ARQ_OS_RELEASE='$SANDBOX/os-release';"; }
 caso "Ubuntu (derivado do Debian) sem aviso"
 saida=$(osr 'ID=ubuntu\nID_LIKE=debian\nVERSION_ID="24.04"\nPRETTY_NAME="Ubuntu 24.04 LTS"')
 contem "Ubuntu 24.04 LTS" "$saida"; nao_contem "fora da família Debian" "$saida"
@@ -87,7 +87,7 @@ verdadeiro "nenhum comando executado" test ! -e /tmp/debkit_injecao_os
 contem '$(touch /tmp/debkit_injecao_os)' "$saida" "aparece só como texto"
 
 # ── SSH: o sshd_config inclui o arquivo do debkit? ──────────────────────────────
-sshc() { printf '%b' "$1" > "$AREIA/sshd_config"; verif "DEBKIT_ARQ_SSHD_CONFIG='$AREIA/sshd_config';" | grep -o 'DROPIN=[01]'; }
+sshc() { printf '%b' "$1" > "$SANDBOX/sshd_config"; verif "DEBKIT_ARQ_SSHD_CONFIG='$SANDBOX/sshd_config';" | grep -o 'DROPIN=[01]'; }
 caso "Include padrão do Debian";        igual "DROPIN=1" "$(sshc 'Include /etc/ssh/sshd_config.d/*.conf\nPort 22')"
 caso "Include relativo";                igual "DROPIN=1" "$(sshc 'Include sshd_config.d/*.conf')"
 caso "include minúsculo e indentado";   igual "DROPIN=1" "$(sshc '   include /etc/ssh/sshd_config.d/*.conf')"
@@ -101,8 +101,8 @@ contem "a proteção SSH automática não poderá ser aplicada" "$(DEBKIT_ARQ_SS
 
 # ── Samba: smb.conf de teste ─────────────────────────────────────────────────
 smb() {
-    printf '%b' "$1" > "$AREIA/smb.conf"
-    sed -i '/^SMB_CONF=/d' "$AREIA/debkit.conf"; echo "SMB_CONF=$AREIA/smb.conf" >> "$AREIA/debkit.conf"
+    printf '%b' "$1" > "$SANDBOX/smb.conf"
+    sed -i '/^SMB_CONF=/d' "$SANDBOX/debkit.conf"; echo "SMB_CONF=$SANDBOX/smb.conf" >> "$SANDBOX/debkit.conf"
     verif
 }
 caso "smb.conf mínimo (server role = auto + security padrão = independente)"
@@ -122,12 +122,12 @@ caso "smb.conf com erro grave"
 saida=$(smb '[global\n')
 contem "com erro (veja: testparm)" "$saida"; contem "RC=1" "$saida"
 caso "smb.conf ausente"
-sed -i '/^SMB_CONF=/d' "$AREIA/debkit.conf"; echo "SMB_CONF=$AREIA/nao_existe.conf" >> "$AREIA/debkit.conf"
+sed -i '/^SMB_CONF=/d' "$SANDBOX/debkit.conf"; echo "SMB_CONF=$SANDBOX/nao_existe.conf" >> "$SANDBOX/debkit.conf"
 saida=$(verif)
 contem "nao_existe.conf não existe" "$saida"; contem "RC=1" "$saida"
-# volta a apontar para a cópia do smb.conf real dentro da areia
-sed -i '/^SMB_CONF=/d' "$AREIA/debkit.conf"; echo "SMB_CONF=$AREIA/smb.conf" >> "$AREIA/debkit.conf"
-copiar_smb_conf "$AREIA/smb.conf"
+# volta a apontar para a cópia do smb.conf real dentro do sandbox
+sed -i '/^SMB_CONF=/d' "$SANDBOX/debkit.conf"; echo "SMB_CONF=$SANDBOX/smb.conf" >> "$SANDBOX/debkit.conf"
+copiar_smb_conf "$SANDBOX/smb.conf"
 
 # ── Serviços (simulado) ──────────────────────────────────────────────────────
 caso "Samba parado e desabilitado"
@@ -138,7 +138,7 @@ caso "serviço do Samba não encontrado no systemd"
 contem "Serviço do Samba (smbd/smb) não encontrado" "$(verif 'debkit_servico_existe() { return 1; };')"
 
 # ── Menu ─────────────────────────────────────────────────────────────────────
-preparar_areia
+preparar_sandbox
 caso "menu: opção 9 mostra o ambiente e volta"
 saida=$(pty 0.8 "bash $DEBKIT" 9 "" 0)
 contem "9) Ambiente: verificar" "$saida"; contem "Ambiente do servidor" "$saida"

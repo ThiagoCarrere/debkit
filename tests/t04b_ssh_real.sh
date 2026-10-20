@@ -11,7 +11,7 @@ if [ "${DEBKIT_TESTE_REAL:-}" != "1" ]; then
     echo "  (pulado: teste com o SSH real - rode com DEBKIT_TESTE_REAL=1)"
     exit 0
 fi
-caixa_de_areia
+sandbox
 
 DROPIN_REAL="/etc/ssh/sshd_config.d/debkitt-teste.conf"
 SENHA="SenhaTeste123"
@@ -33,7 +33,7 @@ limpar_real() {
     for x in dkt_bloq dkt_livre; do id "$x" >/dev/null 2>&1 && userdel "$x"; done
     if [ -e "$DROPIN_REAL" ]; then rm -f "$DROPIN_REAL"; sshd -t && systemctl reload ssh; fi
     getent group "$GRUPO_TESTE" >/dev/null && groupdel "$GRUPO_TESTE"
-    rm -rf -- "${AREIA:?}"
+    rm -rf -- "${SANDBOX:?}"
 }
 trap limpar_real EXIT
 
@@ -41,18 +41,18 @@ groupadd "$GRUPO_TESTE"
 useradd -M -s /usr/sbin/nologin -G "$GRUPO_TESTE" dkt_bloq
 useradd -M -s /usr/sbin/nologin dkt_livre
 printf 'dkt_bloq:%s\ndkt_livre:%s\n' "$SENHA" "$SENHA" | chpasswd
-printf '#!/bin/sh\necho "%s"\n' "$SENHA" > "$AREIA/askpass"; chmod 700 "$AREIA/askpass"
+printf '#!/bin/sh\necho "%s"\n' "$SENHA" > "$SANDBOX/askpass"; chmod 700 "$SANDBOX/askpass"
 
 SSH_OPCOES=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PubkeyAuthentication=no
             -o PreferredAuthentications=password -o NumberOfPasswordPrompts=1 -o ConnectTimeout=5 -o LogLevel=ERROR)
 # Tenta login com senha e um comando; imprime a saída do ssh
 ssh_tentar() {
-    SSH_ASKPASS="$AREIA/askpass" SSH_ASKPASS_REQUIRE=force DISPLAY=:0 \
+    SSH_ASKPASS="$SANDBOX/askpass" SSH_ASKPASS_REQUIRE=force DISPLAY=:0 \
         timeout 20 setsid -w ssh "${SSH_OPCOES[@]}" "$1@127.0.0.1" true </dev/null 2>&1
 }
 # Tenta abrir um túnel (ssh -N -L) e diz se a porta local abriu
 tunel_tentar() {
-    SSH_ASKPASS="$AREIA/askpass" SSH_ASKPASS_REQUIRE=force DISPLAY=:0 \
+    SSH_ASKPASS="$SANDBOX/askpass" SSH_ASKPASS_REQUIRE=force DISPLAY=:0 \
         timeout 8 setsid ssh "${SSH_OPCOES[@]}" -N -L "127.0.0.1:$PORTA_TUNEL:127.0.0.1:22" "$1@127.0.0.1" </dev/null >/dev/null 2>&1 &
     sleep 4
     if ss -ltn "sport = :$PORTA_TUNEL" | grep -q LISTEN; then echo "TUNEL_ABERTO"; else echo "TUNEL_FECHADO"; fi

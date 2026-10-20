@@ -16,14 +16,14 @@ if [ "${DEBKIT_TESTE_REAL:-}" != "1" ]; then
     echo "  (pulado: teste com o Samba real - rode com DEBKIT_TESTE_REAL=1)"
     exit 0
 fi
-caixa_de_areia
+sandbox
 
 W1=dkt_sw1; W2=dkt_sw2; N=dkt_sn; GW=dkt_srw; SHARE=dkt-teste-shr; SENHA="Shr#Teste1"
 for x in "$W1" "$W2" "$N" "$GW"; do
     if getent passwd "$x" >/dev/null || getent group "$x" >/dev/null || pdbedit -u "$x" >/dev/null 2>&1; then echo "  $x já existe - abortando"; exit 1; fi
 done
 T=$(mktemp -d /srv/dkt-teste.XXXXXX); chmod 755 "$T"
-SMB_ANTES="$AREIA/smb.conf.real"; cp -p /etc/samba/smb.conf "$SMB_ANTES"; MD5_ANTES=$(md5sum < /etc/samba/smb.conf)
+SMB_ANTES="$SANDBOX/smb.conf.real"; cp -p /etc/samba/smb.conf "$SMB_ANTES"; MD5_ANTES=$(md5sum < /etc/samba/smb.conf)
 limpar_real() {
     local x
     for x in "$W1" "$W2" "$N"; do
@@ -36,17 +36,17 @@ limpar_real() {
         cat "$SMB_ANTES" > /etc/samba/smb.conf
         systemctl reload smbd
     fi
-    rm -rf -- "${T:?}" "${AREIA:?}"
+    rm -rf -- "${T:?}" "${SANDBOX:?}"
 }
 trap limpar_real EXIT
 
-( umask 027; : > "$AREIA/debkit.log" ); ( umask 077; mkdir -p "$AREIA/backups" )
+( umask 027; : > "$SANDBOX/debkit.log" ); ( umask 077; mkdir -p "$SANDBOX/backups" )
 # Configuração REAL; log e backups do smb.conf só nesta execução
 s() { env -u DEBKIT_APT -u DEBKIT_DPKG_ADMIN bash -c "source '$DEBKIT'; debkit_conf_carregar /etc/debkit/debkit.conf >/dev/null; debkit_ler_login_defs;
-      DEBKIT_LOG='$AREIA/debkit.log'; DEBKIT_SMB_BACKUP_DIR='$AREIA/conf-bkp'; DEBKIT_BACKUP_DIR='$AREIA/backups'; $1" 2>&1; }
+      DEBKIT_LOG='$SANDBOX/debkit.log'; DEBKIT_SMB_BACKUP_DIR='$SANDBOX/conf-bkp'; DEBKIT_BACKUP_DIR='$SANDBOX/backups'; $1" 2>&1; }
 smb() {  # smb <usuário> <comandos>
-    printf 'username = %s\npassword = %s\n' "$1" "$SENHA" > "$AREIA/auth.$1"; chmod 600 "$AREIA/auth.$1"
-    ( cd "$AREIA" && timeout 20 smbclient "//127.0.0.1/$SHARE" -A "$AREIA/auth.$1" -c "$2" 2>&1 ); echo "RC=$?"
+    printf 'username = %s\npassword = %s\n' "$1" "$SENHA" > "$SANDBOX/auth.$1"; chmod 600 "$SANDBOX/auth.$1"
+    ( cd "$SANDBOX" && timeout 20 smbclient "//127.0.0.1/$SHARE" -A "$SANDBOX/auth.$1" -c "$2" 2>&1 ); echo "RC=$?"
 }
 
 caso "ambiente real preparado pelo debkit"
@@ -66,7 +66,7 @@ contem "RC=0" "$saida"
 verdadeiro "smbd ativo depois do reload" systemctl is-active --quiet smbd
 contem "$SHARE|$T/shr|@$GW||" "$(s debkit_shr_dados)" "listagem real (sem alerta)"
 
-echo "conteudo" > "$AREIA/a.txt"; echo "alterado" > "$AREIA/b.txt"
+echo "conteudo" > "$SANDBOX/a.txt"; echo "alterado" > "$SANDBOX/b.txt"
 caso "membro do grupo: grava arquivo e pasta, com o grupo do compartilhamento"
 saida=$(smb "$W1" "put a.txt doc.txt; mkdir sub; put a.txt sub/doc2.txt; ls")
 contem "RC=0" "$saida"; contem "doc.txt" "$saida"
@@ -79,7 +79,7 @@ igual "alterado" "$(cat "$T/shr/doc.txt")" "conteúdo trocado pelo colega"
 contem "RC=0" "$(smb "$W2" "del sub/doc2.txt")"; verdadeiro "apagado pelo colega" test ! -e "$T/shr/sub/doc2.txt"
 caso "membro do grupo: lê o arquivo do colega"
 saida=$(smb "$W1" "get doc.txt lido.txt")
-contem "RC=0" "$saida"; igual "alterado" "$(cat "$AREIA/lido.txt" 2>/dev/null)" "leu o arquivo"
+contem "RC=0" "$saida"; igual "alterado" "$(cat "$SANDBOX/lido.txt" 2>/dev/null)" "leu o arquivo"
 caso "fora do grupo: recusado"
 saida=$(smb "$N" "ls"); nao_contem "RC=0" "$saida"; contem "ACCESS_DENIED" "$saida"
 

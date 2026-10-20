@@ -2,40 +2,40 @@
 # Testes de listar usuários (Fase 1): quem aparece (só contas comuns), tipo
 # (arquivos, servidor, admin, nologin), Samba (ativa, desativada, sem conta,
 # só no Samba), pasta pessoal, grupos comuns e os alertas. Usuários/grupos
-# dkt_* reais (removidos no fim); base do Samba da areia.
+# dkt_* reais (removidos no fim); base do Samba do sandbox.
 source "$(dirname "$0")/lib.sh"
-caixa_de_areia
+sandbox
 
 if getent passwd | cut -d: -f1 | grep -q '^dkt_'; then echo "  já existem usuários dkt_* - abortando"; exit 1; fi
 limpar_usuarios() {
     local x
     for x in $(getent passwd | cut -d: -f1 | grep '^dkt_'); do
-        pdbedit -s "$AREIA/smb.conf" -x -u "$x" >/dev/null 2>&1; userdel "$x" >/dev/null 2>&1
+        pdbedit -s "$SANDBOX/smb.conf" -x -u "$x" >/dev/null 2>&1; userdel "$x" >/dev/null 2>&1
     done
-    for x in $(pdbedit -s "$AREIA/smb.conf" -L 2>/dev/null | cut -d: -f1 | grep '^dkt_'); do pdbedit -s "$AREIA/smb.conf" -x -u "$x" >/dev/null 2>&1; done
+    for x in $(pdbedit -s "$SANDBOX/smb.conf" -L 2>/dev/null | cut -d: -f1 | grep '^dkt_'); do pdbedit -s "$SANDBOX/smb.conf" -x -u "$x" >/dev/null 2>&1; done
     for x in $(getent group | cut -d: -f1 | grep '^dkt_'); do groupdel "$x" >/dev/null 2>&1; done
 }
-trap 'limpar_usuarios; rm -rf -- "${AREIA:?}"' EXIT
+trap 'limpar_usuarios; rm -rf -- "${SANDBOX:?}"' EXIT
 
-preparar_areia
+preparar_sandbox
 CFG="debkit_conf_carregar \"\$DEBKIT_CONF_ARQUIVO\" >/dev/null; debkit_ler_login_defs;"
 l() { bash -c "source '$DEBKIT'; $CFG $1" 2>&1; }
 criar() {  # criar <nome> <tipo> <gecos> "<grupos>"
     l "DEBKIT_U_NOME='$1'; DEBKIT_U_TIPO='$2'; DEBKIT_U_GECOS='$3'; DEBKIT_U_GRUPOS=($4); DEBKIT_U_HOME=0;
        DEBKIT_U_SENHA='senha12'; DEBKIT_U_SENHA_LINUX='senha12'; debkit_usuario_criar" >/dev/null
 }
-samba_add() { printf 'senha12\nsenha12\n' | smbpasswd -c "$AREIA/smb.conf" -s -a "$1" >/dev/null; }
+samba_add() { printf 'senha12\nsenha12\n' | smbpasswd -c "$SANDBOX/smb.conf" -s -a "$1" >/dev/null; }
 
 groupadd dkt_lg1; groupadd dkt_lg2; groupadd --system dkt_lsys
 criar dkt_la arquivos "José Conceição - Vendas" "dkt_lg1 dkt_lg2"
 criar dkt_ls servidor "Servidor Teste" "dkt_lg2"
 criar dkt_ld arquivos "" ""
-pdbedit -s "$AREIA/smb.conf" -c "[D]" -u dkt_ld >/dev/null              # conta Samba desativada
+pdbedit -s "$SANDBOX/smb.conf" -c "[D]" -u dkt_ld >/dev/null              # conta Samba desativada
 useradd -M -s /usr/sbin/nologin -c "Fulano de Tal,,," dkt_ln            # nologin fora do grupo de proteção
 useradd -M -s /bin/bash dkt_lad; gpasswd -a dkt_lad sudo >/dev/null       # admin
 samba_add dkt_lad
 useradd -M -s /bin/bash dkt_lso                                           # só no Linux
-mkdir -p "$AREIA/home_lh"; useradd -M -d "$AREIA/home_lh" -s /bin/bash dkt_lh; samba_add dkt_lh   # pasta existente
+mkdir -p "$SANDBOX/home_lh"; useradd -M -d "$SANDBOX/home_lh" -s /bin/bash dkt_lh; samba_add dkt_lh   # pasta existente
 useradd -M -s /bin/bash dkt_lorfa; samba_add dkt_lorfa; userdel dkt_lorfa  # só no Samba
 usermod -aG dkt_lsys dkt_la                                               # grupo de sistema: não aparece
 
@@ -55,7 +55,7 @@ igual "dkt_lad||admin|ativa|||" "$(linha dkt_lad)"
 caso "dados: só no Linux"
 igual "dkt_lso||servidor|nao|||so_linux" "$(linha dkt_lso)"
 caso "dados: pasta pessoal existente aparece; /nonexistent não"
-igual "dkt_lh||servidor|ativa|$AREIA/home_lh||" "$(linha dkt_lh)"
+igual "dkt_lh||servidor|ativa|$SANDBOX/home_lh||" "$(linha dkt_lh)"
 caso "dados: conta só no Samba (sem usuário Linux) vem no fim"
 igual "dkt_lorfa||||||so_samba" "$(linha dkt_lorfa)"
 igual "dkt_lorfa" "$(grep '|so_samba$' <<< "$dados" | tail -1 | cut -d'|' -f1)" "na parte das contas só no Samba"

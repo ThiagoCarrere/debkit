@@ -1,32 +1,32 @@
 #!/usr/bin/env bash
 # Testes da tarefa 1.1 - criar usuário (sem pasta pessoal: tarefa 1.1b).
 # Os usuários e grupos Linux de teste (dkt_*) são REAIS (não há como isolar
-# o /etc/passwd) e removidos no fim; a base de senhas do Samba é a da areia
+# o /etc/passwd) e removidos no fim; a base de senhas do Samba é a do sandbox
 # (copiar_smb_conf), nunca a real. A prova com login de verdade no Samba e
 # no SSH fica em t07b_usuario_real.sh (só com DEBKIT_TESTE_REAL=1).
 source "$(dirname "$0")/lib.sh"
-caixa_de_areia
+sandbox
 
 if getent passwd | cut -d: -f1 | grep -q '^dkt_' || getent group | cut -d: -f1 | grep -qE '^dkt_(g|arq|srv|x)'; then
     echo "  já existem usuários/grupos dkt_* - abortando"; exit 1
 fi
 
-# Remove tudo o que os testes criaram (contas Samba da areia, usuários e
-# grupos dkt_*) e depois a areia
+# Remove tudo o que os testes criaram (contas Samba do sandbox, usuários e
+# grupos dkt_*) e depois o sandbox
 limpar_usuarios() {
     local x
     for x in $(getent passwd | cut -d: -f1 | grep '^dkt_'); do
-        pdbedit -s "$AREIA/smb.conf" -x -u "$x" >/dev/null 2>&1
+        pdbedit -s "$SANDBOX/smb.conf" -x -u "$x" >/dev/null 2>&1
         userdel "$x" >/dev/null 2>&1
     done
     for x in $(getent group | cut -d: -f1 | grep '^dkt_'); do groupdel "$x" >/dev/null 2>&1; done
 }
-trap 'limpar_usuarios; rm -rf -- "${AREIA:?}"' EXIT
+trap 'limpar_usuarios; rm -rf -- "${SANDBOX:?}"' EXIT
 
-preparar_areia
+preparar_sandbox
 CFG="debkit_conf_carregar \"\$DEBKIT_CONF_ARQUIVO\" >/dev/null; debkit_ler_login_defs;"
 u() { bash -c "source '$DEBKIT'; $CFG $1" 2>&1; }
-PDB() { pdbedit -s "$AREIA/smb.conf" "$@" 2>/dev/null; }
+PDB() { pdbedit -s "$SANDBOX/smb.conf" "$@" 2>/dev/null; }
 status_linux() { passwd -S "$1" 2>/dev/null | awk '{print $2}'; }
 # NT hash da conta (Samba) - comparado com o de uma conta de referência
 nt_hash() { PDB -w -u "$1" | cut -d: -f4; }
@@ -43,9 +43,9 @@ criar() {
 # Conta Samba de referência (mesma senha = mesmo NT hash)
 referencia() {
     useradd -M -s /usr/sbin/nologin dkt_ref 2>/dev/null
-    printf '%s\n%s\n' "$1" "$1" | smbpasswd -c "$AREIA/smb.conf" -s -a dkt_ref >/dev/null
+    printf '%s\n%s\n' "$1" "$1" | smbpasswd -c "$SANDBOX/smb.conf" -s -a dkt_ref >/dev/null
     nt_hash dkt_ref
-    pdbedit -s "$AREIA/smb.conf" -x -u dkt_ref >/dev/null 2>&1; userdel dkt_ref 2>/dev/null
+    pdbedit -s "$SANDBOX/smb.conf" -x -u dkt_ref >/dev/null 2>&1; userdel dkt_ref 2>/dev/null
 }
 
 groupadd dkt_g1; groupadd dkt_g2; groupadd --system dkt_gsys
@@ -71,7 +71,7 @@ for n in root admin administrator administrador guest convidado nobody; do conte
 caso "nome: já existe (usuário, grupo, conta Samba órfã)"
 contem "Já existe um usuário 'daemon'" "$(np daemon)"
 contem "Já existe um grupo 'dkt_g1'" "$(np dkt_g1)"
-useradd -M -s /usr/sbin/nologin dkt_orfa; printf 'x1234\nx1234\n' | smbpasswd -c "$AREIA/smb.conf" -s -a dkt_orfa >/dev/null; userdel dkt_orfa
+useradd -M -s /usr/sbin/nologin dkt_orfa; printf 'x1234\nx1234\n' | smbpasswd -c "$SANDBOX/smb.conf" -s -a dkt_orfa >/dev/null; userdel dkt_orfa
 contem "Já existe uma conta Samba 'dkt_orfa' sem usuário no Linux" "$(np dkt_orfa)"
 PDB -x -u dkt_orfa >/dev/null
 
@@ -127,7 +127,7 @@ igual "!" "$(getent shadow dkt_arq | cut -d: -f2)" "nenhuma senha Linux utilizá
 contem "[U" "$(PDB -u dkt_arq -v | grep 'Account Flags')" "conta Samba ativa"
 igual "$ref" "$(nt_hash dkt_arq)" "senha do Samba é a informada"
 verdadeiro "nada na base Samba REAL" bash -c '! pdbedit -L 2>/dev/null | grep -q "^dkt_"'
-log=$(cat "$AREIA/debkit.log")
+log=$(cat "$SANDBOX/debkit.log")
 contem "usuario_criar nome=dkt_arq tipo=arquivos uid=$uid grupos=dkt_g1,dkt_g2 home=/nonexistent resultado=ok" "$log" "auditoria"
 nao_contem "Arq#Senha" "$log" "senha nunca no log"
 
@@ -164,13 +164,13 @@ igual "$ref" "$(nt_hash dkt_srv2)" "senha do Samba"
 # Senha nunca na linha de comando
 # ════════════════════════════════════════════════════════════════════════════
 caso "senha nunca vai para a linha de comando (useradd/chpasswd/smbpasswd)"
-ESPIA="useradd() { echo \"useradd \$*\" >> '$AREIA/args'; command useradd \"\$@\"; };
-       chpasswd() { echo \"chpasswd \$*\" >> '$AREIA/args'; command chpasswd \"\$@\"; };
-       smbpasswd() { echo \"smbpasswd \$*\" >> '$AREIA/args'; command smbpasswd \"\$@\"; };"
-: > "$AREIA/args"
+ESPIA="useradd() { echo \"useradd \$*\" >> '$SANDBOX/args'; command useradd \"\$@\"; };
+       chpasswd() { echo \"chpasswd \$*\" >> '$SANDBOX/args'; command chpasswd \"\$@\"; };
+       smbpasswd() { echo \"smbpasswd \$*\" >> '$SANDBOX/args'; command smbpasswd \"\$@\"; };"
+: > "$SANDBOX/args"
 contem "RC=0" "$(criar dkt_x servidor "" "" "Espia#Samba" "Espia#Linux" "$ESPIA")"
-contem "smbpasswd -c $AREIA/smb.conf -s -a -- dkt_x" "$(cat "$AREIA/args")" "smbpasswd com a configuração do debkit"
-nao_contem "Espia#" "$(cat "$AREIA/args")" "nenhuma senha nos argumentos"
+contem "smbpasswd -c $SANDBOX/smb.conf -s -a -- dkt_x" "$(cat "$SANDBOX/args")" "smbpasswd com a configuração do debkit"
+nao_contem "Espia#" "$(cat "$SANDBOX/args")" "nenhuma senha nos argumentos"
 
 # ════════════════════════════════════════════════════════════════════════════
 # Falhas: desfaz tudo
@@ -181,17 +181,17 @@ saida=$(criar dkt_f1 arquivos "" "dkt_g1" "senha12" "" "smbpasswd() { return 1; 
 contem "RC=1" "$saida"; contem "não foi possível criar a conta no Samba" "$saida"; contem "foi desfeito" "$saida"
 verdadeiro "nada sobrou (Linux, grupo, Samba)" nada_sobrou dkt_f1
 nao_contem "dkt_f1" "$(getent group dkt_g1)" "não ficou como membro do grupo"
-contem "nome=dkt_f1 resultado=desfeito" "$(cat "$AREIA/debkit.log")" "auditoria"
+contem "nome=dkt_f1 resultado=desfeito" "$(cat "$SANDBOX/debkit.log")" "auditoria"
 caso "falha na senha do Linux: desfaz"
 saida=$(criar dkt_f2 servidor "" "" "senha12" "senha12" "chpasswd() { cat >/dev/null; return 1; };")
 contem "RC=1" "$saida"; contem "não foi possível definir a senha do Linux" "$saida"
 verdadeiro "nada sobrou" nada_sobrou dkt_f2
 caso "falha na conferência final (Samba mexeu na senha do Linux): desfaz Samba e Linux"
-saida=$(criar dkt_f3 arquivos "" "" "senha12" "" "passwd() { if [ \"\$1\" == -S ] && [ -e '$AREIA/samba_feito' ]; then echo \"\$3 P\"; else command passwd \"\$@\"; fi; };
-        smbpasswd() { command smbpasswd \"\$@\" && touch '$AREIA/samba_feito'; };")
+saida=$(criar dkt_f3 arquivos "" "" "senha12" "" "passwd() { if [ \"\$1\" == -S ] && [ -e '$SANDBOX/samba_feito' ]; then echo \"\$3 P\"; else command passwd \"\$@\"; fi; };
+        smbpasswd() { command smbpasswd \"\$@\" && touch '$SANDBOX/samba_feito'; };")
 contem "RC=1" "$saida"; contem "senha do Linux não bloqueada" "$saida"
 verdadeiro "nada sobrou (inclusive a conta Samba)" nada_sobrou dkt_f3
-rm -f "$AREIA/samba_feito"
+rm -f "$SANDBOX/samba_feito"
 caso "falha no useradd: nada a desfazer"
 saida=$(criar dkt_f4 arquivos "" "" "senha12" "" "useradd() { return 1; };")
 contem "RC=1" "$saida"; contem "o useradd falhou" "$saida"; nao_contem "foi desfeito" "$saida"

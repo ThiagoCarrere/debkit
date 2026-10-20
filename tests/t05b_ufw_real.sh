@@ -20,7 +20,7 @@ if LC_ALL=C ufw status | grep -q '^Status: active'; then
     echo "  ufw ATIVO neste servidor: o teste não mexe em firewall em uso - abortando"
     exit 1
 fi
-caixa_de_areia
+sandbox
 
 regras_ufw() { LC_ALL=C ufw show added 2>/dev/null; }
 REGRAS_ANTES=$(regras_ufw)
@@ -39,7 +39,7 @@ limpar_tabelas_vazias() {
         nft list table $t 2>/dev/null | grep -q chain || nft delete table $t 2>/dev/null
     done
 }
-trap 'limpar_tabelas_vazias; rm -rf -- "${AREIA:?}"; getent group "$GRUPO_TESTE" >/dev/null && groupdel "$GRUPO_TESTE"' EXIT
+trap 'limpar_tabelas_vazias; rm -rf -- "${SANDBOX:?}"; getent group "$GRUPO_TESTE" >/dev/null && groupdel "$GRUPO_TESTE"' EXIT
 s() { bash -c "source '$DEBKIT'; debkit_conf_carregar \"\$DEBKIT_CONF_ARQUIVO\"; DEBKIT_FW_TIPO=ufw; $1" 2>&1; }
 
 caso "ufw inativo: o debkit não o considera um firewall ativo"

@@ -554,7 +554,7 @@ DEBKIT_DEPENDENCIAS=(
 debkit_tem_comando() { command -v "$1" >/dev/null 2>&1; }
 
 # O pacote (Debian) está instalado? (função separada para os testes
-# simularem; DEBKIT_DPKG_ADMIN = base do dpkg, para a caixa de areia)
+# simularem; DEBKIT_DPKG_ADMIN = base do dpkg, para o sandbox)
 DEBKIT_DPKG_ADMIN="${DEBKIT_DPKG_ADMIN:-/var/lib/dpkg}"
 debkit_pacote_instalado() { dpkg-query --admindir="$DEBKIT_DPKG_ADMIN" -W -f='${db:Status-Abbrev}' -- "$1" 2>/dev/null | grep -q '^ii'; }
 

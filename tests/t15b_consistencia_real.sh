@@ -15,7 +15,7 @@ if [ "${DEBKIT_TESTE_REAL:-}" != "1" ]; then
     echo "  (pulado: teste com o SSH e o Samba reais - rode com DEBKIT_TESTE_REAL=1)"
     exit 0
 fi
-caixa_de_areia
+sandbox
 
 TUN=dkt_ctun; LIN=dkt_clin; SENHA="Consist#Teste1"
 for x in "$TUN" "$LIN"; do
@@ -31,28 +31,28 @@ limpar_real() {
         id "$x" >/dev/null 2>&1 && userdel "$x"
         getent group "$x" >/dev/null && groupdel "$x"
     done
-    rm -rf -- "${AREIA:?}"
+    rm -rf -- "${SANDBOX:?}"
 }
 trap limpar_real EXIT
 trap '' PIPE
 
-( umask 027; : > "$AREIA/debkit.log" )
-s() { env -u DEBKIT_APT -u DEBKIT_DPKG_ADMIN bash -c "source '$DEBKIT'; debkit_conf_carregar /etc/debkit/debkit.conf >/dev/null; debkit_ler_login_defs; DEBKIT_LOG='$AREIA/debkit.log'; $1" 2>&1; }
+( umask 027; : > "$SANDBOX/debkit.log" )
+s() { env -u DEBKIT_APT -u DEBKIT_DPKG_ADMIN bash -c "source '$DEBKIT'; debkit_conf_carregar /etc/debkit/debkit.conf >/dev/null; debkit_ler_login_defs; DEBKIT_LOG='$SANDBOX/debkit.log'; $1" 2>&1; }
 SSH_OPCOES=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PubkeyAuthentication=no
             -o PreferredAuthentications=password -o NumberOfPasswordPrompts=1 -o ConnectTimeout=5 -o LogLevel=ERROR)
 ssh_tentar() {
-    printf '#!/bin/sh\necho "%s"\n' "$SENHA" > "$AREIA/askpass"; chmod 700 "$AREIA/askpass"
-    SSH_ASKPASS="$AREIA/askpass" SSH_ASKPASS_REQUIRE=force DISPLAY=:0 \
+    printf '#!/bin/sh\necho "%s"\n' "$SENHA" > "$SANDBOX/askpass"; chmod 700 "$SANDBOX/askpass"
+    SSH_ASKPASS="$SANDBOX/askpass" SSH_ASKPASS_REQUIRE=force DISPLAY=:0 \
         timeout 20 setsid -w ssh "${SSH_OPCOES[@]}" "$1@127.0.0.1" true </dev/null 2>&1
     echo "RC=$?"
 }
 # Usuários das sessões abertas no Samba ao entrar com <usuário> (ver t14b)
 quem_entra() {
-    printf 'username = %s\npassword = %s\n' "$1" "$SENHA" > "$AREIA/auth"; chmod 600 "$AREIA/auth"
-    rm -f "$AREIA/q"; mkfifo "$AREIA/q"
-    ( timeout 20 smbclient '//127.0.0.1/IPC$' -A "$AREIA/auth" < "$AREIA/q" > /dev/null 2>&1 ) &
+    printf 'username = %s\npassword = %s\n' "$1" "$SENHA" > "$SANDBOX/auth"; chmod 600 "$SANDBOX/auth"
+    rm -f "$SANDBOX/q"; mkfifo "$SANDBOX/q"
+    ( timeout 20 smbclient '//127.0.0.1/IPC$' -A "$SANDBOX/auth" < "$SANDBOX/q" > /dev/null 2>&1 ) &
     local pid=$!
-    exec 4> "$AREIA/q"; echo "help" >&4; sleep 2
+    exec 4> "$SANDBOX/q"; echo "help" >&4; sleep 2
     LC_ALL=C smbstatus -p 2>/dev/null | awk '$1 ~ /^[0-9]+$/ {print $2}' | sort -u
     echo "quit" >&4; exec 4>&-; wait "$pid" 2>/dev/null
 }

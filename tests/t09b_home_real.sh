@@ -14,14 +14,14 @@ if [ "${DEBKIT_TESTE_REAL:-}" != "1" ]; then
     echo "  (pulado: teste com o Samba real - rode com DEBKIT_TESTE_REAL=1)"
     exit 0
 fi
-caixa_de_areia
+sandbox
 
 U1=dkt_rh1; U2=dkt_rh2; SENHA="Home#Teste1"
 for x in "$U1" "$U2"; do
     if id "$x" >/dev/null 2>&1 || pdbedit -u "$x" >/dev/null 2>&1; then echo "  $x já existe - abortando"; exit 1; fi
 done
 DISCO=$(mktemp -d /mnt/dkt-teste.XXXXXX)
-SMB_ANTES="$AREIA/smb.conf.real"
+SMB_ANTES="$SANDBOX/smb.conf.real"
 cp -p /etc/samba/smb.conf "$SMB_ANTES"
 MD5_ANTES=$(md5sum < /etc/samba/smb.conf)
 
@@ -38,18 +38,18 @@ limpar_real() {
     fi
     mountpoint -q "$DISCO" && umount "$DISCO"
     rmdir "$DISCO" 2>/dev/null
-    rm -rf -- "${AREIA:?}"
+    rm -rf -- "${SANDBOX:?}"
 }
 trap limpar_real EXIT
 
-truncate -s 32M "$AREIA/disco.img"; mkfs.ext4 -q -F "$AREIA/disco.img"
-mount -o loop "$AREIA/disco.img" "$DISCO" || { echo "  não foi possível montar o disco de teste - abortando"; exit 1; }
+truncate -s 32M "$SANDBOX/disco.img"; mkfs.ext4 -q -F "$SANDBOX/disco.img"
+mount -o loop "$SANDBOX/disco.img" "$DISCO" || { echo "  não foi possível montar o disco de teste - abortando"; exit 1; }
 
 # Configuração REAL (smb.conf, base do Samba, grupo de proteção); log,
 # backups e HOMES_BASE só nesta execução (o debkit.conf real não muda)
-( umask 027; : > "$AREIA/debkit.log" ); ( umask 077; mkdir -p "$AREIA/backups" )   # senão o plano pediria para criá-los
+( umask 027; : > "$SANDBOX/debkit.log" ); ( umask 077; mkdir -p "$SANDBOX/backups" )   # senão o plano pediria para criá-los
 s() { env -u DEBKIT_APT -u DEBKIT_DPKG_ADMIN bash -c "source '$DEBKIT'; debkit_conf_carregar /etc/debkit/debkit.conf >/dev/null; debkit_ler_login_defs;
-      DEBKIT_LOG='$AREIA/debkit.log'; DEBKIT_SMB_BACKUP_DIR='$AREIA/conf-bkp'; DEBKIT_BACKUP_DIR='$AREIA/backups'; DEBKIT_HOMES_BASE='$DISCO/homes'; $1" 2>&1; }
+      DEBKIT_LOG='$SANDBOX/debkit.log'; DEBKIT_SMB_BACKUP_DIR='$SANDBOX/conf-bkp'; DEBKIT_BACKUP_DIR='$SANDBOX/backups'; DEBKIT_HOMES_BASE='$DISCO/homes'; $1" 2>&1; }
 
 caso "ambiente real preparado pelo debkit"
 s 'debkit_samba_ambiente_pronto' >/dev/null || { echo "  o ambiente real não está preparado (rode: debkit --preparar) - abortando"; exit 1; }
@@ -68,10 +68,10 @@ for x in "$U1" "$U2"; do
 done
 
 smb() {  # smb <usuário> <compartilhamento> <comandos>
-    printf 'username = %s\npassword = %s\n' "$1" "$SENHA" > "$AREIA/auth"; chmod 600 "$AREIA/auth"
-    ( cd "$AREIA" && timeout 20 smbclient "//127.0.0.1/$2" -A "$AREIA/auth" -c "$3" 2>&1 ); echo "RC=$?"
+    printf 'username = %s\npassword = %s\n' "$1" "$SENHA" > "$SANDBOX/auth"; chmod 600 "$SANDBOX/auth"
+    ( cd "$SANDBOX" && timeout 20 smbclient "//127.0.0.1/$2" -A "$SANDBOX/auth" -c "$3" 2>&1 ); echo "RC=$?"
 }
-echo "conteudo do teste" > "$AREIA/arquivo.txt"
+echo "conteudo do teste" > "$SANDBOX/arquivo.txt"
 caso "Samba: o usuário grava na própria pasta pessoal"
 saida=$(smb "$U1" "$U1" "put arquivo.txt; ls")
 contem "RC=0" "$saida"; contem "arquivo.txt" "$saida"
@@ -81,7 +81,7 @@ caso "Samba: outro usuário NÃO acessa a pasta pessoal alheia"
 saida=$(smb "$U2" "$U1" "ls")
 nao_contem "arquivo.txt" "$saida"; nao_contem "RC=0" "$saida"
 caso "Samba: [homes] não aparece na lista de compartilhamentos (browseable = no)"
-nao_contem "homes" "$(printf 'username = %s\npassword = %s\n' "$U1" "$SENHA" > "$AREIA/auth"; timeout 20 smbclient -L //127.0.0.1 -A "$AREIA/auth" 2>&1 | awk '$2 == "Disk" {print $1}')"
+nao_contem "homes" "$(printf 'username = %s\npassword = %s\n' "$U1" "$SENHA" > "$SANDBOX/auth"; timeout 20 smbclient -L //127.0.0.1 -A "$SANDBOX/auth" 2>&1 | awk '$2 == "Disk" {print $1}')"
 
 # ── Limpeza ──────────────────────────────────────────────────────────────────
 limpar_real; trap - EXIT

@@ -14,7 +14,7 @@ if [ "${DEBKIT_TESTE_REAL:-}" != "1" ]; then
     echo "  (pulado: teste com o Samba real - rode com DEBKIT_TESTE_REAL=1)"
     exit 0
 fi
-caixa_de_areia
+sandbox
 
 U=dkt_gst; SENHA="Convidado#Teste1"
 if getent passwd "$U" >/dev/null || getent group "$U" >/dev/null || pdbedit -u "$U" >/dev/null 2>&1; then echo "  $U já existe - abortando"; exit 1; fi
@@ -22,15 +22,15 @@ limpar_real() {
     pdbedit -u "$U" >/dev/null 2>&1 && smbpasswd -x "$U" >/dev/null 2>&1
     id "$U" >/dev/null 2>&1 && userdel "$U"
     getent group "$U" >/dev/null && groupdel "$U"
-    rm -rf -- "${AREIA:?}"
+    rm -rf -- "${SANDBOX:?}"
 }
 trap limpar_real EXIT
 
-( umask 027; : > "$AREIA/debkit.log" )
-s() { env -u DEBKIT_APT -u DEBKIT_DPKG_ADMIN bash -c "source '$DEBKIT'; debkit_conf_carregar /etc/debkit/debkit.conf >/dev/null; debkit_ler_login_defs; DEBKIT_LOG='$AREIA/debkit.log'; $1" 2>&1; }
+( umask 027; : > "$SANDBOX/debkit.log" )
+s() { env -u DEBKIT_APT -u DEBKIT_DPKG_ADMIN bash -c "source '$DEBKIT'; debkit_conf_carregar /etc/debkit/debkit.conf >/dev/null; debkit_ler_login_defs; DEBKIT_LOG='$SANDBOX/debkit.log'; $1" 2>&1; }
 smb_login() {  # smb_login <usuário> <senha>
-    printf 'username = %s\npassword = %s\n' "$1" "$2" > "$AREIA/auth"; chmod 600 "$AREIA/auth"
-    timeout 20 smbclient -L //127.0.0.1 -A "$AREIA/auth" 2>&1; echo "RC=$?"
+    printf 'username = %s\npassword = %s\n' "$1" "$2" > "$SANDBOX/auth"; chmod 600 "$SANDBOX/auth"
+    timeout 20 smbclient -L //127.0.0.1 -A "$SANDBOX/auth" 2>&1; echo "RC=$?"
 }
 
 caso "ambiente real preparado pelo debkit (map to guest = never)"

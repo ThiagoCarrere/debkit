@@ -43,7 +43,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   `libpam-winbind` e `libnss-winbind` e a preparação oferece removê-los
   (simulação antes, recusa se o apt quiser remover mais; conferência do
   PAM, do NSS e do Samba depois).
-- Testes: a caixa de areia agora isola o apt e a base do dpkg (um teste
+- Testes: o sandbox agora isola o apt e a base do dpkg (um teste
   chegou a remover pacotes reais) e a impressão digital confere pacotes,
   PAM e `nsswitch.conf`.
 - Validação de nomes e caminhos do `debkit.conf` aceitava letras
@@ -58,9 +58,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   Linux bloqueada por padrão; home opcional no disco de dados; remoção
   completa; backups do `smb.conf` em `/etc/samba/conf-bkp/` com rotação.
 - Testes: passam também num servidor já preparado pelo debkit. A
-  conferência "nada fora da caixa de areia" agora exige que os arquivos
+  conferência "nada fora do sandbox" agora exige que os arquivos
   reais do debkit não mudem (antes exigia que não existissem), e o `t03`
-  procura o `include` pelo caminho exato da areia.
+  procura o `include` pelo caminho exato do sandbox.
 
 ### Adicionado
 - **Log de autenticação do Samba** (item da preparação): o Samba passa a
@@ -186,7 +186,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   (backup, arquivo novo em temporário, `testparm`, conferência do que mudou
   na configuração em vigor, troca atômica mantendo dono/permissões, reload e
   restauração se falhar).
-- Testes da tarefa 1.0 (`tests/t06_estrutura.sh`); a caixa de areia copia o
+- Testes da tarefa 1.0 (`tests/t06_estrutura.sh`); o sandbox copia o
   `smb.conf` real sem o `include` antigo e isola também `SMB_BACKUP_DIR`.
 - **Firewall (tarefa 0.5):** grupo "Firewall" na verificação. Com ufw ou
   firewalld ativo que não libera o Samba, o plano de preparação oferece
@@ -232,7 +232,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   trava contra execução simultânea, log de auditoria (início/fim de sessão
   com o motivo), limpeza de temporários e `--ajuda`/`--versao`.
 - `debkit.conf.exemplo` comentado.
-- Testes automáticos em `tests/` (`tests/run.sh`), em caixa de areia.
+- Testes automáticos em `tests/` (`tests/run.sh`), em sandbox.
 - Planejamento do projeto (`docs/PLANEJAMENTO.md`), README inicial e
   licença MIT.
 - Planejamento: preparação inteligente do ambiente (dependências,

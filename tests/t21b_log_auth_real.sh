@@ -4,7 +4,7 @@
 # ATENÇÃO: cria um usuário e um grupo de teste (Linux e base REAL do Samba,
 # pelo debkit) e um compartilhamento; liga pelo debkit, no smb.conf REAL, a
 # classe auth_json_audit num arquivo de TESTE (/var/log/samba/dkt-teste-
-# auth.json; recarrega o smbd) com a regra do logrotate na areia, e prova
+# auth.json; recarrega o smbd) com a regra do logrotate no sandbox, e prova
 # que o smbd registra senha errada, usuário inexistente e sucesso, e que a
 # rotação funciona (o login seguinte cai no arquivo novo). Vale com a VM já
 # preparada ou não. Por isso só roda com:
@@ -17,14 +17,14 @@ if [ "${DEBKIT_TESTE_REAL:-}" != "1" ]; then
     echo "  (pulado: teste com o Samba real - rode com DEBKIT_TESTE_REAL=1)"
     exit 0
 fi
-caixa_de_areia
+sandbox
 
 UA=dkt_la; UB=dkt_lb; GA=dkt_lga; GB=dkt_lgb; SHARE=dkt-teste-auth; SENHA="Auth#Teste1"
 for x in "$UA" "$UB" "$GA" "$GB"; do
     if getent passwd "$x" >/dev/null || getent group "$x" >/dev/null || pdbedit -u "$x" >/dev/null 2>&1; then echo "  $x já existe - abortando"; exit 1; fi
 done
 T=$(mktemp -d /srv/dkt-teste.XXXXXX); chmod 755 "$T"
-SMB_ANTES="$AREIA/smb.conf.real"; cp -p /etc/samba/smb.conf "$SMB_ANTES"; MD5_ANTES=$(md5sum < /etc/samba/smb.conf)
+SMB_ANTES="$SANDBOX/smb.conf.real"; cp -p /etc/samba/smb.conf "$SMB_ANTES"; MD5_ANTES=$(md5sum < /etc/samba/smb.conf)
 limpar_real() {
     local x i
     [ -n "${PID_SESSAO:-}" ] && kill "$PID_SESSAO" 2>/dev/null
@@ -41,31 +41,31 @@ limpar_real() {
         cat "$SMB_ANTES" > /etc/samba/smb.conf
         systemctl reload smbd
     fi
-    rm -rf -- "${T:?}" "${AREIA:?}"
+    rm -rf -- "${T:?}" "${SANDBOX:?}"
 }
 trap limpar_real EXIT
 
-( umask 027; : > "$AREIA/debkit.log" ); ( umask 077; mkdir -p "$AREIA/backups" )
+( umask 027; : > "$SANDBOX/debkit.log" ); ( umask 077; mkdir -p "$SANDBOX/backups" )
 # Configuração REAL; log e backups do smb.conf só nesta execução
 s() { env -u DEBKIT_APT -u DEBKIT_DPKG_ADMIN bash -c "source '$DEBKIT'; debkit_conf_carregar /etc/debkit/debkit.conf >/dev/null; debkit_ler_login_defs;
-      DEBKIT_LOG='$AREIA/debkit.log'; DEBKIT_SMB_BACKUP_DIR='$AREIA/conf-bkp'; DEBKIT_BACKUP_DIR='$AREIA/backups'; $1" 2>&1; }
+      DEBKIT_LOG='$SANDBOX/debkit.log'; DEBKIT_SMB_BACKUP_DIR='$SANDBOX/conf-bkp'; DEBKIT_BACKUP_DIR='$SANDBOX/backups'; $1" 2>&1; }
 smb() {  # smb <usuário> <comandos>
-    printf 'username = %s\npassword = %s\n' "$1" "$SENHA" > "$AREIA/auth.$1"; chmod 600 "$AREIA/auth.$1"
-    ( cd "$AREIA" && timeout 20 smbclient "//127.0.0.1/$SHARE" -A "$AREIA/auth.$1" -c "$2" 2>&1 ); echo "RC=$?"
+    printf 'username = %s\npassword = %s\n' "$1" "$SENHA" > "$SANDBOX/auth.$1"; chmod 600 "$SANDBOX/auth.$1"
+    ( cd "$SANDBOX" && timeout 20 smbclient "//127.0.0.1/$SHARE" -A "$SANDBOX/auth.$1" -c "$2" 2>&1 ); echo "RC=$?"
 }
 # Sessão aberta (smbclient lendo comandos de um fifo)
 trap '' PIPE
 abrir() {
-    rm -f "$AREIA/sessao"; mkfifo "$AREIA/sessao"
-    printf 'username = %s\npassword = %s\n' "$1" "$SENHA" > "$AREIA/auth.$1"; chmod 600 "$AREIA/auth.$1"
-    ( cd "$AREIA" && timeout 60 smbclient "//127.0.0.1/$SHARE" -A "$AREIA/auth.$1" < "$AREIA/sessao" > "$AREIA/sessao.out" 2>&1 ) &
+    rm -f "$SANDBOX/sessao"; mkfifo "$SANDBOX/sessao"
+    printf 'username = %s\npassword = %s\n' "$1" "$SENHA" > "$SANDBOX/auth.$1"; chmod 600 "$SANDBOX/auth.$1"
+    ( cd "$SANDBOX" && timeout 60 smbclient "//127.0.0.1/$SHARE" -A "$SANDBOX/auth.$1" < "$SANDBOX/sessao" > "$SANDBOX/sessao.out" 2>&1 ) &
     PID_SESSAO=$!
-    exec 3> "$AREIA/sessao"
+    exec 3> "$SANDBOX/sessao"
 }
 enviar() { echo "$1" >&3 2>/dev/null; sleep 2; }
 fechar() { echo "quit" >&3 2>/dev/null; exec 3>&-; wait "$PID_SESSAO" 2>/dev/null; PID_SESSAO=""; }
 
-LOGT=/var/log/samba/dkt-teste-auth.json; REGRA="$AREIA/logrotate-dkt-teste"
+LOGT=/var/log/samba/dkt-teste-auth.json; REGRA="$SANDBOX/logrotate-dkt-teste"
 AUTH="DEBKIT_AUTH_LOG='$LOGT'; DEBKIT_AUTH_LOGROTATE='$REGRA';"
 # depois do reload que devolve o smb.conf (o smbd reabre os logs nele)
 limpar_auth() { limpar_real; sleep 1; rm -f -- "$LOGT" "$LOGT".*; }
@@ -101,8 +101,8 @@ verdadeiro "regra válida para o logrotate" logrotate -d "$REGRA"
 caso "logins registrados: senha errada, usuário inexistente e sucesso, com IP"
 SENHA_CERTA="$SENHA"
 SENHA="errada"; smb "$UA" "ls" >/dev/null
-printf 'username = dkt_nao_existe\npassword = x\n' > "$AREIA/auth.x"; chmod 600 "$AREIA/auth.x"
-timeout 20 smbclient "//127.0.0.1/$SHARE" -A "$AREIA/auth.x" -c ls >/dev/null 2>&1
+printf 'username = dkt_nao_existe\npassword = x\n' > "$SANDBOX/auth.x"; chmod 600 "$SANDBOX/auth.x"
+timeout 20 smbclient "//127.0.0.1/$SHARE" -A "$SANDBOX/auth.x" -c ls >/dev/null 2>&1
 SENHA="$SENHA_CERTA"; contem "RC=0" "$(smb "$UA" "ls")" "login certo funciona"
 sleep 1
 saida=$(linhas "$LOGT")
@@ -111,7 +111,7 @@ contem "NT_STATUS_NO_SUCH_USER dkt_nao_existe ipv4:127.0.0.1" "$saida"
 contem "NT_STATUS_OK $UA ipv4:127.0.0.1" "$saida"
 
 caso "rotação pelo logrotate: o arquivo gira e o login seguinte cai no arquivo novo"
-logrotate -f -s "$AREIA/logrotate.state" "$REGRA" >/dev/null 2>&1
+logrotate -f -s "$SANDBOX/logrotate.state" "$REGRA" >/dev/null 2>&1
 verdadeiro "girado (.1)" test -s "$LOGT.1"
 SENHA="errada"; smb "$UA" "ls" >/dev/null; SENHA="$SENHA_CERTA"; sleep 1
 contem "NT_STATUS_WRONG_PASSWORD $UA" "$(linhas "$LOGT")" "arquivo novo recebe o login"

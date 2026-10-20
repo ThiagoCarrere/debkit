@@ -16,14 +16,14 @@ if [ "${DEBKIT_TESTE_REAL:-}" != "1" ]; then
     echo "  (pulado: teste com o Samba real - rode com DEBKIT_TESTE_REAL=1)"
     exit 0
 fi
-caixa_de_areia
+sandbox
 
 UA=dkt_ea; UB=dkt_eb; GA=dkt_ega; GB=dkt_egb; SHARE=dkt-teste-exist; SENHA="Exist#Teste1"
 for x in "$UA" "$UB" "$GA" "$GB"; do
     if getent passwd "$x" >/dev/null || getent group "$x" >/dev/null || pdbedit -u "$x" >/dev/null 2>&1; then echo "  $x já existe - abortando"; exit 1; fi
 done
 T=$(mktemp -d /srv/dkt-teste.XXXXXX); chmod 755 "$T"
-SMB_ANTES="$AREIA/smb.conf.real"; cp -p /etc/samba/smb.conf "$SMB_ANTES"; MD5_ANTES=$(md5sum < /etc/samba/smb.conf)
+SMB_ANTES="$SANDBOX/smb.conf.real"; cp -p /etc/samba/smb.conf "$SMB_ANTES"; MD5_ANTES=$(md5sum < /etc/samba/smb.conf)
 limpar_real() {
     local x i
     [ -n "${PID_SESSAO:-}" ] && kill "$PID_SESSAO" 2>/dev/null
@@ -40,26 +40,26 @@ limpar_real() {
         cat "$SMB_ANTES" > /etc/samba/smb.conf
         systemctl reload smbd
     fi
-    rm -rf -- "${T:?}" "${AREIA:?}"
+    rm -rf -- "${T:?}" "${SANDBOX:?}"
 }
 trap limpar_real EXIT
 
-( umask 027; : > "$AREIA/debkit.log" ); ( umask 077; mkdir -p "$AREIA/backups" )
+( umask 027; : > "$SANDBOX/debkit.log" ); ( umask 077; mkdir -p "$SANDBOX/backups" )
 # Configuração REAL; log e backups do smb.conf só nesta execução
 s() { env -u DEBKIT_APT -u DEBKIT_DPKG_ADMIN bash -c "source '$DEBKIT'; debkit_conf_carregar /etc/debkit/debkit.conf >/dev/null; debkit_ler_login_defs;
-      DEBKIT_LOG='$AREIA/debkit.log'; DEBKIT_SMB_BACKUP_DIR='$AREIA/conf-bkp'; DEBKIT_BACKUP_DIR='$AREIA/backups'; $1" 2>&1; }
+      DEBKIT_LOG='$SANDBOX/debkit.log'; DEBKIT_SMB_BACKUP_DIR='$SANDBOX/conf-bkp'; DEBKIT_BACKUP_DIR='$SANDBOX/backups'; $1" 2>&1; }
 smb() {  # smb <usuário> <comandos>
-    printf 'username = %s\npassword = %s\n' "$1" "$SENHA" > "$AREIA/auth.$1"; chmod 600 "$AREIA/auth.$1"
-    ( cd "$AREIA" && timeout 20 smbclient "//127.0.0.1/$SHARE" -A "$AREIA/auth.$1" -c "$2" 2>&1 ); echo "RC=$?"
+    printf 'username = %s\npassword = %s\n' "$1" "$SENHA" > "$SANDBOX/auth.$1"; chmod 600 "$SANDBOX/auth.$1"
+    ( cd "$SANDBOX" && timeout 20 smbclient "//127.0.0.1/$SHARE" -A "$SANDBOX/auth.$1" -c "$2" 2>&1 ); echo "RC=$?"
 }
 # Sessão aberta (smbclient lendo comandos de um fifo)
 trap '' PIPE
 abrir() {
-    rm -f "$AREIA/sessao"; mkfifo "$AREIA/sessao"
-    printf 'username = %s\npassword = %s\n' "$1" "$SENHA" > "$AREIA/auth.$1"; chmod 600 "$AREIA/auth.$1"
-    ( cd "$AREIA" && timeout 60 smbclient "//127.0.0.1/$SHARE" -A "$AREIA/auth.$1" < "$AREIA/sessao" > "$AREIA/sessao.out" 2>&1 ) &
+    rm -f "$SANDBOX/sessao"; mkfifo "$SANDBOX/sessao"
+    printf 'username = %s\npassword = %s\n' "$1" "$SENHA" > "$SANDBOX/auth.$1"; chmod 600 "$SANDBOX/auth.$1"
+    ( cd "$SANDBOX" && timeout 60 smbclient "//127.0.0.1/$SHARE" -A "$SANDBOX/auth.$1" < "$SANDBOX/sessao" > "$SANDBOX/sessao.out" 2>&1 ) &
     PID_SESSAO=$!
-    exec 3> "$AREIA/sessao"
+    exec 3> "$SANDBOX/sessao"
 }
 enviar() { echo "$1" >&3 2>/dev/null; sleep 2; }
 fechar() { echo "quit" >&3 2>/dev/null; exec 3>&-; wait "$PID_SESSAO" 2>/dev/null; PID_SESSAO=""; }
@@ -82,7 +82,7 @@ for d in dup dup2; do
     printf '[%s-%s]\n   path = %s/dup\n   valid users = @%s\n   read only = no\n' "$SHARE" "$d" "$T" "$GA" >> /etc/samba/smb.conf
 done
 systemctl reload smbd; sleep 1
-echo "conteudo" > "$AREIA/a.txt"; echo "alterado" > "$AREIA/b.txt"
+echo "conteudo" > "$SANDBOX/a.txt"; echo "alterado" > "$SANDBOX/b.txt"
 contem "RC=0" "$(smb "$UB" "put a.txt b1.txt")" "antes: B grava (write list)"
 contem "ACCESS_DENIED" "$(smb "$UA" "put a.txt a1.txt")" "antes: A só lê"
 

@@ -1,27 +1,27 @@
 #!/usr/bin/env bash
 # Testes de grupos (Fase 1, decisão de 19/10/2026): nome, criar, entrar e
 # sair, remover, uso no smb.conf e arquivos do grupo no disco. Usuários e
-# grupos dkt_* reais (removidos no fim); base do Samba e smb.conf da areia.
+# grupos dkt_* reais (removidos no fim); base do Samba e smb.conf do sandbox.
 source "$(dirname "$0")/lib.sh"
-caixa_de_areia
+sandbox
 
 if getent passwd | cut -d: -f1 | grep -q '^dkt_'; then echo "  já existem usuários dkt_* - abortando"; exit 1; fi
 if getent group | cut -d: -f1 | grep -v "^$GRUPO_TESTE\$" | grep -q '^dkt_'; then echo "  já existem grupos dkt_* - abortando"; exit 1; fi
 limpar_usuarios() {
     local x
     for x in $(getent passwd | cut -d: -f1 | grep '^dkt_'); do
-        pdbedit -s "$AREIA/smb.conf" -x -u "$x" >/dev/null 2>&1; userdel "$x" >/dev/null 2>&1
+        pdbedit -s "$SANDBOX/smb.conf" -x -u "$x" >/dev/null 2>&1; userdel "$x" >/dev/null 2>&1
     done
     for x in $(getent group | cut -d: -f1 | grep '^dkt_'); do groupdel "$x" >/dev/null 2>&1; done
 }
-trap 'limpar_usuarios; rm -rf -- "${AREIA:?}"' EXIT
+trap 'limpar_usuarios; rm -rf -- "${SANDBOX:?}"' EXIT
 
 CFG="debkit_conf_carregar \"\$DEBKIT_CONF_ARQUIVO\" >/dev/null; debkit_ler_login_defs;
-     debkit_samba_recarregar() { echo reload >> '$AREIA/reloads'; };"
+     debkit_samba_recarregar() { echo reload >> '$SANDBOX/reloads'; };"
 p() { bash -c "source '$DEBKIT'; $CFG $1" 2>&1; }
 membros() { getent group "$1" | cut -d: -f4; }
 gid_de() { getent group "$1" | cut -d: -f3; }
-LOG() { cat "$AREIA/debkit.log" 2>/dev/null; }
+LOG() { cat "$SANDBOX/debkit.log" 2>/dev/null; }
 
 # ════════════════════════════════════════════════════════════════════════════
 # Nome do grupo
@@ -45,8 +45,8 @@ contem "Já existe um usuário 'dkt_semgrupo'" "$(nome dkt_semgrupo)"
 # ════════════════════════════════════════════════════════════════════════════
 # Criar
 # ════════════════════════════════════════════════════════════════════════════
-copiar_smb_conf "$AREIA/smb.conf"
-preparar_areia
+copiar_smb_conf "$SANDBOX/smb.conf"
+preparar_sandbox
 caso "nome: o grupo de proteção (já existe)"
 contem "Já existe um grupo '$GRUPO_TESTE'" "$(nome "$GRUPO_TESTE")"
 for u in dkt_a dkt_b dkt_c dkt_d; do useradd -M -U -s /usr/sbin/nologin "$u"; done
@@ -148,10 +148,10 @@ gpasswd -M dkt_a,dkt_b dkt_g1 >/dev/null
 
 caso "grupos citados no sudoers (%grupo, %#gid, sudoers.d): ficam de fora"
 groupadd dkt_adm; groupadd dkt_adm2; groupadd dkt_adm3
-mkdir -p "$AREIA/sudoers.d"
-printf '%%sudo ALL=(ALL:ALL) ALL\n# %%dkt_adm3 ALL=(ALL) ALL\n%%dkt_adm ALL=(ALL) ALL\n' > "$AREIA/sudoers"
-printf 'User_Alias ADM = joao, %%#%s\nADM ALL=(ALL) ALL\n' "$(gid_de dkt_adm2)" > "$AREIA/sudoers.d/x"
-SUD="DEBKIT_ARQ_SUDOERS='$AREIA/sudoers'; DEBKIT_DIR_SUDOERS_D='$AREIA/sudoers.d';"
+mkdir -p "$SANDBOX/sudoers.d"
+printf '%%sudo ALL=(ALL:ALL) ALL\n# %%dkt_adm3 ALL=(ALL) ALL\n%%dkt_adm ALL=(ALL) ALL\n' > "$SANDBOX/sudoers"
+printf 'User_Alias ADM = joao, %%#%s\nADM ALL=(ALL) ALL\n' "$(gid_de dkt_adm2)" > "$SANDBOX/sudoers.d/x"
+SUD="DEBKIT_ARQ_SUDOERS='$SANDBOX/sudoers'; DEBKIT_DIR_SUDOERS_D='$SANDBOX/sudoers.d';"
 saida=$(p "$SUD debkit_samba_grupos_comuns")
 verdadeiro "%grupo fora" bash -c "! grep -qx dkt_adm <<< '$saida'"
 verdadeiro "%#gid (sudoers.d, alias) fora" bash -c "! grep -qx dkt_adm2 <<< '$saida'"
@@ -168,52 +168,52 @@ contem "RC=1" "$(criar dkt_adm "" "$SUD")"; verdadeiro "não criado" bash -c "! 
 # ════════════════════════════════════════════════════════════════════════════
 # Uso no smb.conf e arquivos no disco
 # ════════════════════════════════════════════════════════════════════════════
-mkdir -p "$AREIA/dados/rh/sub" "$AREIA/dados/vendas" "$AREIA/homes/dkt_a" "$AREIA/fora"
-ln -s "$AREIA/fora" "$AREIA/link"
-cat > "$AREIA/usos.conf" <<EOF
+mkdir -p "$SANDBOX/dados/rh/sub" "$SANDBOX/dados/vendas" "$SANDBOX/homes/dkt_a" "$SANDBOX/fora"
+ln -s "$SANDBOX/fora" "$SANDBOX/link"
+cat > "$SANDBOX/usos.conf" <<EOF
 [global]
    server role = standalone server
    valid users = @dkt_g1
 [a]
-   path = $AREIA/dados/rh
+   path = $SANDBOX/dados/rh
    valid users = @dkt_g1, dkt_b
 [b]
-   path = $AREIA/dados/vendas/
+   path = $SANDBOX/dados/vendas/
    write list = dkt_c +dkt_g1
 [c]
-   path = $AREIA/dados
+   path = $SANDBOX/dados
    force group = +dkt_g1
 [d]
-   path = $AREIA/link
+   path = $SANDBOX/link
    valid users = dkt_g1
 [e]
-   path = $AREIA/nao_existe
+   path = $SANDBOX/nao_existe
    valid users = @dkt_g10, @xdkt_g1
 [f]
-   path = $AREIA/dados/%U
+   path = $SANDBOX/dados/%U
    read list = "&dkt_g1"
 [g]
-   path = $AREIA/fora
+   path = $SANDBOX/fora
    invalid users = &+dkt_g1
    admin users = @dkt_g0
 [homes]
    valid users = %S, @dkt_g1
 EOF
-USOS="DEBKIT_SMB_CONF='$AREIA/usos.conf'; DEBKIT_HOMES_BASE='$AREIA/homes';"
+USOS="DEBKIT_SMB_CONF='$SANDBOX/usos.conf'; DEBKIT_HOMES_BASE='$SANDBOX/homes';"
 caso "smb.conf: compartilhamentos que usam o grupo"
 igual "$(printf '%s\n' a b c f g global homes)" "$(p "$USOS debkit_samba_grupo_usos dkt_g1")" "@ + & e force group; nome solto (usuário) e parecidos não contam"
 igual "g" "$(p "$USOS debkit_samba_grupo_usos dkt_g0")"
 igual "" "$(p "$USOS debkit_samba_grupo_usos dkt_g")" "nome parcial não conta"
 caso "pastas de dados: base das homes e caminhos (sem repetir, sem %, link, inexistente)"
-igual "$(printf '%s\n' "$AREIA/dados" "$AREIA/fora" "$AREIA/homes")" "$(p "$USOS debkit_samba_pastas_dados")"
+igual "$(printf '%s\n' "$SANDBOX/dados" "$SANDBOX/fora" "$SANDBOX/homes")" "$(p "$USOS debkit_samba_pastas_dados")"
 caso "arquivos do grupo: conta e limita"
 G1=$(gid_de dkt_g1)
-touch "$AREIA/dados/rh/x" "$AREIA/dados/rh/sub/y" "$AREIA/homes/dkt_a/z" "$AREIA/fora/w"
-chgrp dkt_g1 "$AREIA/dados/rh/x" "$AREIA/dados/rh/sub" "$AREIA/dados/rh/sub/y" "$AREIA/homes/dkt_a/z" "$AREIA/fora/w"
+touch "$SANDBOX/dados/rh/x" "$SANDBOX/dados/rh/sub/y" "$SANDBOX/homes/dkt_a/z" "$SANDBOX/fora/w"
+chgrp dkt_g1 "$SANDBOX/dados/rh/x" "$SANDBOX/dados/rh/sub" "$SANDBOX/dados/rh/sub/y" "$SANDBOX/homes/dkt_a/z" "$SANDBOX/fora/w"
 igual 5 "$(p "$USOS debkit_grupo_contar_arquivos $G1")" "5 itens (pastas também)"
 igual 3 "$(p "$USOS DEBKIT_GRP_ARQUIVOS_MAX=3; debkit_grupo_contar_arquivos $G1")" "limitado"
 igual 0 "$(p "$USOS debkit_grupo_contar_arquivos $(gid_de dkt_g0)")" "outro grupo: nenhum"
-igual 4 "$(p "DEBKIT_SMB_CONF='$AREIA/usos.conf'; DEBKIT_HOMES_BASE=''; debkit_grupo_contar_arquivos $G1")" "sem HOMES_BASE"
+igual 4 "$(p "DEBKIT_SMB_CONF='$SANDBOX/usos.conf'; DEBKIT_HOMES_BASE=''; debkit_grupo_contar_arquivos $G1")" "sem HOMES_BASE"
 
 # ════════════════════════════════════════════════════════════════════════════
 # Remover
@@ -252,7 +252,7 @@ saida=$(tela debkit_samba_tela_criar_grupo "Gp-RH" "dkt_rh" "$(idx_u dkt_a),$(id
 contem "Nome inválido" "$saida"; contem "Grupo: dkt_rh" "$saida"; contem "Membros: dkt_a, dkt_c" "$saida"
 contem "Grupo dkt_rh criado" "$saida"; igual "dkt_a,dkt_c" "$(membros dkt_rh)"
 caso "tela criar: número inválido repete; sem membros"
-saida=$(cd "$AREIA" && tela debkit_samba_tela_criar_grupo "dkt_rh2" "*" "999" "" "s" "")
+saida=$(cd "$SANDBOX" && tela debkit_samba_tela_criar_grupo "dkt_rh2" "*" "999" "" "s" "")
 contem "Escolha inválida: '*'" "$saida" "* não vira lista de arquivos"; contem "Escolha inválida: '999'" "$saida"; contem "Membros: (nenhum)" "$saida"; contem "RC=0" "$saida"
 caso "tela criar: recusar a confirmação e Enter vazio cancelam"
 saida=$(tela debkit_samba_tela_criar_grupo "dkt_rh3" "" "n" "")
@@ -277,11 +277,11 @@ saida=$(tela debkit_samba_tela_membros "$(idx_g dkt_rh)" 2 1 n "")
 contem "Cancelado" "$saida"; igual "dkt_c" "$(membros dkt_rh)"
 
 caso "tela remover: grupo usado no smb.conf é recusado antes de perguntar"
-rm -rf -- "$AREIA/dados/rh" "$AREIA/homes" "$AREIA/fora/w"      # arquivos do dkt_g1 removido (GID pode voltar)
-cat >> "$AREIA/smb.conf" <<EOF
+rm -rf -- "$SANDBOX/dados/rh" "$SANDBOX/homes" "$SANDBOX/fora/w"      # arquivos do dkt_g1 removido (GID pode voltar)
+cat >> "$SANDBOX/smb.conf" <<EOF
 
 [dkt_teste]
-   path = $AREIA/dados
+   path = $SANDBOX/dados
    valid users = @dkt_rh
 EOF
 saida=$(tela debkit_samba_tela_remover_grupo "$(idx_g dkt_rh)" s "")
@@ -289,8 +289,8 @@ contem "O grupo dkt_rh é usado no Samba ([dkt_teste])" "$saida"; nao_contem "Pr
 contem "RC=1" "$saida"; verdadeiro "continua" getent group dkt_rh
 contem "é usado no Samba ([dkt_teste])" "$(remover dkt_rh)" "a função também recusa"
 caso "tela remover: avisos (membros, arquivos) e 'n' cancela"
-sed -i 's/^   valid users = @dkt_rh$/   valid users = @dkt_g0/' "$AREIA/smb.conf"   # a pasta continua num compartilhamento
-chgrp dkt_rh "$AREIA/dados/vendas"
+sed -i 's/^   valid users = @dkt_rh$/   valid users = @dkt_g0/' "$SANDBOX/smb.conf"   # a pasta continua num compartilhamento
+chgrp dkt_rh "$SANDBOX/dados/vendas"
 saida=$(tela debkit_samba_tela_remover_grupo "$(idx_g dkt_rh)" n "")
 contem "1 membro(s) perdem o acesso dado por este grupo: dkt_c" "$saida"
 contem "1 arquivo(s)/pasta(s) pertencem ao grupo" "$saida"
@@ -309,7 +309,7 @@ verdadeiro "continua" getent group dkt_gp
 caso "listar: grupos, GID, membros, principal e uso no Samba"
 groupadd dkt_rh; gpasswd -M dkt_a,dkt_b dkt_rh >/dev/null
 saida=$(p "debkit_samba_listar_grupos")
-sed -i 's/^   valid users = @dkt_g0$/   valid users = @dkt_rh/' "$AREIA/smb.conf"
+sed -i 's/^   valid users = @dkt_g0$/   valid users = @dkt_rh/' "$SANDBOX/smb.conf"
 saida=$(p "debkit_samba_listar_grupos")
 contem "dkt_rh" "$saida"; contem "dkt_a, dkt_b" "$saida"; contem "usado no Samba: [dkt_teste]" "$saida"
 contem "dkt_p (principal)" "$saida"; nao_contem "$GRUPO_TESTE" "$saida"
@@ -325,14 +325,14 @@ contem "Group dkt_en created." "$(p "DEBKIT_IDIOMA=en; DEBKIT_G_NOME=dkt_en; DEB
 sessao() { sleep 60 >/dev/null 2>&1 & echo $!; }     # processo descartável no papel da sessão
 FAKE() {  # FAKE <pid> <usuário>: smbstatus mostra a sessão; smbcontrol encerra (ou não, com $3=nao)
     echo "smbstatus() { printf 'PID     Username     Group\n-----\n%s  %s  %s  127.0.0.1\n' '$1' '$2' '$2'; };
-          smbcontrol() { echo \"\$*\" >> '$AREIA/smbcontrol'; [ '${3:-sim}' == sim ] && kill \"\$3\"; return 0; };"
+          smbcontrol() { echo \"\$*\" >> '$SANDBOX/smbcontrol'; [ '${3:-sim}' == sim ] && kill \"\$3\"; return 0; };"
 }
 caso "reconectar: encerra só as sessões do usuário e confere"
-P=$(sessao); : > "$AREIA/smbcontrol"
+P=$(sessao); : > "$SANDBOX/smbcontrol"
 saida=$(p "$(FAKE "$P" dkt_a) debkit_samba_reconectar dkt_a dkt_b; echo RC=\$?")
 contem "RC=0" "$saida"; contem "dkt_a: 1 sessão(ões) do Samba reconectada(s)" "$saida"; nao_contem "dkt_b:" "$saida" "sem sessão: nada"
 verdadeiro "sessão encerrada" bash -c "! kill -0 $P"
-contem "-s $AREIA/smb.conf $P shutdown" "$(cat "$AREIA/smbcontrol")"
+contem "-s $SANDBOX/smb.conf $P shutdown" "$(cat "$SANDBOX/smbcontrol")"
 contem "samba_reconectar usuario=dkt_a pids=$P resultado=ok" "$(LOG)"
 caso "reconectar: sessão que não acaba (e não é smbd) - avisa, não mata outro processo"
 P=$(sessao)
