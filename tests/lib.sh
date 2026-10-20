@@ -47,7 +47,7 @@ GRUPO_TESTE="dkt_usuarios"
 # preparado pelo debkit) ou não; os testes só exigem que não mudem.
 ARQUIVOS_REAIS=(/etc/debkit /etc/debkit/debkit.conf /var/log/debkit.log /run/debkit.lock
                 /etc/samba/smb.conf /etc/samba/debkit-shares.conf /etc/samba/conf-bkp
-                /etc/ssh/sshd_config.d/debkit.conf /var/backups/debkit)
+                /etc/ssh/sshd_config.d/debkit.conf /var/backups/debkit /etc/logrotate.d/debkit-samba-auth)
 
 # Uma linha por arquivo real: "caminho conteúdo/permissão" ou "caminho ausente"
 estado_real() {
@@ -86,6 +86,15 @@ copiar_smb_conf() {
         printf '[global]\n   server role = standalone server\n' > "$1"
     fi
     isolar_smb_conf "$1"
+    # Log de autenticação (tarefa 3.0) como no servidor real, mas na areia:
+    # log e regra do logrotate ao lado da cópia
+    local d
+    d=$(dirname -- "$1")
+    sed -i "s|auth_json_audit:3@/var/log/samba/debkit-auth.json|auth_json_audit:3@$d/debkit-auth.json|" "$1"
+    rm -f -- "$d/logrotate-debkit-samba-auth"
+    if [ -f /etc/logrotate.d/debkit-samba-auth ]; then
+        sed "s|/var/log/samba/debkit-auth.json|$d/debkit-auth.json|" /etc/logrotate.d/debkit-samba-auth > "$d/logrotate-debkit-samba-auth"
+    fi
 }
 
 # Faz o smb.conf <arquivo> usar a base de senhas e as pastas do Samba em
@@ -116,6 +125,8 @@ caixa_de_areia() {
         echo "BACKUP_DIR=$AREIA/backups"
         echo "SMB_CONF=$AREIA/smb.conf"
         echo "SMB_BACKUP_DIR=$AREIA/conf-bkp"
+        echo "AUTH_LOG=$AREIA/debkit-auth.json"
+        echo "AUTH_LOGROTATE=$AREIA/logrotate-debkit-samba-auth"
         echo "GRUPO_USUARIOS=$GRUPO_TESTE"
         # Fora do Include do sshd_config real: a proteção SSH nunca é
         # aplicada no SSH de verdade pelos testes comuns

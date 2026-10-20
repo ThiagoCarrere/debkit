@@ -114,7 +114,7 @@ Listar usuários (exemplo com dados fictícios):
 
 | Área | Funções |
 |---|---|
-| **Ambiente** | verificação completa (sistema, Samba, SSH, firewall) e preparação guiada, com plano e confirmação |
+| **Ambiente** | verificação completa (sistema, Samba, SSH, firewall) e preparação guiada, com plano e confirmação; log de autenticação do Samba (logins com e sem sucesso) com rotação |
 | **Proteção SSH** | arquivo próprio em `sshd_config.d` (o `sshd_config` não é tocado), validado antes de recarregar, sem derrubar sessões |
 | **Usuários** | criar (dois tipos de conta, nome completo, grupos, pasta pessoal), listar, trocar senha, excluir, verificar e corrigir contas |
 | **Grupos** | criar, listar, adicionar/remover membros com efeito imediato, remover |

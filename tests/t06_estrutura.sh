@@ -224,7 +224,8 @@ igual "" "$(find "$AREIA/backups" -name 'smb.conf.*' 2>/dev/null)" "nada em BACK
 # ════════════════════════════════════════════════════════════════════════════
 # Edição segura do smb.conf
 # ════════════════════════════════════════════════════════════════════════════
-SMB_MIN='[global]\n   workgroup = TESTE\n   server role = standalone server\n\n[dados]\n   path = /tmp\n'
+# servidor já preparado: com o log de autenticação (tarefa 3.0) do sandbox
+SMB_MIN="[global]\n   workgroup = TESTE\n   server role = standalone server\n   log level = 0 auth_json_audit:3@$AREIA/debkit-auth.json\n\n[dados]\n   path = /tmp\n"
 smb_novo() {
     printf '%b' "$SMB_MIN" > "$AREIA/smb.conf"
     chmod 640 "$AREIA/smb.conf"; chgrp nogroup "$AREIA/smb.conf"

@@ -23,7 +23,7 @@ faltando() { echo "debkit_tem_comando() { case \"\$1\" in $(IFS='|'; echo "$*"))
 caso "servidor real (--verificar)"
 saida=$(bash "$DEBKIT" --verificar 2>&1); cod=$?
 igual 0 "$cod" "código 0"
-contem "Todas as 22 dependências essenciais presentes" "$saida"
+contem "Todas as 23 dependências essenciais presentes" "$saida"
 contem "Modo: servidor de arquivos independente" "$saida"
 contem "Base de senhas: tdbsam" "$saida"
 contem "Ambiente pronto para o debkit." "$saida"

@@ -63,6 +63,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   procura o `include` pelo caminho exato da areia.
 
 ### Adicionado
+- **Log de autenticação do Samba** (item da preparação): o Samba passa a
+  registrar cada login, com e sem sucesso (usuário, IP, máquina e
+  resultado), em `/var/log/samba/debkit-auth.json`; o nível de log do
+  administrador fica. Rotação semanal (12 semanas) em
+  `/etc/logrotate.d/debkit-samba-auth`. Chaves novas no `debkit.conf`:
+  `AUTH_LOG` e `AUTH_LOGROTATE`; `logrotate` vira dependência essencial.
 - **Compartilhamentos já existentes** (feitos à mão, fora do padrão):
   Samba → Compartilhamentos → 6) Trazer para o padrão (Pastas pessoais
   virou 7). Escolhe um grupo; no `smb.conf` mudam só as linhas de acesso,

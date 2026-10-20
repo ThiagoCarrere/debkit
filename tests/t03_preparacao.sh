@@ -24,7 +24,8 @@ prep_env() {
 CFG="DEBKIT_CONF_ARQUIVO='$AREIA/etc/debkit/debkit.conf'; debkit_conf_padroes;
      DEBKIT_LOG='$AREIA/debkit.log'; DEBKIT_BACKUP_DIR='$AREIA/backups'; DEBKIT_SMB_CONF='$AREIA/smb.conf';
      DEBKIT_SMB_BACKUP_DIR='$AREIA/conf-bkp'; DEBKIT_GRUPO_USUARIOS='$GRUPO_T'; DEBKIT_TRAVA='$AREIA/debkit.lock';
-     DEBKIT_SSH_DROPIN='$AREIA/sshd_debkit.conf';
+     DEBKIT_SSH_DROPIN='$AREIA/sshd_debkit.conf'; DEBKIT_AUTH_LOG='$AREIA/debkit-auth.json';
+     DEBKIT_AUTH_LOGROTATE='$AREIA/logrotate-debkit-samba-auth';
      debkit_samba_recarregar() { echo reload >> '$AREIA/reloads'; };"
 g() { bash -c "source '$DEBKIT'; $CFG $1" 2>&1; }
 
@@ -193,6 +194,8 @@ SMB_CONF=$AREIA/smb.conf
 SMB_BACKUP_DIR=$AREIA/conf-bkp
 GRUPO_USUARIOS=$GRUPO_T
 SSH_DROPIN=$AREIA/sshd_debkit.conf
+AUTH_LOG=$AREIA/debkit-auth.json
+AUTH_LOGROTATE=$AREIA/logrotate-debkit-samba-auth
 EOF
 }
 caso "--preparar respondendo n: nada muda, auditoria registra a recusa"

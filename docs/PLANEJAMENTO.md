@@ -404,9 +404,31 @@ com `status` (`NT_STATUS_WRONG_PASSWORD`, `NT_STATUS_OK`,
 `NT_STATUS_NO_SUCH_USER`), `clientAccount`, `remoteAddress` e
 `workstation`. Por padrão (sem isso) o Samba não registra falha de login.
 
-A conferir na 3.0: `log level` já existente no `[global]` (somar a classe,
-sem perder o nível do administrador); rotação do arquivo (`max log size`
-vale para ele? senão, `logrotate`); permissões do arquivo.
+**Como ficou a 3.0 (log de autenticação; item da preparação):**
+
+1. **smb.conf:** no `[global]`, `log level = <nível do administrador, ou 0>
+   auth_json_audit:3@<AUTH_LOG>`. Outra configuração da mesma classe sai;
+   `debug level` (sinônimo) sai; o resto do `log level` fica. O `testparm`
+   **não mostra** o `log level` (nem com `-v`): o valor é lido do arquivo e
+   a conferência exige que a configuração em vigor fique idêntica.
+2. **Rotação:** o `max log size` do Samba **não gira** o arquivo de uma
+   classe (provado: 25 KB com limite de 1 KiB). Regra própria em
+   `/etc/logrotate.d/debkit-samba-auth`: semanal, 12 semanas, compactada.
+   Não precisa de `postrotate`: cada conexão nova reabre o log (provado;
+   `smbcontrol smbd reopen-logs` não existe no 4.22). O `logrotate -d`
+   confere a regra. Se a regra mudar à mão, a preparação recria (com
+   backup).
+3. **Configuração:** `AUTH_LOG` e `AUTH_LOGROTATE` no `debkit.conf`;
+   `logrotate` entra nas dependências essenciais.
+4. **Desfazer:** smb.conf do backup; a regra nova é apagada (ou a antiga
+   volta).
+
+Prova real (`t21b`): ligado pelo debkit no smb.conf real, o smbd passa a
+registrar a classe (`smbcontrol smbd debuglevel`); senha errada, usuário
+inexistente e sucesso aparecem com o IP; `logrotate -f` gira e o login
+seguinte cai no arquivo novo. Os testes espelham no sandbox o estado do
+servidor real (`copiar_smb_conf` aponta a linha e a regra para a areia).
+A VM real foi preparada pelo próprio debkit em 20/10/2026.
 
 Ordem: 3.0 log de autenticação (preparação e verificação) → 3.1 sessões
 ativas → 3.2 logins → 3.3 saúde → 3.4 auditoria.
@@ -545,7 +567,7 @@ debkit/
 | 0. Fundação | 0.1 esqueleto ✔ · 0.2 detecção do ambiente ✔ · 0.3 preparação do ambiente e backups ✔ · 0.4 proteção SSH ✔ · 0.5 firewall ✔ |
 | 1. Usuários e grupos | 1.0 reestruturar ✔ (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário ✔ (tipos, nome completo, grupos; sem home) · 1.1b pasta pessoal ✔ (base no disco de dados, na criação ou depois, `[homes]`) · listar ✔ · trocar senha ✔ · grupos ✔ (criar, remover, entrar/sair) · menu em submenus ✔ · excluir usuário ✔ · consistência Linux x Samba ✔ · ~~desativar/reativar~~ (adiado, 3.4) |
 | 2. Compartilhamentos | decisões na seção 3.7 · 2.0 `map to guest = never` ✔ · 2.1 criar + listar ✔ · 2.2 grupo e permissões (trocar o grupo, ajustar o conteúdo) ✔ · 2.3 remover ✔ · 2.4 os já existentes ✔ |
-| 3. Diagnóstico | decisões na seção 3.8 · 3.0 log de autenticação · 3.1 sessões ativas · 3.2 logins (falhas e sucessos) · 3.3 saúde do Samba · 3.4 consulta à auditoria |
+| 3. Diagnóstico | decisões na seção 3.8 · 3.0 log de autenticação ✔ · 3.1 sessões ativas · 3.2 logins (falhas e sucessos) · 3.3 saúde do Samba · 3.4 consulta à auditoria |
 | 4. Publicação | comandos diretos completos, `install.sh`, **desinstalação**, README, mensagens em inglês, testes automáticos e CI |
 
 ## 9. Forma de trabalho
@@ -582,7 +604,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 
 ## 11. Situação atual e próximos passos
 
-*Atualizado em 20/10/2026 (2.4; Fase 2 concluída).*
+*Atualizado em 20/10/2026 (3.0).*
 
 - Nome decidido: **debkit**; renomeação gsb → debkit feita (arquivos,
   variáveis, funções, grupo `debkit_usuarios`, `/etc/debkit`, testes). As
@@ -634,6 +656,8 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | 2.2 Compartilhamentos: trocar o grupo e ajustar o conteúdo | `b11457a` |
 | 2.3 Compartilhamentos: remover | `fc4a104` |
 | 2.4 Compartilhamentos já existentes: trazer para o padrão ou remover | `a3d072e` |
+| Fase 3 decidida | `372c835` |
+| 3.0 Log de autenticação do Samba (preparação) | (este commit) |
 
 **Próximos passos:**
 
@@ -736,8 +760,8 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 24. ✔ 2.4 os já existentes (Samba → Compartilhamentos → 6 e 5; seção 3.7).
     **Fase 2 concluída.**
 25. ✔ Fase 3 decidida (seção 3.8).
-26. **Próxima tarefa:** 3.0 log de autenticação do Samba (preparação e
-    verificação).
+26. ✔ 3.0 log de autenticação do Samba (item da preparação; seção 3.8).
+27. **Próxima tarefa:** 3.1 sessões ativas (Samba → 4) Diagnóstico).
 
 **VM limpa de novo:** `dev/vmnova.sh` → (reinicia) → `dev/vmprepara.sh` →
 `./debkit --preparar` → testes.
@@ -786,7 +810,8 @@ demonstração não interferirem). Com a tarefa 2.2: 1794 + 225 (`t18_permissoes
 `t18b_permissoes_real.sh`). Com a tarefa 2.3: 1865 + 251 (`t19_remover.sh` e
 `t19b_remover_real.sh`). Com a tarefa 2.4: 1967 + 279 (`t20_existentes.sh` e
 `t20b_existentes_real.sh`, que escreve compartilhamentos à mão no smb.conf
-real e o devolve idêntico). Os testes também acusam se alguém usar o debkit na VM enquanto rodam (o
+real e o devolve idêntico). Com a tarefa 3.0: 2011 + 302 (`t21_log_auth.sh` e
+`t21b_log_auth_real.sh`). Os testes também acusam se alguém usar o debkit na VM enquanto rodam (o
 log e a trava reais mudam): não usar o debkit durante a suíte.
 
 Os testes funcionam com o servidor preparado ou não: em vez de exigir que

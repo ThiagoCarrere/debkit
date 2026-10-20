@@ -23,11 +23,15 @@ debkit_modulo_registrar samba
     DEBKIT_CONF_PADRAO[SMB_BACKUP_DIR]="/etc/samba/conf-bkp"
     DEBKIT_CONF_PADRAO[HOMES_BASE]=""
     DEBKIT_CONF_PADRAO[SHARES_BASE]=""
+    DEBKIT_CONF_PADRAO[AUTH_LOG]="/var/log/samba/debkit-auth.json"
+    DEBKIT_CONF_PADRAO[AUTH_LOGROTATE]="/etc/logrotate.d/debkit-samba-auth"
     DEBKIT_CONF_TIPO[SMB_CONF]="caminho"
     DEBKIT_CONF_TIPO[SMB_BACKUP_DIR]="caminho"
     DEBKIT_CONF_TIPO[HOMES_BASE]="caminho_opcional"
     DEBKIT_CONF_TIPO[SHARES_BASE]="caminho_opcional"
-    DEBKIT_CONF_ORDEM+=(SMB_CONF SMB_BACKUP_DIR HOMES_BASE SHARES_BASE)
+    DEBKIT_CONF_TIPO[AUTH_LOG]="caminho"
+    DEBKIT_CONF_TIPO[AUTH_LOGROTATE]="caminho"
+    DEBKIT_CONF_ORDEM+=(SMB_CONF SMB_BACKUP_DIR HOMES_BASE SHARES_BASE AUTH_LOG AUTH_LOGROTATE)
 }
 
 # ── Mensagens ───────────────────────────────────────────────────────────────
@@ -61,6 +65,10 @@ MSG_pt_BR+=(
     [prep.d_samba_sem_sync]="Desligar no %s a sincronização da senha do Linux (\"unix password sync = no\"; com backup e conferência de que só isso muda)"
     [amb.convidado]="\"map to guest = %s\": quem entra com um nome que não existe (ex: um usuário excluído) vira convidado em vez de ser recusado: a preparação vai mudar para \"never\""
     [prep.d_samba_sem_convidado]="Recusar no %s o login de quem não existe, em vez de virar convidado (\"map to guest = never\"; com backup e conferência de que só isso muda)"
+    [amb.auth_desligado]="Log de autenticação do Samba desligado: as falhas de login não ficam registradas; a preparação vai ligar (%s)"
+    [amb.auth_rotacao]="A rotação do log de autenticação (%s) falta ou foi alterada: a preparação vai recriar"
+    [amb.auth_ok]="Log de autenticação do Samba: %s"
+    [prep.d_samba_log_auth]="Ligar no %s o log de autenticação do Samba (logins com e sem sucesso, em %s; com backup e conferência de que nada mais muda) e a rotação semanal em %s (12 semanas)"
     [amb.pacotes_dominio]="Pacotes de domínio instalados sem necessidade num servidor independente: %s. O winbind faz o Linux aceitar a senha do Samba em logins como o SSH: a preparação vai removê-los"
     [prep.d_samba_pacotes_dominio]="Remover os pacotes de domínio desnecessários: %s (apt-get purge; depois confere que o PAM e o NSS não usam mais o winbind e que o Samba continua funcionando)"
     [prep.dominio_removeria_mais]="O apt removeria também outros pacotes (%s): nada foi removido."
@@ -253,6 +261,10 @@ MSG_en+=(
     [prep.d_samba_sem_sync]="Turn off in %s the Linux password sync (\"unix password sync = no\"; with backup and a check that nothing else changes)"
     [amb.convidado]="\"map to guest = %s\": logging in with a name that does not exist (e.g. a deleted user) becomes a guest instead of being refused: the preparation will change it to \"never\""
     [prep.d_samba_sem_convidado]="Refuse in %s the login of users that do not exist, instead of becoming a guest (\"map to guest = never\"; with backup and a check that nothing else changes)"
+    [amb.auth_desligado]="Samba authentication log is off: failed logins are not recorded; the preparation will turn it on (%s)"
+    [amb.auth_rotacao]="The rotation of the authentication log (%s) is missing or was changed: the preparation will recreate it"
+    [amb.auth_ok]="Samba authentication log: %s"
+    [prep.d_samba_log_auth]="Turn on in %s the Samba authentication log (successful and failed logins, in %s; with backup and a check that nothing else changes) and the weekly rotation in %s (12 weeks)"
     [amb.pacotes_dominio]="Domain packages installed without need on a standalone server: %s. winbind makes Linux accept the Samba password in logins such as SSH: the setup will remove them"
     [prep.d_samba_pacotes_dominio]="Remove the unneeded domain packages: %s (apt-get purge; then checks that PAM and NSS no longer use winbind and that Samba still works)"
     [prep.dominio_removeria_mais]="apt would also remove other packages (%s): nothing was removed."
@@ -910,6 +922,7 @@ DEBKIT_DEPENDENCIAS+=(
     "testparm|essencial|samba-common-bin"
     "smbpasswd|essencial|samba-common-bin"
     "smbcontrol|essencial|samba-common-bin"
+    "logrotate|essencial|logrotate"
     "smbclient|desenvolvimento|smbclient"
 )
 
@@ -1143,6 +1156,16 @@ debkit_samba_verificar() {
         else
             DEBKIT_SAMBA_CONVIDADO=""
         fi
+        DEBKIT_SAMBA_AUTH=0
+        if ! debkit_samba_auth_ligado; then
+            DEBKIT_SAMBA_AUTH=1
+            debkit_verif_add samba aviso "$(t amb.auth_desligado "$DEBKIT_AUTH_LOG")"
+        elif ! debkit_samba_logrotate_ok; then
+            DEBKIT_SAMBA_AUTH=1
+            debkit_verif_add samba aviso "$(t amb.auth_rotacao "$DEBKIT_AUTH_LOGROTATE")"
+        else
+            debkit_verif_add samba ok "$(t amb.auth_ok "$DEBKIT_AUTH_LOG")"
+        fi
         if DEBKIT_SAMBA_INCLUDE_ANTIGO=$(debkit_samba_include_antigo); then
             if debkit_samba_shares_vazio "$DEBKIT_SAMBA_INCLUDE_ANTIGO"; then
                 DEBKIT_SAMBA_INCLUDE_VAZIO=1
@@ -1172,6 +1195,9 @@ debkit_samba_plano() {
     fi
     if [ -n "${DEBKIT_SAMBA_CONVIDADO:-}" ]; then
         DEBKIT_PLANO+=(samba_sem_convidado)
+    fi
+    if [ "${DEBKIT_SAMBA_AUTH:-0}" -eq 1 ]; then
+        DEBKIT_PLANO+=(samba_log_auth)
     fi
     return 0
 }
@@ -1290,6 +1316,113 @@ debkit_acao_samba_sem_convidado() {
 }
 
 debkit_desfazer_samba_sem_convidado() { debkit_smbconf_restaurar; }
+
+# ── Preparação: log de autenticação do Samba ────────────────────────────────
+# Decisão de 20/10/2026 (Fase 3, seção 3.8): por padrão o Samba não registra
+# falha de login. A preparação liga a classe auth_json_audit (nível 3 =
+# logins com e sem sucesso) num arquivo próprio, em JSON (uma tentativa por
+# linha, com usuário, IP, máquina e resultado), e põe a rotação dele no
+# logrotate: o "max log size" do Samba não gira o arquivo de uma classe, e
+# cada conexão nova reabre o log, então basta renomear (sem postrotate).
+# Provado na VM (Samba 4.22). O testparm não mostra o "log level" (nem com
+# -v): o valor é lido direto do [global].
+
+# Valor do "log level" no [global] (sinônimos "debug level"/"debuglevel";
+# vale o último). Vazio = sem a linha (o padrão do Samba é 0).
+debkit_samba_loglevel_atual() {
+    awk '
+        /^[ \t]*\[/ { em = (tolower($0) ~ /^[ \t]*\[global\][ \t]*$/); next }
+        em && /^[ \t]*[^#;[ \t][^=]*=/ {
+            k = $0; sub(/=.*/, "", k); gsub(/[ \t]/, "", k); k = tolower(k)
+            if (k == "loglevel" || k == "debuglevel") { v = $0; sub(/^[^=]*=[ \t]*/, "", v); sub(/[ \t]+$/, "", v); val = v }
+        }
+        END { print val }' "$DEBKIT_SMB_CONF" 2>/dev/null
+}
+
+# A classe com o arquivo do debkit, como fica no "log level"
+debkit_samba_auth_classe() { printf 'auth_json_audit:3@%s' "$DEBKIT_AUTH_LOG"; }
+
+# O log de autenticação está ligado no smb.conf?
+debkit_samba_auth_ligado() {
+    local x
+    local -a itens=()
+    read -ra itens <<< "$(debkit_samba_loglevel_atual)"
+    for x in "${itens[@]}"; do [ "$x" == "$(debkit_samba_auth_classe)" ] && return 0; done
+    return 1
+}
+
+# Valor novo: o do administrador (ou 0) sem outra configuração da classe,
+# mais a do debkit
+debkit_samba_loglevel_novo() {
+    local x r=""
+    local -a itens=()
+    read -ra itens <<< "$(debkit_samba_loglevel_atual)"
+    for x in "${itens[@]}"; do
+        [[ "$x" == auth_json_audit || "$x" == auth_json_audit:* ]] && continue
+        r+="${r:+ }$x"
+    done
+    printf '%s %s' "${r:-0}" "$(debkit_samba_auth_classe)"
+}
+
+# Filtro: tira do [global] as linhas "debug level" (sinônimo) e grava o
+# "log level" novo (DEBKIT_SAMBA_LOGLEVEL_NOVO) no lugar do atual
+debkit_samba_filtro_auth() {
+    awk '
+        /^[ \t]*\[/ { em = (tolower($0) ~ /^[ \t]*\[global\][ \t]*$/); print; next }
+        em && /^[ \t]*[^#;[ \t][^=]*=/ { k = $0; sub(/=.*/, "", k); gsub(/[ \t]/, "", k); if (tolower(k) == "debuglevel") next }
+        { print }' | debkit_samba_filtro_global "log level" "$DEBKIT_SAMBA_LOGLEVEL_NOVO"
+}
+
+# Conferência: o testparm não mostra o "log level", então a configuração em
+# vigor tem de ser exatamente a mesma (a linha nova é conferida no arquivo)
+debkit_samba_conferir_auth() { cmp -s "$1" "$2"; }
+
+# Regra do logrotate (o arquivo é do debkit: recriado se mudar)
+debkit_samba_logrotate_conteudo() {
+    printf '# debkit: rotação do log de autenticação do Samba (arquivo do debkit; a preparação recria se mudar)\n'
+    printf '%s {\n    weekly\n    rotate 12\n    compress\n    delaycompress\n    missingok\n    notifempty\n}\n' "$DEBKIT_AUTH_LOG"
+}
+debkit_samba_logrotate_ok() {
+    [ -f "$DEBKIT_AUTH_LOGROTATE" ] && cmp -s <(debkit_samba_logrotate_conteudo) "$DEBKIT_AUTH_LOGROTATE"
+}
+
+debkit_descrever_samba_log_auth() { t prep.d_samba_log_auth "$DEBKIT_SMB_CONF" "$DEBKIT_AUTH_LOG" "$DEBKIT_AUTH_LOGROTATE"; }
+
+# smb.conf (edição segura) e regra do logrotate (backup se já existia; o
+# logrotate confere a sintaxe). Deixa DEBKIT_SAMBA_LOGROTATE_ANTES (caminho
+# do backup, "novo" ou vazio) para desfazer.
+debkit_acao_samba_log_auth() {
+    local tmp
+    DEBKIT_SAMBA_LOGROTATE_ANTES=""
+    if ! debkit_samba_auth_ligado; then
+        DEBKIT_SAMBA_LOGLEVEL_NOVO=$(debkit_samba_loglevel_novo)
+        debkit_smbconf_editar debkit_samba_filtro_auth debkit_samba_conferir_auth || return 1
+        debkit_samba_auth_ligado || return 1
+    fi
+    debkit_samba_logrotate_ok && return 0
+    if [ -e "$DEBKIT_AUTH_LOGROTATE" ]; then
+        DEBKIT_SAMBA_LOGROTATE_ANTES=$(debkit_backup "$DEBKIT_AUTH_LOGROTATE") || return 1
+    else
+        DEBKIT_SAMBA_LOGROTATE_ANTES=novo
+    fi
+    tmp=$(umask 022; mktemp -- "$(dirname -- "$DEBKIT_AUTH_LOGROTATE")/.debkit-logrotate.XXXXXX") || return 1
+    DEBKIT_TEMPORARIOS+=("$tmp")
+    if ! { debkit_samba_logrotate_conteudo > "$tmp" && chmod 644 -- "$tmp" && mv -f -- "$tmp" "$DEBKIT_AUTH_LOGROTATE"; }; then
+        rm -f -- "$tmp"; return 1
+    fi
+    debkit_samba_logrotate_ok && logrotate -d -- "$DEBKIT_AUTH_LOGROTATE" >/dev/null 2>&1
+}
+
+# Volta a regra do logrotate (apaga a nova ou repõe a de antes) e o smb.conf
+debkit_desfazer_samba_log_auth() {
+    if [ "${DEBKIT_SAMBA_LOGROTATE_ANTES:-}" == "novo" ]; then
+        rm -f -- "$DEBKIT_AUTH_LOGROTATE"
+    elif [ -n "${DEBKIT_SAMBA_LOGROTATE_ANTES:-}" ]; then
+        cp -- "$DEBKIT_SAMBA_LOGROTATE_ANTES" "$DEBKIT_AUTH_LOGROTATE" && chmod 644 -- "$DEBKIT_AUTH_LOGROTATE"
+    fi
+    DEBKIT_SAMBA_LOGROTATE_ANTES=""
+    debkit_smbconf_restaurar
+}
 
 # ── smb.conf: backup e edição segura ────────────────────────────────────────
 # Backup do smb.conf em SMB_BACKUP_DIR (smb.conf.dd-mm-aaaa-hh-mm-ss, com a

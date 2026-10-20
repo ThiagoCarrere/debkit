@@ -197,7 +197,8 @@ contem "RC=0" "$(h "debkit_samba_home_existente dkt_e3; echo RC=\$?")"; verdadei
 # ════════════════════════════════════════════════════════════════════════════
 # Compartilhamento [homes]
 # ════════════════════════════════════════════════════════════════════════════
-SMB_MIN='[global]\n   workgroup = TESTE\n   server role = standalone server\n\n[dados]\n   path = /tmp\n'
+# servidor já preparado: com o log de autenticação (tarefa 3.0) do sandbox
+SMB_MIN="[global]\n   workgroup = TESTE\n   server role = standalone server\n   log level = 0 auth_json_audit:3@$AREIA/debkit-auth.json\n\n[dados]\n   path = /tmp\n"
 smb_teste() { printf '%b' "$1" > "$AREIA/smb.conf"; isolar_smb_conf "$AREIA/smb.conf"; rm -rf "$AREIA/conf-bkp"; : > "$AREIA/reloads"; }
 efetivo() { testparm -s "$AREIA/smb.conf" 2>/dev/null; }
 estado() { h "debkit_samba_homes_estado"; }
