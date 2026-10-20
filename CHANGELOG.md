@@ -5,11 +5,6 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ## [Não lançado]
 
-### Corrigido
-- Listar compartilhamentos: os alertas de convidado, "sem valid users" e
-  "fora do padrão" saíam repetidos na mesma linha (com a pasta no lugar do
-  nome).
-
 ### Alterado
 - Remover um grupo usado no `smb.conf` agora é recusado (antes era só um
   aviso): troque o grupo do compartilhamento ou remova-o antes.
@@ -37,6 +32,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   backup é 600).
 
 ### Corrigido
+- Listar compartilhamentos: os alertas de convidado, "sem valid users" e
+  "fora do padrão" saíam repetidos na mesma linha (com a pasta no lugar do
+  nome).
 - **Segurança:** a preparação instalava o Samba com os pacotes
   "recomendados" do apt, que trazem o `samba-ad-dc` e o `winbind`; o
   `pam_winbind` entrava no PAM e aceitava a senha do Samba na autenticação
