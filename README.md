@@ -20,13 +20,12 @@ mostra o que vai acontecer, pede **uma** confirmação, confere o resultado
 e **desfaz** se algo der errado no meio.
 
 O primeiro módulo, **samba**, gerencia um servidor de arquivos completo:
-usuários, grupos, pastas pessoais e, na próxima fase, compartilhamentos e
-permissões.
+usuários, grupos, pastas pessoais, compartilhamentos e permissões.
 
 > [!WARNING]
 > **Em desenvolvimento — ainda não use em produção.**
-> Fases 0 (fundação) e 1 (usuários e grupos) concluídas; a Fase 2
-> (compartilhamentos) está começando. Veja o [roteiro](#roteiro).
+> Fases 0 (fundação), 1 (usuários e grupos) e 2 (compartilhamentos)
+> concluídas. Veja o [roteiro](#roteiro).
 
 ## Por que o debkit
 
@@ -96,8 +95,8 @@ Samba
       ├── Trocar o grupo de um compartilhamento
       ├── Ajustar as permissões do conteúdo
       ├── Remover compartilhamento (os arquivos ficam)
+      ├── Trazer um compartilhamento feito à mão para o padrão
       └── Pastas pessoais: base e compartilhamento [homes]
-          (permissões e remover: próximas tarefas da Fase 2)
 ```
 
 Listar usuários (exemplo com dados fictícios):
@@ -120,7 +119,7 @@ Listar usuários (exemplo com dados fictícios):
 | **Usuários** | criar (dois tipos de conta, nome completo, grupos, pasta pessoal), listar, trocar senha, excluir, verificar e corrigir contas |
 | **Grupos** | criar, listar, adicionar/remover membros com efeito imediato, remover |
 | **Pastas pessoais** | no disco de dados (backup junto com o resto), na criação ou depois, e o compartilhamento `[homes]` |
-| **Compartilhamentos** | listar (inclusive os feitos à mão, com alertas), criar vinculado a um grupo, cujos membros têm acesso total (pasta em `/mnt` ou `/srv`), trocar o grupo, ajustar as permissões do conteúdo e remover (os arquivos ficam no disco) |
+| **Compartilhamentos** | listar (inclusive os feitos à mão, com alertas), criar vinculado a um grupo, cujos membros têm acesso total (pasta em `/mnt` ou `/srv`), trocar o grupo, ajustar as permissões do conteúdo, remover (os arquivos ficam no disco) e trazer os feitos à mão para o padrão |
 
 ## Instalação (para testar)
 
@@ -165,7 +164,7 @@ sudo DEBKIT_TESTE_REAL=1 tests/run.sh t13b_grupos_real.sh   # uma prova real
 |---|---|---|
 | 0. Fundação | detecção e preparação do ambiente, backups, proteção SSH, firewall | ✅ |
 | 1. Usuários e grupos | usuários, pastas pessoais, grupos, consistência Linux x Samba | ✅ |
-| 2. Compartilhamentos | criar, listar, permissões de pasta, remover | 🚧 |
+| 2. Compartilhamentos | criar, listar, permissões de pasta, remover, os já existentes | ✅ |
 | 3. Diagnóstico | falhas de login, sessões ativas, saúde do Samba, auditoria | ⏳ |
 | 4. Publicação | comandos diretos, instalador e desinstalação, inglês, CI | ⏳ |
 

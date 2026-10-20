@@ -63,7 +63,7 @@ igual "0 0 700" "$(stat -c '%u %g %a' "$T/a")" "root:root 0700, sem setgid"
 igual "$(id -u dkt_r1) $GA 660 x" "$(stat -c '%u %g %a' "$T/a/doc.txt") $(cat "$T/a/doc.txt")" "arquivo intacto"
 caso "remover: sessões de quem tinha o acesso (membros e grupo principal) refeitas"
 contem "RECONECTAR: dkt_r1 dkt_r2" "$saida"; nao_contem "dkt_r3" "$(grep RECONECTAR <<< "$saida")"
-contem "shr_remover nome=dkt-a pasta=$T/a grupo=dkt_ra resultado=ok" "$(LOG)"
+contem "shr_remover nome=dkt-a pasta=$T/a acesso=@dkt_ra resultado=ok" "$(LOG)"
 caso "remover: o grupo deixa de ser usado e pode ser removido"
 igual "" "$(p "debkit_samba_grupo_usos dkt_ra")"
 caso "criar de novo com a mesma pasta: volta para o grupo"
@@ -116,17 +116,17 @@ cat >> "$AREIA/smb.conf" <<EOF
    valid users = @dkt_ra
    read only = no
 EOF
-caso "remover: recusa o que não está no padrão, antes de mexer em qualquer coisa"
+caso "remover: recusa [homes], [global], [printers] e o que não existe, antes de mexer em qualquer coisa"
 md5=$(md5sum < "$AREIA/smb.conf")
-for n in dkt-dois dkt-sem-pasta homes global nao_existe ""; do
-    contem "não está no padrão do debkit" "$(remover "$n")" "share $n"
+for n in homes global printers nao_existe ""; do
+    contem "não existe" "$(remover "$n")" "share $n"
 done
 igual "$md5" "$(md5sum < "$AREIA/smb.conf")" "smb.conf intacto"
 caso "remover: conferência falha - nada muda"
 saida=$(remover dkt-a "debkit_shr_conferir_remover() { return 1; };")
 contem "RC=1" "$saida"; contem "a alteração do smb.conf não foi feita" "$saida"
 igual "$md5" "$(md5sum < "$AREIA/smb.conf")"; igual "0 $GA 2770" "$(stat -c '%u %g %a' "$T/a")" "pasta intacta"
-contem "shr_remover nome=dkt-a pasta=$T/a grupo=dkt_ra resultado=falha" "$(LOG)"
+contem "shr_remover nome=dkt-a pasta=$T/a acesso=@dkt_ra resultado=falha" "$(LOG)"
 caso "remover: reload falha - smb.conf restaurado e pasta intacta"
 saida=$(remover dkt-a "debkit_samba_recarregar() { return 1; };")
 contem "RC=1" "$saida"; contem "restaurado do backup" "$saida"
@@ -144,24 +144,24 @@ chattr -i "$T/a"
 # Telas
 # ════════════════════════════════════════════════════════════════════════════
 tela() { local f="$1"; shift; printf '%s\n' "$@" | p "$f; echo RC=\$?"; }
-idx_s() { p "debkit_shr_gerenciaveis" | cut -d'|' -f1 | grep -nx -- "$1" | cut -d: -f1; }
+idx_s() { p "debkit_shr_dados" | cut -d'|' -f1 | grep -nx -- "$1" | cut -d: -f1; }
 contem "RC=0" "$(criar dkt-e "$T/base/dkt-e" dkt_ra)"
 caso "tela remover: lista, resumo (pasta que fica, quem perde) e 'n'/Enter cancelam"
 saida=$(tela debkit_shr_tela_remover "$(idx_s dkt-e)" n "")
-contem "dkt-e (grupo dkt_ra, $T/base/dkt-e)" "$saida"; contem "Compartilhamento: dkt-e" "$saida"
+contem "dkt-e (acesso: dkt_ra; $T/base/dkt-e)" "$saida"; contem "Compartilhamento: dkt-e" "$saida"
 contem "Pasta: $T/base/dkt-e (os arquivos ficam no disco; só o root acessa)" "$saida"
-contem "Perdem o acesso (membros de dkt_ra): dkt_r1, dkt_r2" "$saida"; contem "Cancelado" "$saida"
+contem "Perdem o acesso: dkt_r1, dkt_r2" "$saida"; contem "Cancelado" "$saida"
 contem "Cancelado" "$(tela debkit_shr_tela_remover "")"
 contem "[dkt-e]" "$(efetivo)" "continua"
 caso "tela remover: 's' remove"
 saida=$(tela debkit_shr_tela_remover "$(idx_s dkt-e)" s "")
 contem "Compartilhamento dkt-e removido" "$saida"; nao_contem "[dkt-e]" "$(efetivo)"
 igual "0 0 700" "$(stat -c '%u %g %a' "$T/base/dkt-e")"
-caso "tela: nenhum compartilhamento no padrão"
-contem "Nenhum compartilhamento no padrão" "$(tela "debkit_shr_gerenciaveis() { :; }; debkit_shr_tela_remover")"
+caso "tela: nenhum compartilhamento"
+contem "Nenhum compartilhamento no servidor" "$(tela "debkit_shr_dados() { :; }; debkit_shr_tela_remover")"
 caso "menu Samba > Compartilhamentos > 5) Remover"
 saida=$(pty 0.6 "bash $DEBKIT" 1 3 5 "" "" 0 0 0)
-contem "5) Remover um compartilhamento" "$saida"; contem "6) Pastas pessoais" "$saida"; contem "Remover um compartilhamento" "$saida"
+contem "5) Remover um compartilhamento" "$saida"; contem "6) Trazer um compartilhamento para o padrão" "$saida"; contem "7) Pastas pessoais" "$saida"; contem "Remover um compartilhamento" "$saida"
 caso "inglês"
 contem "Share dkt-c removed" "$(p "DEBKIT_IDIOMA=en; DEBKIT_S_NOME=dkt-c; debkit_shr_remover")"
 

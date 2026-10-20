@@ -342,6 +342,41 @@ pasta devolve a pasta ao grupo. Prova real (`t19b`): a sessão aberta perde
 o acesso na hora, conexão nova é recusada, os arquivos ficam e outro
 compartilhamento continua funcionando.
 
+**Como ficou a 2.4 (os já existentes; Compartilhamentos → 6 "Trazer para
+o padrão"; Pastas pessoais virou 7):**
+
+1. **Quais podem ser trazidos para o padrão:** os que não estão no padrão
+   (vários grupos, usuários, somente leitura, sem `valid users`, `guest
+   ok`, um grupo que o debkit não gerencia, ex.: `@users`) e cuja pasta
+   pode mudar: existe dentro de `/mnt`/`/srv`, sem se misturar com as
+   pastas pessoais nem com outro compartilhamento. Os outros (pasta fora
+   de `/mnt`/`/srv`, inexistente, com `%` ou de outro compartilhamento) só
+   podem ser removidos.
+2. **Trazer para o padrão:** escolhe um grupo gerenciado; o resumo mostra
+   o acesso de antes e o novo, quem perde o acesso, quem está conectado, as
+   linhas do smb.conf e o conteúdo; UMA confirmação s/n. Na seção, saem as
+   linhas que o debkit gerencia - acesso (`valid users`, `write list`,
+   `read list`, `read only` e sinônimos, `force group`), convidado (`guest
+   ok`/`public`, `guest only`), permissões dos arquivos novos (`create
+   mask`/`mode`, `directory mask`/`mode`, `force create mode`, `force
+   directory mode`), `force user`, `admin users` e `invalid users` - e
+   entram as do padrão (as mesmas de criar). O resto da seção fica (ex.:
+   `comment`, `browseable`, `veto files`). A conferência exige que só
+   essas linhas mudem. Depois o conteúdo passa para o grupo e as sessões
+   de todos que tinham o acesso são refeitas (quem perde e quem passa de
+   leitura para escrita; "qualquer usuário" = todas as contas do Samba).
+3. **Remover** (a tela Remover lista todos, inclusive os feitos à mão):
+   a pasta só passa a `root:root` `0700` se puder mudar (item 1); senão
+   fica como está e o debkit avisa. A decisão é tomada antes de mexer no
+   smb.conf (com duas seções na mesma pasta, remover uma não tranca a
+   pasta da outra).
+
+Prova real (`t20b`): três compartilhamentos escritos à mão no smb.conf
+real; trazer um para o padrão corta na hora a sessão aberta de quem perde
+o acesso, e o grupo passa a gravar e alterar os arquivos que já existiam;
+remover outro que divide a pasta com o terceiro não muda a pasta, e o
+terceiro continua funcionando.
+
 ## 4. O que o debkit gerencia
 
 Decisão de 15/10/2026 (substitui a regra anterior "só gerencia o que ele
@@ -475,7 +510,7 @@ debkit/
 |---|---|
 | 0. Fundação | 0.1 esqueleto ✔ · 0.2 detecção do ambiente ✔ · 0.3 preparação do ambiente e backups ✔ · 0.4 proteção SSH ✔ · 0.5 firewall ✔ |
 | 1. Usuários e grupos | 1.0 reestruturar ✔ (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário ✔ (tipos, nome completo, grupos; sem home) · 1.1b pasta pessoal ✔ (base no disco de dados, na criação ou depois, `[homes]`) · listar ✔ · trocar senha ✔ · grupos ✔ (criar, remover, entrar/sair) · menu em submenus ✔ · excluir usuário ✔ · consistência Linux x Samba ✔ · ~~desativar/reativar~~ (adiado, 3.4) |
-| 2. Compartilhamentos | decisões na seção 3.7 · 2.0 `map to guest = never` ✔ · 2.1 criar + listar ✔ · 2.2 grupo e permissões (trocar o grupo, ajustar o conteúdo) ✔ · 2.3 remover ✔ · 2.4 os já existentes |
+| 2. Compartilhamentos | decisões na seção 3.7 · 2.0 `map to guest = never` ✔ · 2.1 criar + listar ✔ · 2.2 grupo e permissões (trocar o grupo, ajustar o conteúdo) ✔ · 2.3 remover ✔ · 2.4 os já existentes ✔ |
 | 3. Diagnóstico | falhas de login, sessões ativas, saúde do Samba, consulta à auditoria |
 | 4. Publicação | comandos diretos completos, `install.sh`, **desinstalação**, README, mensagens em inglês, testes automáticos e CI |
 
@@ -513,7 +548,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 
 ## 11. Situação atual e próximos passos
 
-*Atualizado em 20/10/2026 (2.3).*
+*Atualizado em 20/10/2026 (2.4; Fase 2 concluída).*
 
 - Nome decidido: **debkit**; renomeação gsb → debkit feita (arquivos,
   variáveis, funções, grupo `debkit_usuarios`, `/etc/debkit`, testes). As
@@ -564,6 +599,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | Compartilhamentos: um grupo só, com acesso total | `92ebf2f` |
 | 2.2 Compartilhamentos: trocar o grupo e ajustar o conteúdo | `b11457a` |
 | 2.3 Compartilhamentos: remover | `fc4a104` |
+| 2.4 Compartilhamentos já existentes: trazer para o padrão ou remover | (este commit) |
 
 **Próximos passos:**
 
@@ -663,8 +699,10 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
     3.7). Remover grupo usado no smb.conf passa a ser recusado.
 23. ✔ 2.3 remover compartilhamento (Samba → Compartilhamentos → 5; seção
     3.7).
-24. **Próxima tarefa:** 2.4 os já existentes (feitos à mão, fora do padrão:
-    trazer para o padrão ou remover; seção 3.7, item 6).
+24. ✔ 2.4 os já existentes (Samba → Compartilhamentos → 6 e 5; seção 3.7).
+    **Fase 2 concluída.**
+25. **Próximo passo:** decidir a Fase 3 (diagnóstico: falhas de login,
+    sessões ativas, saúde do Samba, consulta à auditoria) com o Thiago.
 
 **VM limpa de novo:** `dev/vmnova.sh` → (reinicia) → `dev/vmprepara.sh` →
 `./debkit --preparar` → testes.
@@ -711,7 +749,9 @@ compartilhamento: 1658 + 188 (sem os casos de somente leitura; o `t17` usa
 só as seções padrão da cópia do smb.conf, para os compartilhamentos de
 demonstração não interferirem). Com a tarefa 2.2: 1794 + 225 (`t18_permissoes.sh` e
 `t18b_permissoes_real.sh`). Com a tarefa 2.3: 1865 + 251 (`t19_remover.sh` e
-`t19b_remover_real.sh`). Os testes também acusam se alguém usar o debkit na VM enquanto rodam (o
+`t19b_remover_real.sh`). Com a tarefa 2.4: 1967 + 279 (`t20_existentes.sh` e
+`t20b_existentes_real.sh`, que escreve compartilhamentos à mão no smb.conf
+real e o devolve idêntico). Os testes também acusam se alguém usar o debkit na VM enquanto rodam (o
 log e a trava reais mudam): não usar o debkit durante a suíte.
 
 Os testes funcionam com o servidor preparado ou não: em vez de exigir que

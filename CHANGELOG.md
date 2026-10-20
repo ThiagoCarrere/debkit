@@ -63,8 +63,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   procura o `include` pelo caminho exato da areia.
 
 ### Adicionado
-- **Compartilhamentos: remover** (Samba → Compartilhamentos → 5; Pastas
-  pessoais virou 6). Tira a seção do `smb.conf` (edição segura, conferida;
+- **Compartilhamentos já existentes** (feitos à mão, fora do padrão):
+  Samba → Compartilhamentos → 6) Trazer para o padrão (Pastas pessoais
+  virou 7). Escolhe um grupo; no `smb.conf` mudam só as linhas de acesso,
+  convidado, permissões dos arquivos novos, `force user`, `admin users` e
+  `invalid users` (o resto da seção fica); o conteúdo passa para o grupo
+  e as sessões de quem tinha o acesso são refeitas. Só para os que têm a
+  pasta dentro de `/mnt` ou `/srv`, só deles.
+- Remover compartilhamento vale para todos, inclusive os feitos à mão; a
+  pasta fora de `/mnt` e `/srv`, inexistente ou usada por outro
+  compartilhamento não muda.
+- **Compartilhamentos: remover** (Samba → Compartilhamentos → 5). Tira a seção do `smb.conf` (edição segura, conferida;
   sai também o comentário do debkit), os arquivos ficam no disco e a pasta
   passa a ser só do root (`root:root` `0700`); as sessões de quem tinha o
   acesso são refeitas. Apagar dados não faz parte da função.

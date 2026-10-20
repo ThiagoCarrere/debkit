@@ -501,13 +501,28 @@ MSG_pt_BR+=(
     [shr.ajustar_falhou]="Não foi possível ajustar tudo em %s: %d item(ns) ainda fora do padrão. Rode de novo: Compartilhamentos > Ajustar as permissões do conteúdo."
     [shr.remover]="Remover um compartilhamento"
     [shr.r_pasta_fica]="Pasta: %s (os arquivos ficam no disco; só o root acessa)"
-    [shr.aviso_perdem_todos]="Perdem o acesso (membros de %s): %s"
     [shr.p_confirmar_remover]="Remover o compartilhamento %s?"
     [shr.removendo]="Removendo o compartilhamento %s..."
     [shr.removido]="Compartilhamento %s removido."
     [shr.pasta_mantida]="Os arquivos continuam em %s (pasta do root, sem acesso pela rede). Para usar de novo, crie um compartilhamento com essa pasta."
     [shr.remover_falhou]="Não foi possível remover o compartilhamento %s: %s"
     [shr.trancar_falhou]="O compartilhamento %s saiu do smb.conf, mas não foi possível deixar a pasta %s só para o root: confira à mão."
+    [shr.r_pasta_intocada]="Pasta: %s (não muda: fora de /mnt e /srv, inexistente ou usada por outro compartilhamento)"
+    [shr.pasta_intocada]="A pasta %s não foi alterada (fora de /mnt e /srv, inexistente ou usada por outro compartilhamento)."
+    [shr.aviso_perdem_lista]="Perdem o acesso: %s"
+    [shr.item_acesso]="%s (acesso: %s; %s)"
+    [shr.padronizar]="Trazer um compartilhamento para o padrão"
+    [shr.nenhum_padronizavel]="Nenhum compartilhamento fora do padrão pode ser trazido para ele (a pasta precisa existir dentro de /mnt ou /srv, só deste compartilhamento). Os outros podem ser removidos (Compartilhamentos > Remover)."
+    [shr.acesso_atual]="Acesso atual: %s (pasta %s)"
+    [shr.p_grupo_padrao]="Grupo com acesso total (número; Enter cancela): "
+    [shr.r_padrao]="Acesso: %s -> %s (acesso total)"
+    [shr.explica_padrao]="No smb.conf, a seção fica com valid users = @%s, read only = no, force group = %s, create mask = 0660 e directory mask = 2770; saem write list, read list, guest ok, force user, admin users e invalid users. O resto da seção não muda."
+    [shr.p_confirmar_padrao]="Trazer %s para o padrão (grupo %s)?"
+    [shr.padronizando]="Trazendo o compartilhamento %s para o padrão..."
+    [shr.padronizado]="Compartilhamento %s no padrão: grupo %s com acesso total."
+    [shr.padrao_falhou]="Não foi possível trazer o compartilhamento %s para o padrão: %s"
+    [shr.nao_padronizavel]="%s não existe, já está no padrão ou a pasta não pode ser usada (precisa existir dentro de /mnt ou /srv, só deste compartilhamento)."
+    [shr.nao_existe]="%s não existe."
     [samba.consistencia]="Verificar e corrigir contas (Linux x Samba)"
     [cns.titulo]="Verificar e corrigir contas"
     [cns.tudo_ok]="Tudo certo: todas as contas estão no Linux e no Samba, protegidas como o tipo pede."
@@ -729,13 +744,28 @@ MSG_en+=(
     [shr.ajustar_falhou]="Could not adjust everything in %s: %d item(s) still out of the pattern. Run it again: Shares > Adjust the content permissions."
     [shr.remover]="Remove a share"
     [shr.r_pasta_fica]="Folder: %s (the files stay on disk; only root has access)"
-    [shr.aviso_perdem_todos]="Lose access (members of %s): %s"
     [shr.p_confirmar_remover]="Remove share %s?"
     [shr.removendo]="Removing share %s..."
     [shr.removido]="Share %s removed."
     [shr.pasta_mantida]="The files remain in %s (root folder, no network access). To use them again, create a share with this folder."
     [shr.remover_falhou]="Could not remove share %s: %s"
     [shr.trancar_falhou]="Share %s left smb.conf, but folder %s could not be restricted to root: check it by hand."
+    [shr.r_pasta_intocada]="Folder: %s (unchanged: outside /mnt and /srv, missing or used by another share)"
+    [shr.pasta_intocada]="Folder %s was not changed (outside /mnt and /srv, missing or used by another share)."
+    [shr.aviso_perdem_lista]="Lose access: %s"
+    [shr.item_acesso]="%s (access: %s; %s)"
+    [shr.padronizar]="Bring a share into the pattern"
+    [shr.nenhum_padronizavel]="No share out of the pattern can be brought into it (the folder must exist inside /mnt or /srv, used only by this share). The others can be removed (Shares > Remove)."
+    [shr.acesso_atual]="Current access: %s (folder %s)"
+    [shr.p_grupo_padrao]="Group with full access (number; Enter cancels): "
+    [shr.r_padrao]="Access: %s -> %s (full access)"
+    [shr.explica_padrao]="In smb.conf, the section gets valid users = @%s, read only = no, force group = %s, create mask = 0660 and directory mask = 2770; write list, read list, guest ok, force user, admin users and invalid users are removed. The rest of the section does not change."
+    [shr.p_confirmar_padrao]="Bring %s into the pattern (group %s)?"
+    [shr.padronizando]="Bringing share %s into the pattern..."
+    [shr.padronizado]="Share %s in the pattern: group %s with full access."
+    [shr.padrao_falhou]="Could not bring share %s into the pattern: %s"
+    [shr.nao_padronizavel]="%s does not exist, is already in the pattern or its folder cannot be used (it must exist inside /mnt or /srv, used only by this share)."
+    [shr.nao_existe]="%s does not exist."
     [samba.consistencia]="Check and fix accounts (Linux x Samba)"
     [cns.titulo]="Check and fix accounts"
     [cns.tudo_ok]="All good: every account is in Linux and in Samba, protected as its type requires."
@@ -2922,6 +2952,14 @@ debkit_shr_rotulo() {
     printf '%s' "${r:-—}"
 }
 
+# Quem acessa, legível: debkit_shr_rotulo_acesso <escrita> <leitura>
+debkit_shr_rotulo_acesso() {
+    local acesso
+    acesso=$(debkit_shr_rotulo "$1")
+    [ -n "$2" ] && acesso="${1:+$acesso, }$(debkit_shr_rotulo "$2" | sed "s/, / ($(t shr.so_leitura)), /g; s/\$/ ($(t shr.so_leitura))/")"
+    printf '%s' "$acesso"
+}
+
 debkit_shr_listar() {
     local l nome pasta esc lei alerta acesso wn=4 wp=5 a
     local -a linhas=() alertas=()
@@ -2937,8 +2975,7 @@ debkit_shr_listar() {
         "$(t shr.c_grupo)" "$C_RESET"
     for l in "${linhas[@]}"; do
         IFS='|' read -r nome pasta esc lei alerta <<< "$l"
-        acesso=$(debkit_shr_rotulo "$esc")
-        [ -n "$lei" ] && acesso="${esc:+$acesso, }$(debkit_shr_rotulo "$lei" | sed "s/, / ($(t shr.so_leitura)), /g; s/\$/ ($(t shr.so_leitura))/")"
+        acesso=$(debkit_shr_rotulo_acesso "$esc" "$lei")
         printf '  %s  %s  %s\n' "$(debkit_pad "$nome" "$wn")" "$(debkit_pad "${pasta:-—}" "$wp")" "$acesso"
         # só o sem_pasta mostra a pasta (argumento a mais repetiria a mensagem)
         for a in ${alerta//,/ }; do
@@ -3040,16 +3077,22 @@ debkit_shr_ajustar_conteudo() {
 # writeable/writable/write ok = o contrário de read only)
 DEBKIT_SHR_ACESSO=" validusers forcegroup group writelist readlist readonly writeable writable writeok "
 
+# Linhas que trazer para o padrão substitui: as de acesso, convidado,
+# permissões dos arquivos novos, force user, admin users e invalid users
+# (public = guest ok; only guest = guest only; create mode = create mask;
+# directory mode = directory mask)
+DEBKIT_SHR_PADRAO="$DEBKIT_SHR_ACESSO guestok public guestonly onlyguest createmask createmode directorymask directorymode forcecreatemode forcedirectorymode forceuser adminusers invalidusers "
+
 # Filtro: na seção DEBKIT_S_NOME (sem diferenciar maiúsculas), tira as
-# linhas de acesso (com as continuações "\") e põe, logo depois do
-# cabeçalho, valid users = @<grupo>, read only = no e force group = <grupo>
-debkit_shr_filtro_grupo() {
-    awk -v s="${DEBKIT_S_NOME,,}" -v g="$DEBKIT_S_GRUPO" -v acesso="$DEBKIT_SHR_ACESSO" '
+# linhas indicadas (com as continuações "\") e põe as novas logo depois do
+# cabeçalho. debkit_shr_filtro_linhas <nomes, como em DEBKIT_SHR_ACESSO> <linhas novas>
+debkit_shr_filtro_linhas() {
+    DEBKIT_SHR_NOVAS="$2" awk -v s="${DEBKIT_S_NOME,,}" -v acesso="$1" '
         tira { tira = /\\$/; next }
         segue { segue = /\\$/; print; next }
         /^[ \t]*\[/ {
             h = $0; sub(/^[ \t]*\[[ \t]*/, "", h); sub(/[ \t]*\].*$/, "", h); em = (tolower(h) == s); print
-            if (em) printf "   valid users = @%s\n   read only = no\n   force group = %s\n", g, g
+            if (em) printf "%s\n", ENVIRON["DEBKIT_SHR_NOVAS"]
             next
         }
         em && /^[ \t]*[^#; \t]/ && /=/ {
@@ -3057,6 +3100,12 @@ debkit_shr_filtro_grupo() {
             if (index(acesso, " " tolower(p) " ")) { tira = /\\$/; next }
         }
         { segue = /\\$/; print }'
+}
+
+# Troca de grupo: valid users = @<grupo>, read only = no e force group
+debkit_shr_filtro_grupo() {
+    debkit_shr_filtro_linhas "$DEBKIT_SHR_ACESSO" \
+        "$(printf '   valid users = @%s\n   read only = no\n   force group = %s' "$DEBKIT_S_GRUPO" "$DEBKIT_S_GRUPO")"
 }
 
 # Conferência: fora a seção, nada mudou; na seção, só as linhas de acesso
@@ -3073,11 +3122,20 @@ debkit_shr_conferir_grupo() {
 # Quem perde o acesso na troca: membros (e quem tem como principal) do
 # grupo antigo que não estão no novo. debkit_shr_perdem <antigo> <novo>
 debkit_shr_perdem() {
-    local u
-    while read -r u; do
+    local -a antes=()
+    mapfile -t antes < <(debkit_shr_acesso "$1")
+    debkit_shr_fora_do_grupo "$2" "${antes[@]}"
+}
+
+# Dos usuários indicados, os que não estão no grupo:
+# debkit_shr_fora_do_grupo <grupo> <usuário>...
+debkit_shr_fora_do_grupo() {
+    local g="$1" u
+    shift
+    for u in "$@"; do
         [ -n "$u" ] || continue
-        id -nG -- "$u" 2>/dev/null | tr ' ' '\n' | grep -qxF -- "$2" || echo "$u"
-    done < <({ debkit_grupo_membros "$1"; debkit_grupo_principais "$1"; } | sort -u)
+        id -nG -- "$u" 2>/dev/null | tr ' ' '\n' | grep -qxF -- "$g" || echo "$u"
+    done
 }
 
 # Entrada: DEBKIT_S_NOME (compartilhamento no padrão) e DEBKIT_S_GRUPO (o
@@ -3153,44 +3211,147 @@ debkit_shr_acesso() {
     { debkit_grupo_membros "$1"; debkit_grupo_principais "$1"; } | sed '/^$/d' | sort -u
 }
 
-# Entrada: DEBKIT_S_NOME (compartilhamento no padrão). Tira a seção do
-# smb.conf (edição segura; confere e, se não bater, restaura), deixa a
-# pasta root:root 0700 (decisão de 19/10/2026: os arquivos ficam, só o root
-# acessa; apagar dados não faz parte da função) e refaz as sessões de quem
-# tinha o acesso.
+# Usuários com acesso por uma lista de debkit_shr_dados ("@g" = membros e
+# quem tem g como principal; "*" = todas as contas do Samba; o resto = o
+# próprio usuário). debkit_shr_usuarios <lista,lista>
+debkit_shr_usuarios() {
+    local x
+    local -a itens=()
+    IFS=, read -ra itens <<< "$1"
+    for x in "${itens[@]}"; do
+        case "$x" in
+            "")  ;;
+            "*") debkit_pdbedit -L 2>/dev/null | cut -d: -f1 ;;
+            @*)  debkit_shr_acesso "${x#@}" ;;
+            *)   echo "$x" ;;
+        esac
+    done | sed '/^$/d' | sort -u
+}
+
+# A pasta do compartilhamento pode mudar (trancar ao remover)? Definida,
+# sem %, existente e segura. debkit_shr_pasta_mexivel <pasta>
+debkit_shr_pasta_mexivel() {
+    [ -n "$1" ] && [[ "$1" != *%* ]] && debkit_shr_pasta_segura "$1"
+}
+
+# Entrada: DEBKIT_S_NOME (qualquer compartilhamento, menos [homes],
+# [printers] e [print$]; decisão de 19/10/2026: inclusive os feitos à mão,
+# tarefa 2.4). Tira a seção do smb.conf (edição segura; confere e, se não
+# bater, restaura), deixa a pasta root:root 0700 (os arquivos ficam, só o
+# root acessa; apagar dados não faz parte da função) e refaz as sessões de
+# quem tinha o acesso. A pasta fora de /mnt e /srv, inexistente ou usada
+# por outro compartilhamento não muda (decidido antes de mexer no smb.conf).
 debkit_shr_remover() {
-    local nome="$DEBKIT_S_NOME" linha pasta grupo rc=0
+    local nome="$DEBKIT_S_NOME" linha pasta esc lei acesso seguro=0 rc=0
     local -a afetados=()
-    linha=$(debkit_shr_gerenciaveis | awk -F'|' -v n="$nome" '$1 == n')
+    linha=$(debkit_shr_dados | awk -F'|' -v n="$nome" '$1 == n')
     if [ -z "$nome" ] || [ -z "$linha" ]; then
-        msg_erro "$(t shr.remover_falhou "$nome" "$(t shr.nao_gerenciavel "$nome")")"; return 1
+        msg_erro "$(t shr.remover_falhou "$nome" "$(t shr.nao_existe "$nome")")"; return 1
     fi
-    IFS='|' read -r _ pasta grupo <<< "$linha"
-    mapfile -t afetados < <(debkit_shr_acesso "$grupo")
+    IFS='|' read -r _ pasta esc lei _ <<< "$linha"
+    acesso="${esc:-—}${lei:+;leitura:$lei}"
+    debkit_shr_pasta_mexivel "$pasta" && seguro=1
+    mapfile -t afetados < <(debkit_shr_usuarios "$esc,$lei")
     msg_info "$(t shr.removendo "$nome")"
     if ! debkit_smbconf_editar debkit_shr_filtro_remover debkit_shr_conferir_remover; then
         msg_erro "$(t shr.remover_falhou "$nome" "$(t shr.f_smbconf)")"
-        debkit_auditar shr_remover "nome=$nome pasta=$pasta grupo=$grupo resultado=falha"
+        debkit_auditar shr_remover "nome=$nome pasta=$pasta acesso=$acesso resultado=falha"
         return 1
     fi
     if debkit_shr_secoes | grep -qixF -- "$nome"; then
         debkit_smbconf_restaurar
         msg_erro "$(t shr.remover_falhou "$nome" "$(t usr.f_conferencia smb.conf)")"
-        debkit_auditar shr_remover "nome=$nome pasta=$pasta grupo=$grupo resultado=falha"
+        debkit_auditar shr_remover "nome=$nome pasta=$pasta acesso=$acesso resultado=falha"
         return 1
     fi
-    # chmod com 5 dígitos: tira também o setgid da pasta
-    chown 0:0 -- "$pasta" 2>/dev/null; chmod 00700 -- "$pasta" 2>/dev/null
-    if [ "$(stat -c '%u %g %a' -- "$pasta" 2>/dev/null)" != "0 0 700" ]; then
-        msg_erro "$(t shr.trancar_falhou "$nome" "$pasta")"
-        debkit_auditar shr_remover "nome=$nome pasta=$pasta grupo=$grupo resultado=pasta_falhou"
-        rc=1
-    else
-        debkit_auditar shr_remover "nome=$nome pasta=$pasta grupo=$grupo resultado=ok"
+    if [ "$seguro" -eq 0 ]; then
+        debkit_auditar shr_remover "nome=$nome pasta=$pasta acesso=$acesso resultado=ok pasta=intocada"
         msg_ok "$(t shr.removido "$nome")"
-        msg_info "$(t shr.pasta_mantida "$pasta")"
+        msg_info "$(t shr.pasta_intocada "${pasta:-—}")"
+    else
+        # chmod com 5 dígitos: tira também o setgid da pasta
+        chown 0:0 -- "$pasta" 2>/dev/null; chmod 00700 -- "$pasta" 2>/dev/null
+        if [ "$(stat -c '%u %g %a' -- "$pasta" 2>/dev/null)" != "0 0 700" ]; then
+            msg_erro "$(t shr.trancar_falhou "$nome" "$pasta")"
+            debkit_auditar shr_remover "nome=$nome pasta=$pasta acesso=$acesso resultado=pasta_falhou"
+            rc=1
+        else
+            debkit_auditar shr_remover "nome=$nome pasta=$pasta acesso=$acesso resultado=ok"
+            msg_ok "$(t shr.removido "$nome")"
+            msg_info "$(t shr.pasta_mantida "$pasta")"
+        fi
     fi
     debkit_samba_reconectar "${afetados[@]}" || rc=1
+    return "$rc"
+}
+
+# ── Compartilhamentos: trazer para o padrão (os já existentes) ──────────────
+# Os fora do padrão que podem ser trazidos para ele (a pasta pode mudar;
+# inclusive os de um grupo só que o debkit não gerencia, ex.: @users):
+# nome|pasta|escrita|leitura|alertas
+debkit_shr_padronizaveis() {
+    local l nome pasta
+    local -A ger=()
+    while IFS='|' read -r nome _; do ger["$nome"]=1; done < <(debkit_shr_gerenciaveis)
+    while IFS= read -r l; do
+        IFS='|' read -r nome pasta _ <<< "$l"
+        [ -n "${ger[$nome]:-}" ] && continue
+        debkit_shr_pasta_mexivel "$pasta" && echo "$l"
+    done < <(debkit_shr_dados)
+}
+
+# Linhas novas do padrão (as mesmas do bloco de criar)
+debkit_shr_filtro_padrao() {
+    debkit_shr_filtro_linhas "$DEBKIT_SHR_PADRAO" "$(printf '   valid users = @%s\n   read only = no\n   force group = %s\n   create mask = 0660\n   directory mask = 2770' \
+        "$DEBKIT_S_GRUPO" "$DEBKIT_S_GRUPO")"
+}
+
+# Conferência: fora a seção, nada mudou; na seção, só as linhas substituídas
+# mudaram, e agora são exatamente as do padrão
+debkit_shr_conferir_padrao() {
+    local outras=$'^\t(valid users|force group|read only|write list|read list|guest ok|guest only|create mask|directory mask|force create mode|force directory mode|force user|admin users|invalid users) = '
+    cmp -s <(debkit_shr_sem_secao "$1" "$DEBKIT_S_NOME") <(debkit_shr_sem_secao "$2" "$DEBKIT_S_NOME") \
+        && cmp -s <(debkit_shr_secao_efetiva "$1" "$DEBKIT_S_NOME" | grep -vE "$outras") \
+                  <(debkit_shr_secao_efetiva "$2" "$DEBKIT_S_NOME" | grep -vE "$outras") \
+        && [ "$(debkit_shr_secao_efetiva "$2" "$DEBKIT_S_NOME" | grep -E "$outras" | LC_ALL=C sort)" == \
+             "$(printf '\tcreate mask = 0660\n\tdirectory mask = 02770\n\tforce group = %s\n\tread only = No\n\tvalid users = @%s' "$DEBKIT_S_GRUPO" "$DEBKIT_S_GRUPO")" ]
+}
+
+# Entrada: DEBKIT_S_NOME (fora do padrão, com a pasta podendo mudar) e
+# DEBKIT_S_GRUPO (gerenciado). Decisão de 19/10/2026 (seção 3.7, item 6):
+# mexe só nas linhas que o debkit gerencia (DEBKIT_SHR_PADRAO) e mantém o
+# resto da seção; passa o conteúdo para o grupo e refaz as sessões de quem
+# tinha o acesso (quem perde e quem passa de leitura para escrita).
+debkit_shr_padronizar() {
+    local nome="$DEBKIT_S_NOME" novo="$DEBKIT_S_GRUPO" linha pasta esc lei acesso rc=0
+    local -a antes=()
+    linha=$(debkit_shr_padronizaveis | awk -F'|' -v n="$nome" '$1 == n')
+    if [ -z "$nome" ] || [ -z "$linha" ]; then
+        msg_erro "$(t shr.padrao_falhou "$nome" "$(t shr.nao_padronizavel "$nome")")"; return 1
+    fi
+    IFS='|' read -r _ pasta esc lei _ <<< "$linha"
+    if [ -z "$novo" ]; then msg_erro "$(t shr.padrao_falhou "$nome" "$(t shr.sem_grupo)")"; return 1; fi
+    if ! debkit_grupo_gerenciado "$novo" || [[ ! "$novo" =~ ^[^[:space:],@+\&\"]+$ ]]; then
+        msg_erro "$(t shr.padrao_falhou "$nome" "$(t grp.nao_gerenciado "$novo")")"; return 1
+    fi
+    acesso="${esc:-—}${lei:+;leitura:$lei}"
+    mapfile -t antes < <(debkit_shr_usuarios "$esc,$lei")
+    msg_info "$(t shr.padronizando "$nome")"
+    if ! debkit_smbconf_editar debkit_shr_filtro_padrao debkit_shr_conferir_padrao; then
+        msg_erro "$(t shr.padrao_falhou "$nome" "$(t shr.f_smbconf)")"
+        debkit_auditar shr_padrao "nome=$nome antes=$acesso grupo=$novo resultado=falha"
+        return 1
+    fi
+    if [ "$(debkit_shr_gerenciaveis | awk -F'|' -v n="$nome" '$1 == n')" != "$nome|$pasta|$novo" ]; then
+        debkit_smbconf_restaurar
+        msg_erro "$(t shr.padrao_falhou "$nome" "$(t usr.f_conferencia smb.conf)")"
+        debkit_auditar shr_padrao "nome=$nome antes=$acesso grupo=$novo resultado=falha"
+        return 1
+    fi
+    debkit_auditar shr_padrao "nome=$nome antes=$acesso grupo=$novo resultado=ok"
+    msg_ok "$(t shr.padronizado "$nome" "$novo")"
+    debkit_shr_ajustar_conteudo "$pasta" "$novo" || rc=1
+    debkit_samba_reconectar "${antes[@]}" || rc=1
     return "$rc"
 }
 
@@ -3528,17 +3689,31 @@ debkit_shr_tela_criar() {
     return "$rc"
 }
 
-# Escolhe um compartilhamento no padrão: debkit_shr_escolher <variável da
-# linha nome|pasta|grupo>. Retorna 1 se não há nenhum ou cancelou.
+# Escolhe um compartilhamento: debkit_shr_escolher <variável da linha>
+# [gerenciaveis (padrão; nome|pasta|grupo) | dados | padronizaveis (as
+# linhas de debkit_shr_dados)]. Retorna 1 se não há nenhum ou cancelou.
 debkit_shr_escolher() {
     local -n _linha="$1"
-    local l n p g nome
+    local fonte="${2:-gerenciaveis}" l n p g e nome
     local -a linhas=() nomes=() rotulos=()
-    mapfile -t linhas < <(debkit_shr_gerenciaveis)
-    if [ ${#linhas[@]} -eq 0 ]; then msg_info "$(t shr.nenhum_gerenciavel)"; return 1; fi
+    mapfile -t linhas < <("debkit_shr_$fonte")
+    if [ ${#linhas[@]} -eq 0 ]; then
+        case "$fonte" in
+            dados)         msg_info "$(t shr.nenhum)" ;;
+            padronizaveis) msg_info "$(t shr.nenhum_padronizavel)" ;;
+            *)             msg_info "$(t shr.nenhum_gerenciavel)" ;;
+        esac
+        return 1
+    fi
     for l in "${linhas[@]}"; do
-        IFS='|' read -r n p g <<< "$l"
-        nomes+=("$n"); rotulos+=("$(t shr.item "$n" "$g" "$p")")
+        if [ "$fonte" == "gerenciaveis" ]; then
+            IFS='|' read -r n p g <<< "$l"
+            rotulos+=("$(t shr.item "$n" "$g" "$p")")
+        else
+            IFS='|' read -r n p e g _ <<< "$l"
+            rotulos+=("$(t shr.item_acesso "$n" "$(debkit_shr_rotulo_acesso "$e" "$g")" "${p:-—}")")
+        fi
+        nomes+=("$n")
     done
     echo "  $(t shr.titulo_lista)"
     debkit_numerar "${rotulos[@]}"
@@ -3617,25 +3792,66 @@ debkit_shr_tela_ajustar() {
 # Tela: compartilhamento, resumo (pasta que fica, quem perde o acesso, quem
 # está conectado) e UMA confirmação
 debkit_shr_tela_remover() {
-    local linha nome pasta grupo rc
+    local linha nome pasta esc lei rc
     local -a afetados=()
     titulo "$(t shr.remover)"
     if ! debkit_samba_ambiente_pronto; then msg_erro "$(t usr.ambiente_nao_pronto)"; pausar; return 1; fi
-    debkit_shr_escolher linha || { pausar; return 1; }
-    IFS='|' read -r nome pasta grupo <<< "$linha"
+    debkit_shr_escolher linha dados || { pausar; return 1; }
+    IFS='|' read -r nome pasta esc lei _ <<< "$linha"
     echo ""
     echo "  $(t usr.titulo_resumo)"
     echo "    $(t shr.r_nome "$nome")"
-    echo "    $(t shr.r_pasta_fica "$pasta")"
-    mapfile -t afetados < <(debkit_shr_acesso "$grupo")
+    if debkit_shr_pasta_mexivel "$pasta"; then
+        echo "    $(t shr.r_pasta_fica "$pasta")"
+    else
+        echo "    $(t shr.r_pasta_intocada "${pasta:-—}")"
+    fi
+    mapfile -t afetados < <(debkit_shr_usuarios "$esc,$lei")
     if [ ${#afetados[@]} -gt 0 ]; then
-        msg_aviso "$(t shr.aviso_perdem_todos "$grupo" "$(debkit_juntar "${afetados[@]}")")"
+        msg_aviso "$(t shr.aviso_perdem_lista "$(debkit_juntar "${afetados[@]}")")"
         debkit_aviso_conectados "${afetados[@]}"
     fi
     echo ""
     if ! confirmar "$(t shr.p_confirmar_remover "$nome")"; then msg_aviso "$(t usr.cancelado)"; pausar; return 1; fi
     DEBKIT_S_NOME="$nome"
     debkit_shr_remover; rc=$?
+    pausar
+    return "$rc"
+}
+
+# Tela: compartilhamento fora do padrão, grupo, resumo (quem perde, quem
+# está conectado, as linhas do smb.conf, o conteúdo) e UMA confirmação
+debkit_shr_tela_padronizar() {
+    local linha nome pasta esc lei novo rc
+    local -a grupos=() antes=() perdem=()
+    titulo "$(t shr.padronizar)"
+    if ! debkit_samba_ambiente_pronto; then msg_erro "$(t usr.ambiente_nao_pronto)"; pausar; return 1; fi
+    debkit_shr_escolher linha padronizaveis || { pausar; return 1; }
+    IFS='|' read -r nome pasta esc lei _ <<< "$linha"
+    mapfile -t grupos < <(debkit_samba_grupos_comuns)
+    echo ""
+    msg_info "$(t shr.acesso_atual "$(debkit_shr_rotulo_acesso "$esc" "$lei")" "$pasta")"
+    if [ ${#grupos[@]} -eq 0 ]; then msg_info "$(t shr.crie_grupo)"; pausar; return 1; fi
+    echo "  $(t grp.titulo_grupos)"
+    debkit_numerar "${grupos[@]}"
+    debkit_escolher_um novo "$(t shr.p_grupo_padrao)" "${grupos[@]}" || { msg_aviso "$(t usr.cancelado)"; return 1; }
+    echo ""
+    echo "  $(t usr.titulo_resumo)"
+    echo "    $(t shr.r_nome "$nome")"
+    echo "    $(t shr.r_padrao "$(debkit_shr_rotulo_acesso "$esc" "$lei")" "$novo")"
+    mapfile -t antes < <(debkit_shr_usuarios "$esc,$lei")
+    mapfile -t perdem < <(debkit_shr_fora_do_grupo "$novo" "${antes[@]}")
+    if [ ${#perdem[@]} -gt 0 ]; then
+        msg_aviso "$(t shr.aviso_perdem_lista "$(debkit_juntar "${perdem[@]}")")"
+    fi
+    debkit_aviso_conectados "${antes[@]}"
+    msg_info "$(t shr.explica_padrao "$novo" "$novo")"
+    debkit_shr_mostrar_conteudo "$pasta" "$novo"
+    msg_info "$(t shr.explica_ajuste "$novo")"
+    echo ""
+    if ! confirmar "$(t shr.p_confirmar_padrao "$nome" "$novo")"; then msg_aviso "$(t usr.cancelado)"; pausar; return 1; fi
+    DEBKIT_S_NOME="$nome"; DEBKIT_S_GRUPO="$novo"
+    debkit_shr_padronizar; rc=$?
     pausar
     return "$rc"
 }
@@ -3946,7 +4162,7 @@ debkit_samba_menu_usuarios() {
 }
 
 # Compartilhamentos: listar, criar, trocar o grupo, ajustar as permissões,
-# remover e o [homes]
+# remover, trazer para o padrão e o [homes]
 debkit_samba_menu_compartilhamentos() {
     local opcao
     while true; do
@@ -3956,7 +4172,8 @@ debkit_samba_menu_compartilhamentos() {
         echo "  3) $(t shr.trocar)"
         echo "  4) $(t shr.ajustar)"
         echo "  5) $(t shr.remover)"
-        echo "  6) $(t samba.pastas_pessoais)"
+        echo "  6) $(t shr.padronizar)"
+        echo "  7) $(t samba.pastas_pessoais)"
         echo ""
         echo "  0) $(t geral.voltar)"
         echo ""
@@ -3968,7 +4185,8 @@ debkit_samba_menu_compartilhamentos() {
             3)  debkit_shr_tela_trocar ;;
             4)  debkit_shr_tela_ajustar ;;
             5)  debkit_shr_tela_remover ;;
-            6)  debkit_samba_tela_pastas_pessoais ;;
+            6)  debkit_shr_tela_padronizar ;;
+            7)  debkit_samba_tela_pastas_pessoais ;;
             0)  return 0 ;;
             *)  msg_erro "$(t geral.opcao_invalida "$opcao")"; pausar ;;
         esac
