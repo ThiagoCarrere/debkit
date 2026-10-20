@@ -619,6 +619,29 @@ MSG_pt_BR+=(
     [diag.desconectar_falhou]="Não foi possível desconectar a sessão de %s em %s: %s"
     [diag.f_nao_existe]="a sessão (PID %s) não existe mais"
     [diag.f_continua]="a sessão continua aberta"
+    [diag.logins]="Logins (falhas e último login de cada usuário)"
+    [diag.titulo_logins]="Logins"
+    [diag.auth_desligado]="O log de autenticação do Samba está desligado: falhas e logins novos não são registrados. Rode a preparação (debkit --preparar)."
+    [diag.auth_vazio]="Nenhum login registrado ainda em %s."
+    [diag.auth_desde]="Registro desde %s."
+    [diag.falhas_titulo]="Falhas de login nos últimos %d dias"
+    [diag.falhas_nenhuma]="Nenhuma falha de login nos últimos %d dias."
+    [diag.falhas_mais]="... e mais %d (usuário e máquina)."
+    [diag.c_tentativas]="Tentativas"
+    [diag.c_ultima]="Última"
+    [diag.c_motivo]="Motivo"
+    [diag.ultimos_titulo]="Último login de cada usuário do Samba"
+    [diag.c_ultimo]="Último login"
+    [diag.nunca]="nenhum desde o início do registro"
+    [diag.sem_usuarios]="Nenhum usuário com conta no Samba."
+    [diag.m_senha]="senha errada"
+    [diag.m_inexistente]="usuário inexistente"
+    [diag.m_desativada]="conta desativada"
+    [diag.m_bloqueada]="conta bloqueada"
+    [diag.m_senha_expirada]="senha expirada"
+    [diag.m_conta_expirada]="conta expirada"
+    [diag.m_horario]="fora do horário permitido"
+    [diag.m_recusado]="login recusado"
     [grp.titulo]="Samba: grupos"
     [grp.listar]="Listar grupos"
     [grp.criar]="Criar grupo"
@@ -883,6 +906,29 @@ MSG_en+=(
     [diag.desconectar_falhou]="Could not disconnect the session of %s on %s: %s"
     [diag.f_nao_existe]="the session (PID %s) no longer exists"
     [diag.f_continua]="the session is still open"
+    [diag.logins]="Logins (failures and last login of each user)"
+    [diag.titulo_logins]="Logins"
+    [diag.auth_desligado]="The Samba authentication log is off: new failures and logins are not recorded. Run the preparation (debkit --preparar)."
+    [diag.auth_vazio]="No login recorded yet in %s."
+    [diag.auth_desde]="Recorded since %s."
+    [diag.falhas_titulo]="Login failures in the last %d days"
+    [diag.falhas_nenhuma]="No login failures in the last %d days."
+    [diag.falhas_mais]="... and %d more (user and machine)."
+    [diag.c_tentativas]="Attempts"
+    [diag.c_ultima]="Last"
+    [diag.c_motivo]="Reason"
+    [diag.ultimos_titulo]="Last login of each Samba user"
+    [diag.c_ultimo]="Last login"
+    [diag.nunca]="none since the log started"
+    [diag.sem_usuarios]="No user with a Samba account."
+    [diag.m_senha]="wrong password"
+    [diag.m_inexistente]="no such user"
+    [diag.m_desativada]="account disabled"
+    [diag.m_bloqueada]="account locked"
+    [diag.m_senha_expirada]="password expired"
+    [diag.m_conta_expirada]="account expired"
+    [diag.m_horario]="outside allowed hours"
+    [diag.m_recusado]="login refused"
     [grp.titulo]="Samba: groups"
     [grp.listar]="List groups"
     [grp.criar]="Create group"
@@ -2769,6 +2815,68 @@ debkit_diag_desconectar() {
     msg_ok "$(t diag.desconectada "$u" "$ip")"
 }
 
+# ── Diagnóstico: logins ─────────────────────────────────────────────────────
+# Lido do log de autenticação ligado na preparação (tarefa 3.0): o arquivo
+# atual e os girados pelo logrotate (.1, .N.gz). Uma linha JSON por
+# tentativa; os campos são lidos com awk (sem dependência nova). O usuário
+# vai para minúsculas (o Samba não diferencia).
+
+# Eventos: data (AAAA-MM-DD HH:MM:SS, hora local)|status|usuário|IP
+# (sem os anônimos)
+debkit_diag_auth_eventos() {
+    zcat -f -- "$DEBKIT_AUTH_LOG" "$DEBKIT_AUTH_LOG".* 2>/dev/null | awk '
+        function campo(k,   r) {
+            if (!match($0, "\"" k "\": \"[^\"]*\"")) return ""
+            r = substr($0, RSTART, RLENGTH); sub(/^"[^"]*": "/, "", r); sub(/"$/, "", r); return r
+        }
+        /"type": "Authentication"/ {
+            d = campo("timestamp"); if (d !~ /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}/) next
+            d = substr(d, 1, 10) " " substr(d, 12, 8)
+            c = tolower(campo("clientAccount")); if (c == "") next
+            a = campo("remoteAddress"); sub(/^ipv[46]:/, "", a); sub(/:[0-9]+$/, "", a); gsub(/[][]/, "", a)
+            print d "|" campo("status") "|" c "|" a
+        }'
+}
+
+# Falhas desde <AAAA-MM-DD HH:MM:SS>, por usuário e IP, a mais recente
+# primeiro: usuário|IP|tentativas|última|status da última
+debkit_diag_falhas() {
+    debkit_diag_auth_eventos | awk -F'|' -v desde="$1" '
+        $2 != "NT_STATUS_OK" && $1 >= desde {
+            k = $3 "|" $4; n[k]++
+            if ($1 >= ult[k]) { ult[k] = $1; st[k] = $2 }
+        }
+        END { for (k in n) print ult[k] "|" k "|" n[k] "|" st[k] }'         | sort -r | awk -F'|' '{ print $2 "|" $3 "|" $4 "|" $1 "|" $5 }'
+}
+
+# Último login com sucesso de cada usuário: usuário|data|IP
+debkit_diag_ultimos_logins() {
+    debkit_diag_auth_eventos | awk -F'|' '
+        $2 == "NT_STATUS_OK" && $1 >= u[$3] { u[$3] = $1; ip[$3] = $4 }
+        END { for (c in u) print c "|" u[c] "|" ip[c] }' | sort
+}
+
+# Primeiro evento registrado (AAAA-MM-DD HH:MM:SS; vazio se não há nenhum)
+debkit_diag_auth_inicio() { debkit_diag_auth_eventos | cut -d'|' -f1 | sort | head -1; }
+
+# AAAA-MM-DD HH:MM:SS -> dd/mm/aaaa hh:mm
+debkit_diag_data() { local d="$1"; printf '%s/%s/%s %s' "${d:8:2}" "${d:5:2}" "${d:0:4}" "${d:11:5}"; }
+
+# Motivo da falha, em palavras (o status do Samba se não for conhecido)
+debkit_diag_motivo() {
+    case "$1" in
+        NT_STATUS_WRONG_PASSWORD) t diag.m_senha ;;
+        NT_STATUS_NO_SUCH_USER) t diag.m_inexistente ;;
+        NT_STATUS_ACCOUNT_DISABLED) t diag.m_desativada ;;
+        NT_STATUS_ACCOUNT_LOCKED_OUT) t diag.m_bloqueada ;;
+        NT_STATUS_PASSWORD_EXPIRED|NT_STATUS_PASSWORD_MUST_CHANGE) t diag.m_senha_expirada ;;
+        NT_STATUS_ACCOUNT_EXPIRED) t diag.m_conta_expirada ;;
+        NT_STATUS_INVALID_LOGON_HOURS) t diag.m_horario ;;
+        NT_STATUS_LOGON_FAILURE) t diag.m_recusado ;;
+        *) printf '%s' "$1" ;;
+    esac
+}
+
 # ── Grupos: criar ───────────────────────────────────────────────────────────
 # Entrada: DEBKIT_G_NOME e DEBKIT_G_MEMBROS (array de usuários comuns).
 # Tudo ou nada: cria o grupo comum (groupadd, GID da faixa do login.defs),
@@ -4148,6 +4256,68 @@ debkit_diag_tela_sessoes() {
     return "$rc"
 }
 
+# Tela: falhas dos últimos DEBKIT_DIAG_DIAS dias (por usuário e máquina) e o
+# último login de cada usuário com conta no Samba
+DEBKIT_DIAG_DIAS=7
+DEBKIT_DIAG_MAX_FALHAS=20
+debkit_diag_tela_logins() {
+    local l u ip n d s sit inicio desde wu=7 wm=7 i=0
+    local -a falhas=() usuarios=()
+    local -A ultimo=() ultimo_ip=()
+    titulo "$(t diag.titulo_logins)"
+    debkit_samba_auth_ligado || msg_aviso "$(t diag.auth_desligado)"
+    inicio=$(debkit_diag_auth_inicio)
+    if [ -z "$inicio" ]; then msg_info "$(t diag.auth_vazio "$DEBKIT_AUTH_LOG")"; pausar; return 0; fi
+    echo "  $(t diag.auth_desde "$(debkit_diag_data "$inicio")")"
+    echo ""
+    desde=$(date -d "$DEBKIT_DIAG_DIAS days ago" '+%Y-%m-%d %H:%M:%S')
+    mapfile -t falhas < <(debkit_diag_falhas "$desde")
+    while IFS='|' read -r u _ _ s _; do
+        [[ "$s" == ativa || "$s" == desativada || "$s" == so_samba ]] || continue
+        usuarios+=("$u|$s")
+    done < <(debkit_samba_usuarios_dados)
+    for l in "${falhas[@]}" "${usuarios[@]}"; do
+        IFS='|' read -r u ip _ <<< "$l"
+        [ "${#u}" -gt "$wu" ] && wu=${#u}
+        [[ "$ip" != ativa && "$ip" != desativada && "$ip" != so_samba && "${#ip}" -gt "$wm" ]] && wm=${#ip}
+    done
+    printf '  %s%s%s\n' "$C_NEGRITO" "$(t diag.falhas_titulo "$DEBKIT_DIAG_DIAS")" "$C_RESET"
+    if [ ${#falhas[@]} -eq 0 ]; then
+        echo "  $(t diag.falhas_nenhuma "$DEBKIT_DIAG_DIAS")"
+    else
+        printf '  %s%s  %s  %s  %s  %s%s\n' "$C_NEGRITO" "$(debkit_pad "$(t diag.c_usuario)" "$wu")" "$(debkit_pad "$(t diag.c_maquina)" "$wm")" \
+            "$(debkit_pad "$(t diag.c_tentativas)" 10)" "$(debkit_pad "$(t diag.c_ultima)" 16)" "$(t diag.c_motivo)" "$C_RESET"
+        for l in "${falhas[@]}"; do
+            i=$((i + 1)); [ "$i" -gt "$DEBKIT_DIAG_MAX_FALHAS" ] && break
+            IFS='|' read -r u ip n d s <<< "$l"
+            printf '  %s  %s  %s  %s  %s\n' "$(debkit_pad "$u" "$wu")" "$(debkit_pad "$ip" "$wm")" \
+                "$(debkit_pad "$n" 10)" "$(debkit_pad "$(debkit_diag_data "$d")" 16)" "$(debkit_diag_motivo "$s")"
+        done
+        [ ${#falhas[@]} -gt "$DEBKIT_DIAG_MAX_FALHAS" ] && echo "  $(t diag.falhas_mais "$(( ${#falhas[@]} - DEBKIT_DIAG_MAX_FALHAS ))")"
+    fi
+    echo ""
+    while IFS='|' read -r u d ip; do ultimo[$u]=$d; ultimo_ip[$u]=$ip; done < <(debkit_diag_ultimos_logins)
+    printf '  %s%s%s\n' "$C_NEGRITO" "$(t diag.ultimos_titulo)" "$C_RESET"
+    if [ ${#usuarios[@]} -eq 0 ]; then
+        echo "  $(t diag.sem_usuarios)"
+    else
+        printf '  %s%s  %s  %s%s\n' "$C_NEGRITO" "$(debkit_pad "$(t diag.c_usuario)" "$wu")" "$(debkit_pad "$(t diag.c_ultimo)" 16)" \
+            "$(t diag.c_maquina)" "$C_RESET"
+        for l in "${usuarios[@]}"; do
+            IFS='|' read -r u s <<< "$l"
+            sit=""; [ "$s" == desativada ] && sit=" ($(t lst.s_desativada))"
+            if [ -n "${ultimo[$u]:-}" ]; then
+                printf '  %s  %s  %s%s\n' "$(debkit_pad "$u" "$wu")" "$(debkit_diag_data "${ultimo[$u]}")" "${ultimo_ip[$u]}" "$sit"
+            else
+                printf '  %s  %s%s\n' "$(debkit_pad "$u" "$wu")" "$(t diag.nunca)" "$sit"
+            fi
+        done
+    fi
+    echo ""
+    pausar
+    return 0
+}
+
 # ── Grupos: telas ───────────────────────────────────────────────────────────
 # Escolhe UM item numerado: debkit_escolher_um <variável> <prompt> <itens...>.
 # Retorna 1 se cancelar (Enter vazio ou fim da entrada).
@@ -4427,13 +4597,14 @@ debkit_samba_menu() {
     done
 }
 
-# Diagnóstico (Fase 3): sessões ativas (logins, saúde e auditoria vêm nas
+# Diagnóstico (Fase 3): sessões ativas e logins (saúde e auditoria vêm nas
 # próximas tarefas)
 debkit_samba_menu_diagnostico() {
     local opcao
     while true; do
         titulo "$(t samba.titulo_diagnostico)"
         echo "  1) $(t diag.sessoes)"
+        echo "  2) $(t diag.logins)"
         echo ""
         echo "  0) $(t geral.voltar)"
         echo ""
@@ -4441,6 +4612,7 @@ debkit_samba_menu_diagnostico() {
         case "$opcao" in
             "") continue ;;
             1)  debkit_diag_tela_sessoes ;;
+            2)  debkit_diag_tela_logins ;;
             0)  return 0 ;;
             *)  msg_erro "$(t geral.opcao_invalida "$opcao")"; pausar ;;
         esac

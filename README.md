@@ -98,7 +98,8 @@ Samba
 │     ├── Trazer um compartilhamento feito à mão para o padrão
 │     └── Pastas pessoais: base e compartilhamento [homes]
 └── 4) Diagnóstico
-      └── Sessões ativas: quem está conectado; desconectar uma sessão
+      ├── Sessões ativas: quem está conectado; desconectar uma sessão
+      └── Logins: falhas dos últimos 7 dias e último login de cada usuário
 ```
 
 Listar usuários (exemplo com dados fictícios):
@@ -121,7 +122,7 @@ Listar usuários (exemplo com dados fictícios):
 | **Usuários** | criar (dois tipos de conta, nome completo, grupos, pasta pessoal), listar, trocar senha, excluir, verificar e corrigir contas |
 | **Grupos** | criar, listar, adicionar/remover membros com efeito imediato, remover |
 | **Pastas pessoais** | no disco de dados (backup junto com o resto), na criação ou depois, e o compartilhamento `[homes]` |
-| **Diagnóstico** | sessões ativas (quem está conectado, de qual máquina, arquivos abertos) e desconectar uma sessão |
+| **Diagnóstico** | sessões ativas (quem está conectado, de qual máquina, arquivos abertos) e desconectar uma sessão; logins (falhas com o motivo e último login de cada usuário) |
 | **Compartilhamentos** | listar (inclusive os feitos à mão, com alertas), criar vinculado a um grupo, cujos membros têm acesso total (pasta em `/mnt` ou `/srv`), trocar o grupo, ajustar as permissões do conteúdo, remover (os arquivos ficam no disco) e trazer os feitos à mão para o padrão |
 
 ## Instalação (para testar)

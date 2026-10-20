@@ -63,6 +63,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   procura o `include` pelo caminho exato do sandbox.
 
 ### Adicionado
+- **Diagnóstico → Logins** (Samba → 4 → 2): falhas de login dos últimos 7
+  dias por usuário e máquina (tentativas, última, motivo: senha errada,
+  usuário inexistente, conta desativada...) e o último login de cada
+  usuário do Samba, lidos do log de autenticação (inclusive os girados).
 - **Diagnóstico → Sessões ativas** (Samba → 4 → 1): quem está conectado
   agora (usuário, máquina, desde quando, arquivos abertos e
   compartilhamentos) e desconectar uma sessão (só aquela máquina), com
