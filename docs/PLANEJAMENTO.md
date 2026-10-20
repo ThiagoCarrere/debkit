@@ -694,7 +694,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | 3.0 Log de autenticação do Samba (preparação) | `ce832a9` |
 | Testes: "caixa de areia" vira sandbox | `7e5f8dd` |
 | 3.1 Sessões ativas (ver e desconectar) | `2ebdf36` |
-| 3.2 Logins (falhas e último login) | (este commit) |
+| 3.2 Logins (falhas e último login) | `ac6ee3b` |
 
 **Próximos passos:**
 
