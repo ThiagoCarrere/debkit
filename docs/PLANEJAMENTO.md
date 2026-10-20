@@ -487,6 +487,24 @@ problema(s) e M aviso(s)"):
 Prova real (`t24b`): o relatório não muda o smb.conf nem as sessões; grupo
 sem membros, pasta apagada e 10 senhas erradas aparecem.
 
+**Como ficou a 3.4 (auditoria; Samba → 4) Diagnóstico → 4):** lê o log do
+debkit (`/var/log/debkit.log` e os girados `.N`/`.N.gz`, se houver), só
+leitura. Três perguntas, Enter em todas = o padrão:
+1. **Período:** últimos N dias (Enter = 30) ou um dia (`dd/mm/aaaa`).
+2. **Afetado:** usuário, grupo, compartilhamento ou pasta; vale o valor
+   exato de qualquer chave, inclusive dentro de listas (`membros=a,b`,
+   `sairam=`), não parte do nome.
+3. **Tipo:** usuários, grupos, compartilhamentos, sessões, preparação e
+   configuração, ou uso do debkit (abrir/sair; fica de fora por padrão).
+Tabela com a mais recente primeiro (data, quem, ação em palavras, detalhes),
+até 50 linhas ("Mostrando as 50 mais recentes de N"); as que falharam vêm
+marcadas com ✘ e contadas. Tudo em awk (log grande não fica lento). Prova
+real (`t25b`): ações de verdade pelo debkit aparecem pelo afetado e pelo
+tipo; o log real é só lido.
+
+**Fase 3 concluída em 20/10/2026.** Observação para a Fase 4: o
+`/var/log/debkit.log` ainda não tem rotação (é pequeno: uma linha por ação).
+
 Ordem: 3.0 log de autenticação (preparação e verificação) → 3.1 sessões
 ativas → 3.2 logins → 3.3 saúde → 3.4 auditoria.
 
@@ -624,7 +642,7 @@ debkit/
 | 0. Fundação | 0.1 esqueleto ✔ · 0.2 detecção do ambiente ✔ · 0.3 preparação do ambiente e backups ✔ · 0.4 proteção SSH ✔ · 0.5 firewall ✔ |
 | 1. Usuários e grupos | 1.0 reestruturar ✔ (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário ✔ (tipos, nome completo, grupos; sem home) · 1.1b pasta pessoal ✔ (base no disco de dados, na criação ou depois, `[homes]`) · listar ✔ · trocar senha ✔ · grupos ✔ (criar, remover, entrar/sair) · menu em submenus ✔ · excluir usuário ✔ · consistência Linux x Samba ✔ · ~~desativar/reativar~~ (adiado, 3.4) |
 | 2. Compartilhamentos | decisões na seção 3.7 · 2.0 `map to guest = never` ✔ · 2.1 criar + listar ✔ · 2.2 grupo e permissões (trocar o grupo, ajustar o conteúdo) ✔ · 2.3 remover ✔ · 2.4 os já existentes ✔ |
-| 3. Diagnóstico | decisões na seção 3.8 · 3.0 log de autenticação ✔ · 3.1 sessões ativas ✔ · 3.2 logins (falhas e sucessos) ✔ · 3.3 saúde do Samba ✔ · 3.4 consulta à auditoria |
+| 3. Diagnóstico | decisões na seção 3.8 · 3.0 log de autenticação ✔ · 3.1 sessões ativas ✔ · 3.2 logins (falhas e sucessos) ✔ · 3.3 saúde do Samba ✔ · 3.4 consulta à auditoria ✔ |
 | 4. Publicação | comandos diretos completos, `install.sh`, **desinstalação**, README, mensagens em inglês, testes automáticos e CI |
 
 ## 9. Forma de trabalho
@@ -661,7 +679,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 
 ## 11. Situação atual e próximos passos
 
-*Atualizado em 20/10/2026 (3.3).*
+*Atualizado em 20/10/2026 (3.4; Fase 3 concluída).*
 
 - Nome decidido: **debkit**; renomeação gsb → debkit feita (arquivos,
   variáveis, funções, grupo `debkit_usuarios`, `/etc/debkit`, testes). As
@@ -719,6 +737,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | 3.1 Sessões ativas (ver e desconectar) | `2ebdf36` |
 | 3.2 Logins (falhas e último login) | `ac6ee3b` |
 | 3.3 Saúde do Samba (relatório) | `09c0512` |
+| 3.4 Consulta à auditoria | (este commit) |
 
 **Próximos passos:**
 
@@ -825,8 +844,9 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 27. ✔ 3.1 sessões ativas (Samba → 4) Diagnóstico → 1; seção 3.8).
 28. ✔ 3.2 logins (Samba → 4) Diagnóstico → 2; seção 3.8).
 29. ✔ 3.3 saúde do Samba (Samba → 4) Diagnóstico → 3; seção 3.8).
-30. **Próxima tarefa:** 3.4 consulta à auditoria (filtro por data, usuário
-    afetado e tipo de ação).
+30. ✔ 3.4 consulta à auditoria (Samba → 4) Diagnóstico → 4; seção 3.8).
+    **Fase 3 concluída.**
+31. **Próxima tarefa:** decidir a Fase 4 (publicação) com o Thiago.
 
 **VM limpa de novo:** `dev/vmnova.sh` → (reinicia) → `dev/vmprepara.sh` →
 `./debkit --preparar` → testes.
@@ -879,7 +899,8 @@ real e o devolve idêntico). Com a tarefa 3.0: 2011 + 302 (`t21_log_auth.sh` e
 `t21b_log_auth_real.sh`). Com a tarefa 3.1: 2058 + 326 (`t22_sessoes.sh` e
 `t22b_sessoes_real.sh`). Com a tarefa 3.2: 2113 + 358 (`t23_logins.sh` e
 `t23b_logins_real.sh`). Com a tarefa 3.3: 2175 + 387 (`t24_saude.sh` e
-`t24b_saude_real.sh`). Os testes também acusam se alguém usar o debkit na VM enquanto rodam (o
+`t24b_saude_real.sh`). Com a tarefa 3.4: 2229 + 410 (`t25_auditoria.sh` e
+`t25b_auditoria_real.sh`). Os testes também acusam se alguém usar o debkit na VM enquanto rodam (o
 log e a trava reais mudam): não usar o debkit durante a suíte.
 
 Os testes funcionam com o servidor preparado ou não: em vez de exigir que

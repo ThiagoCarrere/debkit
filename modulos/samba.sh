@@ -671,6 +671,52 @@ MSG_pt_BR+=(
     [saude.tudo_ok]="Tudo certo com o Samba."
     [saude.resumo_avisos]="%d aviso(s)."
     [saude.resumo_erros]="%d problema(s) e %d aviso(s)."
+    [diag.auditoria]="Auditoria (o que foi feito pelo debkit)"
+    [diag.titulo_auditoria]="Auditoria"
+    [aud.p_periodo]="Período: últimos N dias, ou um dia (dd/mm/aaaa) [Enter = %d dias]: "
+    [aud.periodo_invalido]="Período inválido: '%s' (use um número de dias ou dd/mm/aaaa)"
+    [aud.p_alvo]="Usuário, grupo ou compartilhamento afetado [Enter = todos]: "
+    [aud.tipos]="Tipo de ação:"
+    [aud.t_usuarios]="Usuários (criar, excluir, senha, pasta pessoal, consistência)"
+    [aud.t_grupos]="Grupos (criar, membros, remover)"
+    [aud.t_shr]="Compartilhamentos"
+    [aud.t_sessoes]="Sessões (desconectar, reconectar)"
+    [aud.t_preparacao]="Preparação e configuração"
+    [aud.t_uso]="Uso do debkit (quem abriu e quando)"
+    [aud.p_tipo]="Tipo [Enter = todos, menos o uso]: "
+    [aud.filtro]="Filtro: %s"
+    [aud.f_dias]="últimos %d dias"
+    [aud.f_dia]="dia %s"
+    [aud.f_todos]="todos os tipos"
+    [aud.nenhum]="Nenhuma ação encontrada com esse filtro."
+    [aud.sem_log]="Nada registrado ainda em %s."
+    [aud.c_data]="Data"
+    [aud.c_quem]="Quem"
+    [aud.c_acao]="Ação"
+    [aud.c_detalhes]="Detalhes"
+    [aud.total]="%d ação(ões)."
+    [aud.mais]="Mostrando as %d mais recentes de %d (refine o filtro para ver as outras)."
+    [aud.falhas]="%d com falha (marcadas com ✘)."
+    [aud.a_usuario_criar]="criar usuário"
+    [aud.a_usuario_excluir]="excluir usuário"
+    [aud.a_senha_trocar]="trocar senha"
+    [aud.a_home_criar]="criar pasta pessoal"
+    [aud.a_homes_ajustar]="ajustar pastas pessoais"
+    [aud.a_consistencia]="consistência"
+    [aud.a_grupo_criar]="criar grupo"
+    [aud.a_grupo_membros]="membros do grupo"
+    [aud.a_grupo_remover]="remover grupo"
+    [aud.a_shr_criar]="criar compartilhamento"
+    [aud.a_shr_grupo]="trocar grupo"
+    [aud.a_shr_ajustar]="ajustar conteúdo"
+    [aud.a_shr_remover]="remover compartilhamento"
+    [aud.a_shr_padrao]="trazer para o padrão"
+    [aud.a_sessao_desconectar]="desconectar sessão"
+    [aud.a_samba_reconectar]="reconectar sessões"
+    [aud.a_preparar]="preparação"
+    [aud.a_conf_definir]="configuração"
+    [aud.a_sessao_inicio]="abriu o debkit"
+    [aud.a_sessao_fim]="saiu do debkit"
     [grp.titulo]="Samba: grupos"
     [grp.listar]="Listar grupos"
     [grp.criar]="Criar grupo"
@@ -987,6 +1033,52 @@ MSG_en+=(
     [saude.tudo_ok]="All good with Samba."
     [saude.resumo_avisos]="%d warning(s)."
     [saude.resumo_erros]="%d problem(s) and %d warning(s)."
+    [diag.auditoria]="Audit (what was done through debkit)"
+    [diag.titulo_auditoria]="Audit"
+    [aud.p_periodo]="Period: last N days, or one day (dd/mm/yyyy) [Enter = %d days]: "
+    [aud.periodo_invalido]="Invalid period: '%s' (use a number of days or dd/mm/yyyy)"
+    [aud.p_alvo]="Affected user, group or share [Enter = all]: "
+    [aud.tipos]="Action type:"
+    [aud.t_usuarios]="Users (create, delete, password, home folder, consistency)"
+    [aud.t_grupos]="Groups (create, members, remove)"
+    [aud.t_shr]="Shares"
+    [aud.t_sessoes]="Sessions (disconnect, reconnect)"
+    [aud.t_preparacao]="Preparation and configuration"
+    [aud.t_uso]="debkit usage (who opened it and when)"
+    [aud.p_tipo]="Type [Enter = all but usage]: "
+    [aud.filtro]="Filter: %s"
+    [aud.f_dias]="last %d days"
+    [aud.f_dia]="day %s"
+    [aud.f_todos]="all types"
+    [aud.nenhum]="No action found with this filter."
+    [aud.sem_log]="Nothing recorded yet in %s."
+    [aud.c_data]="Date"
+    [aud.c_quem]="Who"
+    [aud.c_acao]="Action"
+    [aud.c_detalhes]="Details"
+    [aud.total]="%d action(s)."
+    [aud.mais]="Showing the %d most recent of %d (narrow the filter to see the others)."
+    [aud.falhas]="%d failed (marked with ✘)."
+    [aud.a_usuario_criar]="create user"
+    [aud.a_usuario_excluir]="delete user"
+    [aud.a_senha_trocar]="change password"
+    [aud.a_home_criar]="create home folder"
+    [aud.a_homes_ajustar]="adjust home folders"
+    [aud.a_consistencia]="consistency"
+    [aud.a_grupo_criar]="create group"
+    [aud.a_grupo_membros]="group members"
+    [aud.a_grupo_remover]="remove group"
+    [aud.a_shr_criar]="create share"
+    [aud.a_shr_grupo]="change group"
+    [aud.a_shr_ajustar]="adjust content"
+    [aud.a_shr_remover]="remove share"
+    [aud.a_shr_padrao]="bring to pattern"
+    [aud.a_sessao_desconectar]="disconnect session"
+    [aud.a_samba_reconectar]="reconnect sessions"
+    [aud.a_preparar]="preparation"
+    [aud.a_conf_definir]="configuration"
+    [aud.a_sessao_inicio]="opened debkit"
+    [aud.a_sessao_fim]="left debkit"
     [grp.titulo]="Samba: groups"
     [grp.listar]="List groups"
     [grp.criar]="Create group"
@@ -2983,6 +3075,61 @@ debkit_saude_discos() {
 # MiB -> "N GB" / "N MB"
 debkit_saude_tamanho() { if [ "$1" -ge 1024 ]; then printf '%d GB' "$(( $1 / 1024 ))"; else printf '%d MB' "$1"; fi; }
 
+# ── Diagnóstico: consulta à auditoria ───────────────────────────────────────
+# Lê o log do debkit (DEBKIT_LOG, e os girados .N/.N.gz se houver): uma
+# linha por ação, "AAAA-MM-DDTHH:MM:SS-0300 quem[pid] ação chave=valor ...".
+# Filtro por período, por quem foi afetado (o valor exato de qualquer chave,
+# inclusive dentro de listas: membros=a,b) e por tipo de ação.
+DEBKIT_AUD_DIAS=30
+DEBKIT_AUD_MAX=50
+
+# Ações filtradas, a mais recente primeiro: data (AAAA-MM-DD HH:MM:SS)|quem|
+# ação|detalhes. debkit_aud_filtrar <desde> <até> <alvo> <tipo>
+# (datas AAAA-MM-DD, vazio = sem limite; alvo vazio = todos; tipo: usuarios |
+# grupos | shr | sessoes | preparacao | uso; vazio = todos menos o uso)
+debkit_aud_arquivos() {
+    local n
+    for (( n = 30; n >= 1; n-- )); do
+        [ -f "$DEBKIT_LOG.$n.gz" ] && echo "$DEBKIT_LOG.$n.gz"
+        [ -f "$DEBKIT_LOG.$n" ] && echo "$DEBKIT_LOG.$n"
+    done
+    [ -f "$DEBKIT_LOG" ] && echo "$DEBKIT_LOG"
+    return 0
+}
+debkit_aud_filtrar() {
+    local -a arqs=()
+    mapfile -t arqs < <(debkit_aud_arquivos)
+    [ ${#arqs[@]} -gt 0 ] || return 0
+    zcat -f -- "${arqs[@]}" 2>/dev/null | awk -v desde="$1" -v ate="$2" -v alvo="$3" -v tipo="$4" '
+        function tp(a) {
+            if (a ~ /^(usuario_|senha_|home_|homes_)/ || a == "consistencia") return "usuarios"
+            if (a ~ /^grupo_/) return "grupos"
+            if (a ~ /^shr_/) return "shr"
+            if (a == "sessao_desconectar" || a == "samba_reconectar") return "sessoes"
+            if (a == "preparar" || a ~ /^conf_/) return "preparacao"
+            if (a == "sessao_inicio" || a == "sessao_fim") return "uso"
+            return "outros"
+        }
+        $1 ~ /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}/ && NF >= 3 {
+            d = substr($1, 1, 10); if ((desde != "" && d < desde) || (ate != "" && d > ate)) next
+            if (tipo == "" ? tp($3) == "uso" : tp($3) != tipo) next
+            quem = $2; sub(/\[[0-9]+\]$/, "", quem)
+            det = $0; for (i = 1; i <= 3; i++) sub(/^[^ ]+ ?/, "", det)
+            if (alvo != "") {
+                ok = 0; n = split(det, kv, " ")
+                for (i = 1; i <= n && !ok; i++) {
+                    v = kv[i]; if (!sub(/^[^=]+=/, "", v)) continue
+                    m = split(v, it, ","); for (j = 1; j <= m; j++) if (it[j] == alvo) ok = 1
+                }
+                if (!ok) next
+            }
+            printf "%s %s|%09d|%s|%s|%s\n", d, substr($1, 12, 8), NR, quem, $3, det
+        }' | sort -r -t'|' -k1,2 | cut -d'|' -f1,3-
+}
+
+# Ação em palavras (o nome técnico se não for conhecida)
+debkit_aud_rotulo() { if [ -n "${MSG_pt_BR[aud.a_$1]+x}" ]; then t "aud.a_$1"; else printf '%s' "$1"; fi; }
+
 # Monta DEBKIT_SAUDE
 debkit_saude_coletar() {
     local item g estado texto alvo pc ip livre rotulos nome pasta grupo alerta a n u ini total
@@ -4499,6 +4646,68 @@ debkit_diag_tela_logins() {
     return 0
 }
 
+# Tela: pede o período, quem foi afetado e o tipo; mostra a tabela (as
+# DEBKIT_AUD_MAX mais recentes) e quantas falharam
+debkit_diag_tela_auditoria() {
+    local periodo desde ate="" alvo tipo="" opcao rotulo_p rotulo_t l d quem acao det falha=0 i=0 wq=4 wa=4
+    local -a linhas=() tipos=(usuarios grupos shr sessoes preparacao uso)
+    titulo "$(t diag.titulo_auditoria)"
+    if [ ! -s "$DEBKIT_LOG" ]; then msg_info "$(t aud.sem_log "$DEBKIT_LOG")"; pausar; return 0; fi
+    while true; do
+        debkit_ler periodo "$(t aud.p_periodo "$DEBKIT_AUD_DIAS")" || return 0
+        periodo=${periodo// /}
+        if [ -z "$periodo" ]; then periodo=$DEBKIT_AUD_DIAS; fi
+        if [[ "$periodo" =~ ^[0-9]{1,4}$ ]] && [ "$periodo" -gt 0 ]; then
+            desde=$(date -d "$((periodo - 1)) days ago" '+%Y-%m-%d'); ate=""; rotulo_p=$(t aud.f_dias "$periodo"); break
+        elif [[ "$periodo" =~ ^([0-9]{2})/([0-9]{2})/([0-9]{4})$ ]] \
+             && desde=$(date -d "${BASH_REMATCH[3]}-${BASH_REMATCH[2]}-${BASH_REMATCH[1]}" '+%Y-%m-%d' 2>/dev/null); then
+            ate=$desde; rotulo_p=$(t aud.f_dia "$periodo"); break
+        fi
+        msg_erro "$(t aud.periodo_invalido "$periodo")"
+    done
+    debkit_ler alvo "$(t aud.p_alvo)" || return 0
+    alvo=${alvo// /}
+    echo ""
+    echo "  $(t aud.tipos)"
+    for (( i = 0; i < ${#tipos[@]}; i++ )); do echo "  $((i + 1))) $(t "aud.t_${tipos[i]}")"; done
+    while true; do
+        debkit_ler opcao "$(t aud.p_tipo)" || return 0
+        opcao=${opcao// /}
+        [ -z "$opcao" ] && break
+        if [[ "$opcao" =~ ^[1-9]$ ]] && [ "$opcao" -le ${#tipos[@]} ]; then tipo=${tipos[opcao - 1]}; break; fi
+        msg_erro "$(t geral.opcao_invalida "$opcao")"
+    done
+    rotulo_t=$(t aud.f_todos); [ -n "$tipo" ] && rotulo_t=$(t "aud.t_$tipo")
+    mapfile -t linhas < <(debkit_aud_filtrar "$desde" "$ate" "$alvo" "$tipo")
+    echo ""
+    echo "  $(t aud.filtro "$rotulo_p${alvo:+, $alvo}, $rotulo_t")"
+    echo ""
+    if [ ${#linhas[@]} -eq 0 ]; then msg_info "$(t aud.nenhum)"; pausar; return 0; fi
+    i=0
+    for l in "${linhas[@]}"; do
+        i=$((i + 1)); [ "$i" -gt "$DEBKIT_AUD_MAX" ] && break
+        IFS='|' read -r _ quem acao _ <<< "$l"
+        [ "${#quem}" -gt "$wq" ] && wq=${#quem}
+        acao=$(debkit_aud_rotulo "$acao"); [ "${#acao}" -gt "$wa" ] && wa=${#acao}
+    done
+    printf '  %s  %s  %s  %s  %s%s\n' "$C_NEGRITO" "$(debkit_pad "$(t aud.c_data)" 16)" "$(debkit_pad "$(t aud.c_quem)" "$wq")" \
+        "$(debkit_pad "$(t aud.c_acao)" "$wa")" "$(t aud.c_detalhes)" "$C_RESET"
+    i=0
+    for l in "${linhas[@]}"; do
+        IFS='|' read -r d quem acao det <<< "$l"
+        [[ " $det " == *" resultado=falha "* ]] && falha=$((falha + 1))
+        i=$((i + 1)); [ "$i" -gt "$DEBKIT_AUD_MAX" ] && continue
+        if [[ " $det " == *" resultado=falha "* ]]; then printf '  %s✘%s ' "$C_VERMELHO" "$C_RESET"; else printf '    '; fi
+        printf '%s  %s  %s  %s\n' "$(debkit_diag_data "$d")" "$(debkit_pad "$quem" "$wq")" "$(debkit_pad "$(debkit_aud_rotulo "$acao")" "$wa")" "$det"
+    done
+    echo ""
+    if [ ${#linhas[@]} -gt "$DEBKIT_AUD_MAX" ]; then echo "  $(t aud.mais "$DEBKIT_AUD_MAX" "${#linhas[@]}")"
+    else echo "  $(t aud.total "${#linhas[@]}")"; fi
+    [ "$falha" -gt 0 ] && msg_aviso "$(t aud.falhas "$falha")"
+    pausar
+    return 0
+}
+
 # Tela: o relatório de saúde, por grupo, e o resumo
 debkit_diag_tela_saude() {
     local grupo item g estado texto icone cor erros=0 avisos=0
@@ -4807,8 +5016,7 @@ debkit_samba_menu() {
     done
 }
 
-# Diagnóstico (Fase 3): sessões ativas, logins e saúde (a auditoria vem na
-# próxima tarefa)
+# Diagnóstico (Fase 3): sessões ativas, logins, saúde e auditoria
 debkit_samba_menu_diagnostico() {
     local opcao
     while true; do
@@ -4816,6 +5024,7 @@ debkit_samba_menu_diagnostico() {
         echo "  1) $(t diag.sessoes)"
         echo "  2) $(t diag.logins)"
         echo "  3) $(t diag.saude)"
+        echo "  4) $(t diag.auditoria)"
         echo ""
         echo "  0) $(t geral.voltar)"
         echo ""
@@ -4825,6 +5034,7 @@ debkit_samba_menu_diagnostico() {
             1)  debkit_diag_tela_sessoes ;;
             2)  debkit_diag_tela_logins ;;
             3)  debkit_diag_tela_saude ;;
+            4)  debkit_diag_tela_auditoria ;;
             0)  return 0 ;;
             *)  msg_erro "$(t geral.opcao_invalida "$opcao")"; pausar ;;
         esac
