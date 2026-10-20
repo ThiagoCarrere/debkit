@@ -657,7 +657,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | 2.3 Compartilhamentos: remover | `fc4a104` |
 | 2.4 Compartilhamentos já existentes: trazer para o padrão ou remover | `a3d072e` |
 | Fase 3 decidida | `372c835` |
-| 3.0 Log de autenticação do Samba (preparação) | (este commit) |
+| 3.0 Log de autenticação do Samba (preparação) | `ce832a9` |
 
 **Próximos passos:**
 
