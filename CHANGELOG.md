@@ -63,8 +63,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   procura o `include` pelo caminho exato da areia.
 
 ### Adicionado
+- **Compartilhamentos: remover** (Samba → Compartilhamentos → 5; Pastas
+  pessoais virou 6). Tira a seção do `smb.conf` (edição segura, conferida;
+  sai também o comentário do debkit), os arquivos ficam no disco e a pasta
+  passa a ser só do root (`root:root` `0700`); as sessões de quem tinha o
+  acesso são refeitas. Apagar dados não faz parte da função.
 - **Compartilhamentos: trocar o grupo e ajustar o conteúdo** (Samba →
-  Compartilhamentos → 3 e 4; o antigo 3, Pastas pessoais, virou 5). Trocar:
+  Compartilhamentos → 3 e 4). Trocar:
   mostra quem perde o acesso e quem está conectado, troca só as linhas de
   acesso da seção no `smb.conf` (edição segura, conferida), passa o
   conteúdo para o grupo novo e refaz as sessões de quem perdeu o acesso.

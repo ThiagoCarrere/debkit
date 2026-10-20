@@ -218,7 +218,7 @@ caso "tela: sem grupo para dar acesso"
 contem "crie um grupo antes" "$(PRE="debkit_samba_grupos_comuns() { :; };" tela "")"
 caso "menu Samba > Compartilhamentos > 1) Listar"
 saida=$(pty 0.6 "bash $DEBKIT" 1 3 1 "" 0 0 0)
-contem "2) Criar compartilhamento" "$saida"; contem "5) Pastas pessoais" "$saida"; contem "Compartilhamentos do servidor" "$saida"
+contem "2) Criar compartilhamento" "$saida"; contem "6) Pastas pessoais" "$saida"; contem "Compartilhamentos do servidor" "$saida"
 caso "inglês"
 contem "Share en1 created" "$(p "DEBKIT_IDIOMA=en; DEBKIT_S_NOME=en1; DEBKIT_S_COMENTARIO=''; DEBKIT_S_PASTA='$T/base/en1'; DEBKIT_S_GRUPO=dkt_fin; debkit_shr_criar")"
 

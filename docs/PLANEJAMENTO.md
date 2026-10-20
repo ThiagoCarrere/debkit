@@ -327,6 +327,21 @@ outro), e quem está fora do grupo é recusado.
 Prova real (`t18b`): depois da troca, os membros do grupo novo gravam e os
 do antigo são recusados, inclusive com a sessão aberta.
 
+**Como ficou a 2.3 (remover; Compartilhamentos → 5; Pastas pessoais virou
+6):** só os que estão no padrão (os outros ficam para a 2.4). O resumo
+mostra a pasta que fica, quem perde o acesso (membros e quem tem o grupo
+como principal) e quem está conectado; UMA confirmação s/n. No smb.conf
+(edição segura) sai a seção inteira (todas, se repetida; sem diferenciar
+maiúsculas), com o comentário `# debkit: compartilhamento criado em` e os
+comentários de dentro dela; fica o bloco de comentários colado no
+cabeçalho seguinte. A conferência exige que só a seção tenha saído. Depois
+a pasta passa a `root:root` `0700` (os arquivos não mudam) e as sessões de
+quem tinha o acesso são refeitas. Se a pasta não mudar, o compartilhamento
+já saiu e o debkit avisa para conferir à mão. Criar de novo com a mesma
+pasta devolve a pasta ao grupo. Prova real (`t19b`): a sessão aberta perde
+o acesso na hora, conexão nova é recusada, os arquivos ficam e outro
+compartilhamento continua funcionando.
+
 ## 4. O que o debkit gerencia
 
 Decisão de 15/10/2026 (substitui a regra anterior "só gerencia o que ele
@@ -460,7 +475,7 @@ debkit/
 |---|---|
 | 0. Fundação | 0.1 esqueleto ✔ · 0.2 detecção do ambiente ✔ · 0.3 preparação do ambiente e backups ✔ · 0.4 proteção SSH ✔ · 0.5 firewall ✔ |
 | 1. Usuários e grupos | 1.0 reestruturar ✔ (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário ✔ (tipos, nome completo, grupos; sem home) · 1.1b pasta pessoal ✔ (base no disco de dados, na criação ou depois, `[homes]`) · listar ✔ · trocar senha ✔ · grupos ✔ (criar, remover, entrar/sair) · menu em submenus ✔ · excluir usuário ✔ · consistência Linux x Samba ✔ · ~~desativar/reativar~~ (adiado, 3.4) |
-| 2. Compartilhamentos | decisões na seção 3.7 · 2.0 `map to guest = never` ✔ · 2.1 criar + listar ✔ · 2.2 grupo e permissões (trocar o grupo, ajustar o conteúdo) ✔ · 2.3 remover · 2.4 os já existentes |
+| 2. Compartilhamentos | decisões na seção 3.7 · 2.0 `map to guest = never` ✔ · 2.1 criar + listar ✔ · 2.2 grupo e permissões (trocar o grupo, ajustar o conteúdo) ✔ · 2.3 remover ✔ · 2.4 os já existentes |
 | 3. Diagnóstico | falhas de login, sessões ativas, saúde do Samba, consulta à auditoria |
 | 4. Publicação | comandos diretos completos, `install.sh`, **desinstalação**, README, mensagens em inglês, testes automáticos e CI |
 
@@ -498,7 +513,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 
 ## 11. Situação atual e próximos passos
 
-*Atualizado em 20/10/2026.*
+*Atualizado em 20/10/2026 (2.3).*
 
 - Nome decidido: **debkit**; renomeação gsb → debkit feita (arquivos,
   variáveis, funções, grupo `debkit_usuarios`, `/etc/debkit`, testes). As
@@ -548,6 +563,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | 2.1 Compartilhamentos: criar e listar | `b976033` |
 | Compartilhamentos: um grupo só, com acesso total | `92ebf2f` |
 | 2.2 Compartilhamentos: trocar o grupo e ajustar o conteúdo | `b11457a` |
+| 2.3 Compartilhamentos: remover | (este commit) |
 
 **Próximos passos:**
 
@@ -645,7 +661,10 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
     A tela Criar pergunta um grupo.
 22. ✔ 2.2 grupo e permissões (Samba → Compartilhamentos → 3 e 4; seção
     3.7). Remover grupo usado no smb.conf passa a ser recusado.
-23. **Próxima tarefa:** 2.3 remover compartilhamento (seção 3.7, item 5).
+23. ✔ 2.3 remover compartilhamento (Samba → Compartilhamentos → 5; seção
+    3.7).
+24. **Próxima tarefa:** 2.4 os já existentes (feitos à mão, fora do padrão:
+    trazer para o padrão ou remover; seção 3.7, item 6).
 
 **VM limpa de novo:** `dev/vmnova.sh` → (reinicia) → `dev/vmprepara.sh` →
 `./debkit --preparar` → testes.
@@ -691,7 +710,8 @@ impressão digital do `run.sh` confere). Com um grupo só por
 compartilhamento: 1658 + 188 (sem os casos de somente leitura; o `t17` usa
 só as seções padrão da cópia do smb.conf, para os compartilhamentos de
 demonstração não interferirem). Com a tarefa 2.2: 1794 + 225 (`t18_permissoes.sh` e
-`t18b_permissoes_real.sh`). Os testes também acusam se alguém usar o debkit na VM enquanto rodam (o
+`t18b_permissoes_real.sh`). Com a tarefa 2.3: 1865 + 251 (`t19_remover.sh` e
+`t19b_remover_real.sh`). Os testes também acusam se alguém usar o debkit na VM enquanto rodam (o
 log e a trava reais mudam): não usar o debkit durante a suíte.
 
 Os testes funcionam com o servidor preparado ou não: em vez de exigir que

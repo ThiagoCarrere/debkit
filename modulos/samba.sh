@@ -499,6 +499,15 @@ MSG_pt_BR+=(
     [shr.ajustado]="Permissões de %s ajustadas: %d item(ns) no padrão."
     [shr.ajustar_invalido]="Não é possível ajustar %s (grupo %s): a pasta precisa existir dentro de /mnt ou /srv, sem se misturar com as pastas pessoais nem com outro compartilhamento, e o grupo precisa existir."
     [shr.ajustar_falhou]="Não foi possível ajustar tudo em %s: %d item(ns) ainda fora do padrão. Rode de novo: Compartilhamentos > Ajustar as permissões do conteúdo."
+    [shr.remover]="Remover um compartilhamento"
+    [shr.r_pasta_fica]="Pasta: %s (os arquivos ficam no disco; só o root acessa)"
+    [shr.aviso_perdem_todos]="Perdem o acesso (membros de %s): %s"
+    [shr.p_confirmar_remover]="Remover o compartilhamento %s?"
+    [shr.removendo]="Removendo o compartilhamento %s..."
+    [shr.removido]="Compartilhamento %s removido."
+    [shr.pasta_mantida]="Os arquivos continuam em %s (pasta do root, sem acesso pela rede). Para usar de novo, crie um compartilhamento com essa pasta."
+    [shr.remover_falhou]="Não foi possível remover o compartilhamento %s: %s"
+    [shr.trancar_falhou]="O compartilhamento %s saiu do smb.conf, mas não foi possível deixar a pasta %s só para o root: confira à mão."
     [samba.consistencia]="Verificar e corrigir contas (Linux x Samba)"
     [cns.titulo]="Verificar e corrigir contas"
     [cns.tudo_ok]="Tudo certo: todas as contas estão no Linux e no Samba, protegidas como o tipo pede."
@@ -718,6 +727,15 @@ MSG_en+=(
     [shr.ajustado]="Permissions of %s adjusted: %d item(s) in the pattern."
     [shr.ajustar_invalido]="Cannot adjust %s (group %s): the folder must exist inside /mnt or /srv, not overlapping the home folders nor another share, and the group must exist."
     [shr.ajustar_falhou]="Could not adjust everything in %s: %d item(s) still out of the pattern. Run it again: Shares > Adjust the content permissions."
+    [shr.remover]="Remove a share"
+    [shr.r_pasta_fica]="Folder: %s (the files stay on disk; only root has access)"
+    [shr.aviso_perdem_todos]="Lose access (members of %s): %s"
+    [shr.p_confirmar_remover]="Remove share %s?"
+    [shr.removendo]="Removing share %s..."
+    [shr.removido]="Share %s removed."
+    [shr.pasta_mantida]="The files remain in %s (root folder, no network access). To use them again, create a share with this folder."
+    [shr.remover_falhou]="Could not remove share %s: %s"
+    [shr.trancar_falhou]="Share %s left smb.conf, but folder %s could not be restricted to root: check it by hand."
     [samba.consistencia]="Check and fix accounts (Linux x Samba)"
     [cns.titulo]="Check and fix accounts"
     [cns.tudo_ok]="All good: every account is in Linux and in Samba, protected as its type requires."
@@ -3099,6 +3117,83 @@ debkit_shr_trocar_grupo() {
     return 0
 }
 
+# ── Compartilhamentos: remover ──────────────────────────────────────────────
+# Filtro: tira a seção DEBKIT_S_NOME (sem diferenciar maiúsculas; todas, se
+# repetida), com o comentário "# debkit: compartilhamento criado em" e as
+# linhas vazias logo antes dela, e os comentários de dentro dela. Fica só o
+# bloco de comentários colado no cabeçalho seguinte (depois da última linha
+# vazia; ex.: o comentário do debkit da seção seguinte).
+debkit_shr_filtro_remover() {
+    awk -v s="${DEBKIT_S_NOME,,}" '
+        function solta(   i) { for (i = 1; i <= n; i++) print b[i]; n = 0 }
+        /^[ \t]*\[/ {
+            h = $0; sub(/^[ \t]*\[[ \t]*/, "", h); sub(/[ \t]*\].*$/, "", h)
+            if (tolower(h) == s) {
+                if (em) n = 0
+                else { while (n > 0 && (b[n] ~ /^[ \t]*$/ || b[n] ~ /^# debkit: compartilhamento criado em /)) n--; solta() }
+                em = 1; next
+            }
+            if (em) { for (k = n; k > 0 && b[k] !~ /^[ \t]*$/; k--); for (i = (k > 0 ? k : 1); i <= n; i++) print b[i]; n = 0 }
+            em = 0; solta(); print; next
+        }
+        /^[ \t]*([#;].*)?$/ { b[++n] = $0; next }
+        em { n = 0; next }
+        { solta(); print }
+        END { if (!em) solta() }'
+}
+
+# Conferência: a seção existia, não existe mais e o resto não mudou
+debkit_shr_conferir_remover() {
+    grep -qxF -- "[$DEBKIT_S_NOME]" "$1" && ! grep -qixF -- "[$DEBKIT_S_NOME]" "$2" \
+        && cmp -s <(debkit_shr_sem_secao "$1" "$DEBKIT_S_NOME") <(debkit_shr_sem_secao "$2" "$DEBKIT_S_NOME")
+}
+
+# Quem tem o acesso pelo grupo: membros e quem o tem como principal
+debkit_shr_acesso() {
+    { debkit_grupo_membros "$1"; debkit_grupo_principais "$1"; } | sed '/^$/d' | sort -u
+}
+
+# Entrada: DEBKIT_S_NOME (compartilhamento no padrão). Tira a seção do
+# smb.conf (edição segura; confere e, se não bater, restaura), deixa a
+# pasta root:root 0700 (decisão de 19/10/2026: os arquivos ficam, só o root
+# acessa; apagar dados não faz parte da função) e refaz as sessões de quem
+# tinha o acesso.
+debkit_shr_remover() {
+    local nome="$DEBKIT_S_NOME" linha pasta grupo rc=0
+    local -a afetados=()
+    linha=$(debkit_shr_gerenciaveis | awk -F'|' -v n="$nome" '$1 == n')
+    if [ -z "$nome" ] || [ -z "$linha" ]; then
+        msg_erro "$(t shr.remover_falhou "$nome" "$(t shr.nao_gerenciavel "$nome")")"; return 1
+    fi
+    IFS='|' read -r _ pasta grupo <<< "$linha"
+    mapfile -t afetados < <(debkit_shr_acesso "$grupo")
+    msg_info "$(t shr.removendo "$nome")"
+    if ! debkit_smbconf_editar debkit_shr_filtro_remover debkit_shr_conferir_remover; then
+        msg_erro "$(t shr.remover_falhou "$nome" "$(t shr.f_smbconf)")"
+        debkit_auditar shr_remover "nome=$nome pasta=$pasta grupo=$grupo resultado=falha"
+        return 1
+    fi
+    if debkit_shr_secoes | grep -qixF -- "$nome"; then
+        debkit_smbconf_restaurar
+        msg_erro "$(t shr.remover_falhou "$nome" "$(t usr.f_conferencia smb.conf)")"
+        debkit_auditar shr_remover "nome=$nome pasta=$pasta grupo=$grupo resultado=falha"
+        return 1
+    fi
+    # chmod com 5 dígitos: tira também o setgid da pasta
+    chown 0:0 -- "$pasta" 2>/dev/null; chmod 00700 -- "$pasta" 2>/dev/null
+    if [ "$(stat -c '%u %g %a' -- "$pasta" 2>/dev/null)" != "0 0 700" ]; then
+        msg_erro "$(t shr.trancar_falhou "$nome" "$pasta")"
+        debkit_auditar shr_remover "nome=$nome pasta=$pasta grupo=$grupo resultado=pasta_falhou"
+        rc=1
+    else
+        debkit_auditar shr_remover "nome=$nome pasta=$pasta grupo=$grupo resultado=ok"
+        msg_ok "$(t shr.removido "$nome")"
+        msg_info "$(t shr.pasta_mantida "$pasta")"
+    fi
+    debkit_samba_reconectar "${afetados[@]}" || rc=1
+    return "$rc"
+}
+
 # ── Usuários: tela ──────────────────────────────────────────────────────────
 # Lê uma linha para a variável indicada; fim da entrada = cancelar (retorna 1)
 debkit_ler() {
@@ -3519,6 +3614,32 @@ debkit_shr_tela_ajustar() {
     return "$rc"
 }
 
+# Tela: compartilhamento, resumo (pasta que fica, quem perde o acesso, quem
+# está conectado) e UMA confirmação
+debkit_shr_tela_remover() {
+    local linha nome pasta grupo rc
+    local -a afetados=()
+    titulo "$(t shr.remover)"
+    if ! debkit_samba_ambiente_pronto; then msg_erro "$(t usr.ambiente_nao_pronto)"; pausar; return 1; fi
+    debkit_shr_escolher linha || { pausar; return 1; }
+    IFS='|' read -r nome pasta grupo <<< "$linha"
+    echo ""
+    echo "  $(t usr.titulo_resumo)"
+    echo "    $(t shr.r_nome "$nome")"
+    echo "    $(t shr.r_pasta_fica "$pasta")"
+    mapfile -t afetados < <(debkit_shr_acesso "$grupo")
+    if [ ${#afetados[@]} -gt 0 ]; then
+        msg_aviso "$(t shr.aviso_perdem_todos "$grupo" "$(debkit_juntar "${afetados[@]}")")"
+        debkit_aviso_conectados "${afetados[@]}"
+    fi
+    echo ""
+    if ! confirmar "$(t shr.p_confirmar_remover "$nome")"; then msg_aviso "$(t usr.cancelado)"; pausar; return 1; fi
+    DEBKIT_S_NOME="$nome"
+    debkit_shr_remover; rc=$?
+    pausar
+    return "$rc"
+}
+
 # ── Grupos: telas ───────────────────────────────────────────────────────────
 # Escolhe UM item numerado: debkit_escolher_um <variável> <prompt> <itens...>.
 # Retorna 1 se cancelar (Enter vazio ou fim da entrada).
@@ -3824,8 +3945,8 @@ debkit_samba_menu_usuarios() {
     done
 }
 
-# Compartilhamentos: listar, criar, trocar o grupo, ajustar as permissões e
-# o [homes] (Fase 2: remover vem na próxima tarefa)
+# Compartilhamentos: listar, criar, trocar o grupo, ajustar as permissões,
+# remover e o [homes]
 debkit_samba_menu_compartilhamentos() {
     local opcao
     while true; do
@@ -3834,7 +3955,8 @@ debkit_samba_menu_compartilhamentos() {
         echo "  2) $(t shr.criar)"
         echo "  3) $(t shr.trocar)"
         echo "  4) $(t shr.ajustar)"
-        echo "  5) $(t samba.pastas_pessoais)"
+        echo "  5) $(t shr.remover)"
+        echo "  6) $(t samba.pastas_pessoais)"
         echo ""
         echo "  0) $(t geral.voltar)"
         echo ""
@@ -3845,7 +3967,8 @@ debkit_samba_menu_compartilhamentos() {
             2)  debkit_shr_tela_criar ;;
             3)  debkit_shr_tela_trocar ;;
             4)  debkit_shr_tela_ajustar ;;
-            5)  debkit_samba_tela_pastas_pessoais ;;
+            5)  debkit_shr_tela_remover ;;
+            6)  debkit_samba_tela_pastas_pessoais ;;
             0)  return 0 ;;
             *)  msg_erro "$(t geral.opcao_invalida "$opcao")"; pausar ;;
         esac

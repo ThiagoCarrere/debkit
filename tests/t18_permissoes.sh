@@ -239,7 +239,7 @@ igual "$(getent group dkt_fc | cut -d: -f3) 660" "$(stat -c '%g %a' "$T/cheia/x.
 caso "menu Samba > Compartilhamentos"
 saida=$(pty 0.6 "bash $DEBKIT" 1 3 "" 0 0 0)
 contem "3) Trocar o grupo de um compartilhamento" "$saida"; contem "4) Ajustar as permissões do conteúdo" "$saida"
-contem "5) Pastas pessoais" "$saida"
+contem "5) Remover um compartilhamento" "$saida"; contem "6) Pastas pessoais" "$saida"
 caso "inglês"
 contem "now belongs to group dkt_fc" "$(p "DEBKIT_IDIOMA=en; DEBKIT_S_NOME=dkt-a; DEBKIT_S_GRUPO=dkt_fc; debkit_shr_trocar_grupo")"
 
