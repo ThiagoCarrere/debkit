@@ -81,8 +81,9 @@ caso "usuário conectado ao Samba: a sessão é encerrada e ele é excluído"
 rm -f "$SANDBOX/sessao"; mkfifo "$SANDBOX/sessao"
 ( timeout 60 smbclient '//127.0.0.1/IPC$' -A "$SANDBOX/auth" < "$SANDBOX/sessao" > "$SANDBOX/sessao.out" 2>&1 ) &
 PID_SESSAO=$!
-exec 3> "$SANDBOX/sessao"; echo "help" >&3; sleep 2
-SMBD=$(s "debkit_samba_sessoes $ARQ")
+exec 3> "$SANDBOX/sessao"; echo "help" >&3
+# espera a sessão aparecer (até 10 s; com a máquina ocupada, 2 s não bastavam)
+for (( i = 0; i < 20; i++ )); do SMBD=$(s "debkit_samba_sessoes $ARQ"); [ -n "$SMBD" ] && break; sleep 0.5; done
 verdadeiro "sessão aberta encontrada" test -n "$SMBD"
 saida=$(s "debkit_usuario_excluir $ARQ; echo RC=\$?")
 contem "RC=0" "$saida"; contem "1 sessão(ões) do Samba encerrada(s)" "$saida"; contem "Usuário $ARQ excluído" "$saida"

@@ -642,6 +642,35 @@ MSG_pt_BR+=(
     [diag.m_conta_expirada]="conta expirada"
     [diag.m_horario]="fora do horário permitido"
     [diag.m_recusado]="login recusado"
+    [diag.saude]="Saúde do Samba (relatório)"
+    [diag.titulo_saude]="Saúde do Samba"
+    [saude.verificado]="Verificado em %s."
+    [saude.g_config]="Serviço e configuração"
+    [saude.g_rede]="Rede"
+    [saude.g_disco]="Espaço em disco"
+    [saude.g_shr]="Compartilhamentos"
+    [saude.g_contas]="Contas"
+    [saude.g_atividade]="Atividade"
+    [saude.ativo_desde]="Samba no ar desde %s"
+    [saude.preparacao]="A preparação tem %d item(ns) pendente(s): rode debkit --preparar"
+    [saude.porta_ok]="smbd escutando na porta %s"
+    [saude.porta_fechada]="Ninguém escutando na porta %s: os computadores não conseguem acessar"
+    [saude.disco]="%s: %s%% usado, %s livres (%s)"
+    [saude.inodes]="%s: %s%% dos inodes usados (o limite de arquivos está perto)"
+    [saude.r_homes]="pastas pessoais"
+    [saude.r_base]="base do Samba"
+    [saude.r_log]="logs"
+    [saude.shr_sem_membros]="%s: o grupo %s não tem membros: ninguém acessa"
+    [saude.contas_total]="%d usuário(s) com conta no Samba"
+    [saude.desativadas]="Contas desativadas: %s"
+    [saude.inconsistentes]="%d conta(s) fora do padrão: %s (Samba > Usuários > Consistência)"
+    [saude.sessoes]="%d sessão(ões) ativa(s) (Diagnóstico > Sessões ativas)"
+    [saude.sem_falhas]="Nenhuma falha de login nas últimas 24 horas"
+    [saude.falhas]="%d falha(s) de login nas últimas 24 horas (Diagnóstico > Logins)"
+    [saude.falhas_muitas]="%s em %s: %d falhas de login nas últimas 24 horas (senha esquecida ou tentativa de invasão)"
+    [saude.tudo_ok]="Tudo certo com o Samba."
+    [saude.resumo_avisos]="%d aviso(s)."
+    [saude.resumo_erros]="%d problema(s) e %d aviso(s)."
     [grp.titulo]="Samba: grupos"
     [grp.listar]="Listar grupos"
     [grp.criar]="Criar grupo"
@@ -929,6 +958,35 @@ MSG_en+=(
     [diag.m_conta_expirada]="account expired"
     [diag.m_horario]="outside allowed hours"
     [diag.m_recusado]="login refused"
+    [diag.saude]="Samba health (report)"
+    [diag.titulo_saude]="Samba health"
+    [saude.verificado]="Checked at %s."
+    [saude.g_config]="Service and configuration"
+    [saude.g_rede]="Network"
+    [saude.g_disco]="Disk space"
+    [saude.g_shr]="Shares"
+    [saude.g_contas]="Accounts"
+    [saude.g_atividade]="Activity"
+    [saude.ativo_desde]="Samba up since %s"
+    [saude.preparacao]="The preparation has %d pending item(s): run debkit --preparar"
+    [saude.porta_ok]="smbd listening on port %s"
+    [saude.porta_fechada]="Nothing listening on port %s: computers cannot connect"
+    [saude.disco]="%s: %s%% used, %s free (%s)"
+    [saude.inodes]="%s: %s%% of inodes used (close to the file limit)"
+    [saude.r_homes]="home folders"
+    [saude.r_base]="Samba database"
+    [saude.r_log]="logs"
+    [saude.shr_sem_membros]="%s: group %s has no members: nobody gets in"
+    [saude.contas_total]="%d user(s) with a Samba account"
+    [saude.desativadas]="Disabled accounts: %s"
+    [saude.inconsistentes]="%d account(s) out of pattern: %s (Samba > Users > Consistency)"
+    [saude.sessoes]="%d active session(s) (Diagnostics > Active sessions)"
+    [saude.sem_falhas]="No login failures in the last 24 hours"
+    [saude.falhas]="%d login failure(s) in the last 24 hours (Diagnostics > Logins)"
+    [saude.falhas_muitas]="%s on %s: %d login failures in the last 24 hours (forgotten password or break-in attempt)"
+    [saude.tudo_ok]="All good with Samba."
+    [saude.resumo_avisos]="%d warning(s)."
+    [saude.resumo_erros]="%d problem(s) and %d warning(s)."
     [grp.titulo]="Samba: groups"
     [grp.listar]="List groups"
     [grp.criar]="Create group"
@@ -2877,6 +2935,129 @@ debkit_diag_motivo() {
     esac
 }
 
+# ── Diagnóstico: saúde do Samba ─────────────────────────────────────────────
+# Um relatório só (decisão de 20/10/2026): reaproveita a verificação do
+# ambiente (itens do Samba e do firewall) e os alertas dos compartilhamentos
+# e das contas, e soma porta, disco e atividade. Nada é alterado.
+# DEBKIT_SAUDE: linhas "grupo<TAB>estado<TAB>texto"
+#   grupos: config rede disco shr contas atividade
+#   estados: ok | aviso | erro | info
+DEBKIT_SAUDE_DISCO_AVISO=85
+DEBKIT_SAUDE_DISCO_ERRO=95
+DEBKIT_SAUDE_FALHAS_AVISO=10
+DEBKIT_SAMBA_DADOS=/var/lib/samba
+debkit_saude_add() { DEBKIT_SAUDE+=("$1"$'\t'"$2"$'\t'"$3"); }
+
+# Pastas a olhar no disco: rótulo|pasta (compartilhamentos com pasta, base
+# das pastas pessoais, base e logs do Samba)
+debkit_saude_pastas() {
+    local nome pasta
+    while IFS='|' read -r nome pasta _; do
+        [ -n "$pasta" ] && [[ "$pasta" != *%* ]] && [ -d "$pasta" ] && echo "$nome|$pasta"
+    done < <(debkit_shr_dados)
+    [ -n "$DEBKIT_HOMES_BASE" ] && [ -d "$DEBKIT_HOMES_BASE" ] && echo "$(t saude.r_homes)|$DEBKIT_HOMES_BASE"
+    [ -d "$DEBKIT_SAMBA_DADOS" ] && echo "$(t saude.r_base)|$DEBKIT_SAMBA_DADOS"
+    [ -d "$(dirname "$DEBKIT_AUTH_LOG")" ] && echo "$(t saude.r_log)|$(dirname "$DEBKIT_AUTH_LOG")"
+    return 0
+}
+
+# Um sistema de arquivos por linha: montagem|uso %|inodes % (vazio se não
+# se aplica)|livre (MiB)|rótulos das pastas (", ")
+debkit_saude_discos() {
+    local rotulo pasta linha alvo
+    local -A dados=() rots=()
+    local -a ordem=()
+    while IFS='|' read -r rotulo pasta; do
+        linha=$(df --output=target,pcent,ipcent,avail -B1M -- "$pasta" 2>/dev/null | awk 'NR == 2 {
+            n = NF; t = $1; for (i = 2; i <= n - 3; i++) t = t " " $i
+            p = $(n-2); ip = $(n-1); sub(/%$/, "", p); sub(/%$/, "", ip); if (ip !~ /^[0-9]+$/) ip = ""
+            print t "|" p "|" ip "|" $n }')
+        [ -n "$linha" ] || continue
+        alvo=${linha%%|*}
+        if [ -z "${dados[$alvo]+x}" ]; then ordem+=("$alvo"); dados[$alvo]=$linha; fi
+        [[ ", ${rots[$alvo]:-}, " == *", $rotulo, "* ]] || rots[$alvo]+="${rots[$alvo]:+, }$rotulo"
+    done < <(debkit_saude_pastas)
+    for alvo in "${ordem[@]}"; do printf '%s|%s\n' "${dados[$alvo]}" "${rots[$alvo]}"; done
+}
+
+# MiB -> "N GB" / "N MB"
+debkit_saude_tamanho() { if [ "$1" -ge 1024 ]; then printf '%d GB' "$(( $1 / 1024 ))"; else printf '%d MB' "$1"; fi; }
+
+# Monta DEBKIT_SAUDE
+debkit_saude_coletar() {
+    local item g estado texto alvo pc ip livre rotulos nome pasta grupo alerta a n u ini total
+    local -a shr=() desativadas=() inc=() falhas=()
+    DEBKIT_SAUDE=()
+
+    # Serviço e configuração; firewall (da verificação do ambiente)
+    debkit_verificar_ambiente >/dev/null 2>&1
+    for item in "${DEBKIT_VERIF[@]}"; do
+        IFS=$'\t' read -r g estado texto <<< "$item"
+        case "$g" in samba) g=config ;; firewall) g=rede ;; *) continue ;; esac
+        case "$estado" in falta) estado=erro ;; na) continue ;; esac
+        debkit_saude_add "$g" "$estado" "$texto"
+    done
+    if [ -n "$DEBKIT_SVC_SAMBA" ] && debkit_servico_ativo "$DEBKIT_SVC_SAMBA"; then
+        ini=$(systemctl show -p ActiveEnterTimestamp --value "$DEBKIT_SVC_SAMBA.service" 2>/dev/null)
+        ini=$(date -d "$ini" '+%d/%m/%Y %H:%M' 2>/dev/null) && debkit_saude_add config info "$(t saude.ativo_desde "$ini")"
+    fi
+    debkit_montar_plano
+    [ -z "$DEBKIT_PLANO_IMPOSSIVEL" ] && [ ${#DEBKIT_PLANO[@]} -gt 0 ] && debkit_saude_add config aviso "$(t saude.preparacao "${#DEBKIT_PLANO[@]}")"
+
+    # Porta
+    if [ -n "$(ss -Hltn "sport = :$DEBKIT_FW_PORTA" 2>/dev/null)" ]; then
+        debkit_saude_add rede ok "$(t saude.porta_ok "$DEBKIT_FW_PORTA")"
+    else
+        debkit_saude_add rede erro "$(t saude.porta_fechada "$DEBKIT_FW_PORTA")"
+    fi
+
+    # Disco
+    while IFS='|' read -r alvo pc ip livre rotulos; do
+        estado=ok
+        [ "$pc" -ge "$DEBKIT_SAUDE_DISCO_AVISO" ] && estado=aviso
+        [ "$pc" -ge "$DEBKIT_SAUDE_DISCO_ERRO" ] && estado=erro
+        debkit_saude_add disco "$estado" "$(t saude.disco "$alvo" "$pc" "$(debkit_saude_tamanho "$livre")" "$rotulos")"
+        [ -n "$ip" ] && [ "$ip" -ge "$DEBKIT_SAUDE_DISCO_ERRO" ] && debkit_saude_add disco aviso "$(t saude.inodes "$alvo" "$ip")"
+    done < <(debkit_saude_discos)
+
+    # Compartilhamentos
+    mapfile -t shr < <(debkit_shr_dados)
+    debkit_saude_add shr info "$(t shr.total "${#shr[@]}")"
+    for item in "${shr[@]}"; do
+        IFS='|' read -r nome pasta _ _ alerta <<< "$item"
+        for a in ${alerta//,/ }; do
+            if [ "$a" == "sem_pasta" ]; then debkit_saude_add shr erro "$(t shr.a_sem_pasta "$nome" "$pasta")"
+            else debkit_saude_add shr aviso "$(t "shr.a_$a" "$nome")"; fi
+        done
+    done
+    while IFS='|' read -r nome _ grupo; do
+        [ -n "$(debkit_shr_usuarios "@$grupo")" ] || debkit_saude_add shr aviso "$(t saude.shr_sem_membros "$nome" "$grupo")"
+    done < <(debkit_shr_gerenciaveis)
+
+    # Contas
+    n=0
+    while IFS='|' read -r u _ _ estado _; do
+        case "$estado" in ativa|so_samba) n=$((n + 1)) ;; desativada) n=$((n + 1)); desativadas+=("$u") ;; esac
+    done < <(debkit_samba_usuarios_dados)
+    debkit_saude_add contas info "$(t saude.contas_total "$n")"
+    [ ${#desativadas[@]} -gt 0 ] && debkit_saude_add contas info "$(t saude.desativadas "$(debkit_juntar "${desativadas[@]}")")"
+    mapfile -t inc < <(debkit_samba_inconsistencias | cut -d'|' -f2 | sort -u)
+    [ ${#inc[@]} -gt 0 ] && debkit_saude_add contas aviso "$(t saude.inconsistentes "${#inc[@]}" "$(debkit_juntar "${inc[@]}")")"
+
+    # Atividade
+    debkit_saude_add atividade info "$(t saude.sessoes "$(debkit_diag_sessoes | grep -c .)")"
+    mapfile -t falhas < <(debkit_diag_falhas "$(date -d '24 hours ago' '+%Y-%m-%d %H:%M:%S')")
+    total=0
+    for item in "${falhas[@]}"; do IFS='|' read -r _ _ n _ <<< "$item"; total=$((total + n)); done
+    if [ "$total" -eq 0 ]; then debkit_saude_add atividade ok "$(t saude.sem_falhas)"
+    else debkit_saude_add atividade info "$(t saude.falhas "$total")"; fi
+    for item in "${falhas[@]}"; do
+        IFS='|' read -r u ip n _ <<< "$item"
+        [ "$n" -ge "$DEBKIT_SAUDE_FALHAS_AVISO" ] && debkit_saude_add atividade aviso "$(t saude.falhas_muitas "$u" "$ip" "$n")"
+    done
+    return 0
+}
+
 # ── Grupos: criar ───────────────────────────────────────────────────────────
 # Entrada: DEBKIT_G_NOME e DEBKIT_G_MEMBROS (array de usuários comuns).
 # Tudo ou nada: cria o grupo comum (groupadd, GID da faixa do login.defs),
@@ -4318,6 +4499,35 @@ debkit_diag_tela_logins() {
     return 0
 }
 
+# Tela: o relatório de saúde, por grupo, e o resumo
+debkit_diag_tela_saude() {
+    local grupo item g estado texto icone cor erros=0 avisos=0
+    titulo "$(t diag.titulo_saude)"
+    debkit_saude_coletar
+    echo "  $(t saude.verificado "$(date '+%d/%m/%Y %H:%M')")"
+    for grupo in config rede disco shr contas atividade; do
+        echo ""
+        printf '  %s%s%s\n' "$C_NEGRITO" "$(t "saude.g_$grupo")" "$C_RESET"
+        for item in "${DEBKIT_SAUDE[@]}"; do
+            IFS=$'\t' read -r g estado texto <<< "$item"
+            [ "$g" == "$grupo" ] || continue
+            case "$estado" in
+                ok)    icone="✔"; cor="$C_VERDE" ;;
+                erro)  icone="✘"; cor="$C_VERMELHO"; erros=$((erros + 1)) ;;
+                aviso) icone="!"; cor="$C_AMARELO"; avisos=$((avisos + 1)) ;;
+                *)     icone="·"; cor="$C_CIANO" ;;
+            esac
+            printf '    %s%s%s %s\n' "$cor" "$icone" "$C_RESET" "$texto"
+        done
+    done
+    echo ""
+    if [ "$erros" -gt 0 ]; then msg_erro "$(t saude.resumo_erros "$erros" "$avisos")"
+    elif [ "$avisos" -gt 0 ]; then msg_aviso "$(t saude.resumo_avisos "$avisos")"
+    else msg_ok "$(t saude.tudo_ok)"; fi
+    pausar
+    return 0
+}
+
 # ── Grupos: telas ───────────────────────────────────────────────────────────
 # Escolhe UM item numerado: debkit_escolher_um <variável> <prompt> <itens...>.
 # Retorna 1 se cancelar (Enter vazio ou fim da entrada).
@@ -4597,14 +4807,15 @@ debkit_samba_menu() {
     done
 }
 
-# Diagnóstico (Fase 3): sessões ativas e logins (saúde e auditoria vêm nas
-# próximas tarefas)
+# Diagnóstico (Fase 3): sessões ativas, logins e saúde (a auditoria vem na
+# próxima tarefa)
 debkit_samba_menu_diagnostico() {
     local opcao
     while true; do
         titulo "$(t samba.titulo_diagnostico)"
         echo "  1) $(t diag.sessoes)"
         echo "  2) $(t diag.logins)"
+        echo "  3) $(t diag.saude)"
         echo ""
         echo "  0) $(t geral.voltar)"
         echo ""
@@ -4613,6 +4824,7 @@ debkit_samba_menu_diagnostico() {
             "") continue ;;
             1)  debkit_diag_tela_sessoes ;;
             2)  debkit_diag_tela_logins ;;
+            3)  debkit_diag_tela_saude ;;
             0)  return 0 ;;
             *)  msg_erro "$(t geral.opcao_invalida "$opcao")"; pausar ;;
         esac

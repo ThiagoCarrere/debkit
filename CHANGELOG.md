@@ -63,6 +63,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   procura o `include` pelo caminho exato do sandbox.
 
 ### Adicionado
+- **Diagnóstico → Saúde do Samba** (Samba → 4 → 3): um relatório só, sem
+  alterar nada: serviço e configuração, porta 445 e firewall, espaço em
+  disco das pastas, alertas dos compartilhamentos e das contas, sessões e
+  falhas de login das últimas 24 horas; resumo no fim.
 - **Diagnóstico → Logins** (Samba → 4 → 2): falhas de login dos últimos 7
   dias por usuário e máquina (tentativas, última, motivo: senha errada,
   usuário inexistente, conta desativada...) e o último login de cada
