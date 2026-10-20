@@ -563,7 +563,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | 2.1 Compartilhamentos: criar e listar | `b976033` |
 | Compartilhamentos: um grupo só, com acesso total | `92ebf2f` |
 | 2.2 Compartilhamentos: trocar o grupo e ajustar o conteúdo | `b11457a` |
-| 2.3 Compartilhamentos: remover | (este commit) |
+| 2.3 Compartilhamentos: remover | `fc4a104` |
 
 **Próximos passos:**
 
