@@ -737,7 +737,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | 3.1 Sessões ativas (ver e desconectar) | `2ebdf36` |
 | 3.2 Logins (falhas e último login) | `ac6ee3b` |
 | 3.3 Saúde do Samba (relatório) | `09c0512` |
-| 3.4 Consulta à auditoria | (este commit) |
+| 3.4 Consulta à auditoria | `cb07c7a` |
 
 **Próximos passos:**
 
