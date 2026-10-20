@@ -183,6 +183,7 @@ contem "manual1: fora do padrão do debkit" "$saida"; contem "manual4: fora do p
 nao_contem "financeiro: fora do padrão" "$saida"; nao_contem "manual2: fora do padrão" "$saida"
 contem "manual2: aberto para convidado" "$saida"; contem "manual2: a pasta $T/nao_existe não existe" "$saida"
 contem "manual2: sem \"valid users\"" "$saida"
+igual "" "$(grep '^    ! ' <<< "$saida" | grep -E 'total\).|senha.|Samba acessa.')" "cada alerta uma vez (nada repetido depois da mensagem)"
 contem "7 compartilhamento(s)" "$saida"
 sed -i "/^\[manual1\]/,\$d" "$AREIA/smb.conf"
 

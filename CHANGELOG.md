@@ -5,6 +5,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ## [Não lançado]
 
+### Corrigido
+- Listar compartilhamentos: os alertas de convidado, "sem valid users" e
+  "fora do padrão" saíam repetidos na mesma linha (com a pasta no lugar do
+  nome).
+
 ### Alterado
 - Remover um grupo usado no `smb.conf` agora é recusado (antes era só um
   aviso): troque o grupo do compartilhamento ou remova-o antes.

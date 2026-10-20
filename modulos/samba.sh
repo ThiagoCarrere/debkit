@@ -2922,7 +2922,10 @@ debkit_shr_listar() {
         acesso=$(debkit_shr_rotulo "$esc")
         [ -n "$lei" ] && acesso="${esc:+$acesso, }$(debkit_shr_rotulo "$lei" | sed "s/, / ($(t shr.so_leitura)), /g; s/\$/ ($(t shr.so_leitura))/")"
         printf '  %s  %s  %s\n' "$(debkit_pad "$nome" "$wn")" "$(debkit_pad "${pasta:-—}" "$wp")" "$acesso"
-        for a in ${alerta//,/ }; do alertas+=("$(t "shr.a_$a" "$nome" "$pasta")"); done
+        # só o sem_pasta mostra a pasta (argumento a mais repetiria a mensagem)
+        for a in ${alerta//,/ }; do
+            if [ "$a" == "sem_pasta" ]; then alertas+=("$(t shr.a_sem_pasta "$nome" "$pasta")"); else alertas+=("$(t "shr.a_$a" "$nome")"); fi
+        done
     done
     echo ""
     echo "  $(t shr.total "${#linhas[@]}")"

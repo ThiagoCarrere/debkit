@@ -690,7 +690,7 @@ Com a consistência: 1474 + 154 (`t15_consistencia.sh` e
 impressão digital do `run.sh` confere). Com um grupo só por
 compartilhamento: 1658 + 188 (sem os casos de somente leitura; o `t17` usa
 só as seções padrão da cópia do smb.conf, para os compartilhamentos de
-demonstração não interferirem). Com a tarefa 2.2: 1793 + 225 (`t18_permissoes.sh` e
+demonstração não interferirem). Com a tarefa 2.2: 1794 + 225 (`t18_permissoes.sh` e
 `t18b_permissoes_real.sh`). Os testes também acusam se alguém usar o debkit na VM enquanto rodam (o
 log e a trava reais mudam): não usar o debkit durante a suíte.
 
