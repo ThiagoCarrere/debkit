@@ -466,13 +466,39 @@ MSG_pt_BR+=(
     [shr.r_pasta_nova]="Pasta: %s (será criada)"
     [shr.r_pasta_existe]="Pasta: %s (já existe; dono e permissões da pasta serão ajustados)"
     [shr.r_grupo]="Grupo (acesso total): %s"
-    [shr.aviso_conteudo]="%s já tem arquivos: eles mantêm as permissões atuais (o ajuste do conteúdo vem na função de permissões)."
+    [shr.aviso_conteudo]="%s já tem arquivos: depois de criar, o debkit oferece ajustar as permissões do conteúdo."
     [shr.criando]="Criando o compartilhamento %s..."
     [shr.criado]="Compartilhamento %s criado (%s)."
     [shr.falhou]="Não foi possível criar o compartilhamento %s: %s"
     [shr.f_pasta]="não foi possível preparar a pasta %s"
     [shr.f_smbconf]="a alteração do smb.conf não foi feita"
     [shr.desfazer_falhou]="ATENÇÃO: não foi possível desfazer a pasta %s: confira à mão."
+    [shr.trocar]="Trocar o grupo de um compartilhamento"
+    [shr.ajustar]="Ajustar as permissões do conteúdo"
+    [shr.nenhum_gerenciavel]="Nenhum compartilhamento no padrão do debkit (um grupo com acesso total). Os que estão fora do padrão aparecem em Listar."
+    [shr.titulo_lista]="Compartilhamentos:"
+    [shr.item]="%s (grupo %s, %s)"
+    [shr.p_compartilhamento]="Compartilhamento (número; Enter cancela): "
+    [shr.atual]="Grupo atual: %s (pasta %s)"
+    [shr.p_novo_grupo]="Novo grupo (número; Enter cancela): "
+    [shr.sem_outro_grupo]="Não há outro grupo para escolher: crie um grupo antes (Samba > Grupos)."
+    [shr.mesmo_grupo]="%s já é o grupo do compartilhamento."
+    [shr.nao_gerenciavel]="%s não existe ou não está no padrão do debkit (um grupo com acesso total; pasta existente dentro de /mnt ou /srv, só deste compartilhamento)."
+    [shr.r_troca]="Grupo: %s -> %s"
+    [shr.aviso_perdem]="Perdem o acesso (membros de %s que não estão em %s): %s"
+    [shr.conteudo]="Conteúdo de %s: %d item(ns) (arquivos e pastas), %d fora do padrão."
+    [shr.conteudo_ok]="Conteúdo de %s: %d item(ns), todos já no padrão."
+    [shr.explica_ajuste]="Ajuste: tudo passa para o grupo %s, com leitura e escrita para o grupo (pastas com setgid) e sem acesso para outros. Os donos dos arquivos não mudam."
+    [shr.p_confirmar_trocar]="Trocar o grupo de %s para %s?"
+    [shr.p_confirmar_ajustar]="Ajustar as permissões do conteúdo de %s?"
+    [shr.p_ajustar_agora]="Ajustar agora as permissões do conteúdo (tudo para o grupo %s)?"
+    [shr.trocando]="Trocando o grupo do compartilhamento %s..."
+    [shr.trocado]="Compartilhamento %s agora é do grupo %s."
+    [shr.trocar_falhou]="Não foi possível trocar o grupo do compartilhamento %s: %s"
+    [shr.ajustando]="Ajustando as permissões de %s..."
+    [shr.ajustado]="Permissões de %s ajustadas: %d item(ns) no padrão."
+    [shr.ajustar_invalido]="Não é possível ajustar %s (grupo %s): a pasta precisa existir dentro de /mnt ou /srv, sem se misturar com as pastas pessoais nem com outro compartilhamento, e o grupo precisa existir."
+    [shr.ajustar_falhou]="Não foi possível ajustar tudo em %s: %d item(ns) ainda fora do padrão. Rode de novo: Compartilhamentos > Ajustar as permissões do conteúdo."
     [samba.consistencia]="Verificar e corrigir contas (Linux x Samba)"
     [cns.titulo]="Verificar e corrigir contas"
     [cns.tudo_ok]="Tudo certo: todas as contas estão no Linux e no Samba, protegidas como o tipo pede."
@@ -600,7 +626,7 @@ MSG_pt_BR+=(
     [grp.remover_principal]="%s é o grupo principal de: %s. O debkit não remove esse grupo."
     [grp.aviso_membros]="%d membro(s) perdem o acesso dado por este grupo: %s"
     [grp.sem_membros]="O grupo não tem membros."
-    [grp.aviso_usos]="O grupo é usado no %s, nos compartilhamentos: %s- essas regras passarão a apontar para um grupo que não existe."
+    [grp.remover_usado]="O grupo %s é usado no Samba (%s): troque o grupo do compartilhamento (Compartilhamentos > Trocar o grupo) ou remova o compartilhamento antes."
     [grp.procurando]="Procurando arquivos do grupo (GID %s) na base das pastas pessoais e nos compartilhamentos..."
     [grp.aviso_arquivos]="%d arquivo(s)/pasta(s) pertencem ao grupo. Eles ficam com o número %s e um grupo criado depois pode receber o mesmo número e herdar o acesso."
     [grp.aviso_arquivos_muitos]="%d arquivo(s)/pasta(s) ou mais pertencem ao grupo. Eles ficam com o número %s e um grupo criado depois pode receber o mesmo número e herdar o acesso."
@@ -659,13 +685,39 @@ MSG_en+=(
     [shr.r_pasta_nova]="Folder: %s (will be created)"
     [shr.r_pasta_existe]="Folder: %s (already exists; the folder owner and permissions will be adjusted)"
     [shr.r_grupo]="Group (full access): %s"
-    [shr.aviso_conteudo]="%s already has files: they keep their current permissions (adjusting the content comes with the permissions feature)."
+    [shr.aviso_conteudo]="%s already has files: after creating, debkit offers to adjust the content permissions."
     [shr.criando]="Creating share %s..."
     [shr.criado]="Share %s created (%s)."
     [shr.falhou]="Could not create share %s: %s"
     [shr.f_pasta]="could not prepare folder %s"
     [shr.f_smbconf]="the smb.conf change was not made"
     [shr.desfazer_falhou]="WARNING: could not undo folder %s: check it by hand."
+    [shr.trocar]="Change the group of a share"
+    [shr.ajustar]="Adjust the content permissions"
+    [shr.nenhum_gerenciavel]="No share in the debkit pattern (a single group with full access). Those out of the pattern show up in List."
+    [shr.titulo_lista]="Shares:"
+    [shr.item]="%s (group %s, %s)"
+    [shr.p_compartilhamento]="Share (number; Enter cancels): "
+    [shr.atual]="Current group: %s (folder %s)"
+    [shr.p_novo_grupo]="New group (number; Enter cancels): "
+    [shr.sem_outro_grupo]="There is no other group to choose: create a group first (Samba > Groups)."
+    [shr.mesmo_grupo]="%s is already the share group."
+    [shr.nao_gerenciavel]="%s does not exist or is not in the debkit pattern (a single group with full access; an existing folder inside /mnt or /srv, used only by this share)."
+    [shr.r_troca]="Group: %s -> %s"
+    [shr.aviso_perdem]="Lose access (members of %s who are not in %s): %s"
+    [shr.conteudo]="Content of %s: %d item(s) (files and folders), %d out of the pattern."
+    [shr.conteudo_ok]="Content of %s: %d item(s), all already in the pattern."
+    [shr.explica_ajuste]="Adjustment: everything goes to group %s, with read and write for the group (folders with setgid) and no access for others. File owners do not change."
+    [shr.p_confirmar_trocar]="Change the group of %s to %s?"
+    [shr.p_confirmar_ajustar]="Adjust the content permissions of %s?"
+    [shr.p_ajustar_agora]="Adjust the content permissions now (everything to group %s)?"
+    [shr.trocando]="Changing the group of share %s..."
+    [shr.trocado]="Share %s now belongs to group %s."
+    [shr.trocar_falhou]="Could not change the group of share %s: %s"
+    [shr.ajustando]="Adjusting the permissions of %s..."
+    [shr.ajustado]="Permissions of %s adjusted: %d item(s) in the pattern."
+    [shr.ajustar_invalido]="Cannot adjust %s (group %s): the folder must exist inside /mnt or /srv, not overlapping the home folders nor another share, and the group must exist."
+    [shr.ajustar_falhou]="Could not adjust everything in %s: %d item(s) still out of the pattern. Run it again: Shares > Adjust the content permissions."
     [samba.consistencia]="Check and fix accounts (Linux x Samba)"
     [cns.titulo]="Check and fix accounts"
     [cns.tudo_ok]="All good: every account is in Linux and in Samba, protected as its type requires."
@@ -793,7 +845,7 @@ MSG_en+=(
     [grp.remover_principal]="%s is the primary group of: %s. debkit does not remove this group."
     [grp.aviso_membros]="%d member(s) lose the access given by this group: %s"
     [grp.sem_membros]="The group has no members."
-    [grp.aviso_usos]="The group is used in %s, in the shares: %s- those rules will point to a group that does not exist."
+    [grp.remover_usado]="Group %s is used in Samba (%s): change the share group (Shares > Change the group) or remove the share first."
     [grp.procurando]="Looking for files of the group (GID %s) in the home folder base and in the shares..."
     [grp.aviso_arquivos]="%d file(s)/folder(s) belong to the group. They keep the number %s, and a group created later may get the same number and inherit the access."
     [grp.aviso_arquivos_muitos]="%d or more file(s)/folder(s) belong to the group. They keep the number %s, and a group created later may get the same number and inherit the access."
@@ -2527,15 +2579,19 @@ debkit_grupo_alterar_membros() {
 }
 
 # ── Grupos: remover ─────────────────────────────────────────────────────────
-# debkit_grupo_remover <grupo>: só grupo gerenciado e que não é o grupo
-# principal de ninguém. Os avisos (membros, smb.conf, arquivos) e a
-# confirmação ficam na tela.
+# debkit_grupo_remover <grupo>: só grupo gerenciado, que não é o grupo
+# principal de ninguém e que não é usado no smb.conf (decisão de 19/10/2026:
+# o grupo de um compartilhamento só sai depois de trocar o grupo ou remover
+# o compartilhamento). Os avisos (membros, arquivos) e a confirmação ficam
+# na tela.
 debkit_grupo_remover() {
-    local grupo="$1" gid principais membros
+    local grupo="$1" gid principais membros usos
     local -a lista=()
     if ! debkit_grupo_gerenciado "$grupo"; then msg_erro "$(t grp.nao_gerenciado "$grupo")"; return 1; fi
     principais=$(debkit_grupo_principais "$grupo" | paste -sd, | sed 's/,/, /g')
     if [ -n "$principais" ]; then msg_erro "$(t grp.remover_principal "$grupo" "$principais")"; return 1; fi
+    usos=$(debkit_samba_grupo_usos "$grupo" | sed 's/.*/[&]/' | paste -sd' ')
+    if [ -n "$usos" ]; then msg_erro "$(t grp.remover_usado "$grupo" "$usos")"; return 1; fi
     gid=$(getent group "$grupo" | cut -d: -f3)
     membros=$(debkit_grupo_membros "$grupo" | paste -sd,)
     mapfile -t lista < <(debkit_grupo_membros "$grupo")
@@ -2877,6 +2933,169 @@ debkit_shr_listar() {
     fi
 }
 
+# ── Compartilhamentos: grupo e permissões ───────────────────────────────────
+# A pasta pode ter o conteúdo ajustado? Dentro de /mnt ou /srv (as regras de
+# criar), sem se misturar com a base das pastas pessoais nem com a pasta de
+# outro compartilhamento (senão o ajuste passaria o conteúdo do outro para
+# este grupo). Retorna 1 se não pode. debkit_shr_pasta_segura <pasta>
+debkit_shr_pasta_segura() {
+    local dir="${1%/}" outro iguais=0
+    debkit_shr_raiz_problema "$dir" >/dev/null || return 1
+    [ -d "$dir" ] && [ ! -L "$dir" ] || return 1
+    if [ -n "$DEBKIT_HOMES_BASE" ] && { [ "$dir" == "$DEBKIT_HOMES_BASE" ] || [[ "$dir" == "$DEBKIT_HOMES_BASE"/* || "$DEBKIT_HOMES_BASE" == "$dir"/* ]]; }; then
+        return 1
+    fi
+    while read -r outro; do
+        [ -n "$outro" ] || continue
+        if [ "$outro" == "$dir" ]; then iguais=$((iguais + 1)); continue; fi
+        [[ "$dir" == "$outro"/* || "$outro" == "$dir"/* ]] && return 1
+    done < <(debkit_shr_caminhos)
+    # a mesma pasta em dois compartilhamentos: também não
+    [ "$(testparm -s "$DEBKIT_SMB_CONF" 2>/dev/null | awk -v d="$dir" '$1 == "path" && $2 == "=" { v = $0; sub(/^[^=]*=[ \t]*/, "", v); sub(/\/+$/, "", v); if (v == d) n++ } END { print n + 0 }')" -le 1 ]
+}
+
+# Os que estão no padrão do debkit (um grupo gerenciado com acesso total e a
+# pasta existindo, num lugar seguro), inclusive os feitos à mão:
+# nome|pasta|grupo
+debkit_shr_gerenciaveis() {
+    local nome pasta esc lei alerta
+    while IFS='|' read -r nome pasta esc lei alerta; do
+        [[ ",$alerta," == *,fora_padrao,* || ",$alerta," == *,todos,* || ",$alerta," == *,sem_pasta,* ]] && continue
+        if [[ ! "$esc" =~ ^@[^,]+$ ]] || [ -n "$lei" ] || [ -z "$pasta" ] || [[ "$pasta" == *%* ]]; then continue; fi
+        debkit_shr_pasta_segura "$pasta" || continue
+        debkit_grupo_gerenciado "${esc#@}" || continue
+        printf '%s|%s|%s\n' "$nome" "$pasta" "${esc#@}"
+    done < <(debkit_shr_dados)
+}
+
+# Quantos itens (arquivos e pastas, sem seguir links nem sair do disco) há
+# na pasta: debkit_shr_contar <pasta>; e quantos estão fora do padrão:
+# debkit_shr_pendentes <pasta> <gid> (grupo diferente, acesso para outros,
+# pasta sem rwx+setgid para o grupo, arquivo sem rw para o grupo ou com
+# setuid/setgid; e a pasta do compartilhamento que não é do root)
+debkit_shr_contar() {
+    find "$1" -xdev \( -type d -o -type f \) -printf x 2>/dev/null | wc -c
+}
+debkit_shr_pendentes() {
+    local n
+    n=$(find "$1" -xdev \( -type d -o -type f \) \( ! -group "$2" -o -perm /o=rwx \
+            -o \( -type d ! -perm -2770 \) -o \( -type f \( ! -perm -0660 -o -perm /6000 \) \) \) -printf x 2>/dev/null | wc -c)
+    [ "$(stat -c %u -- "$1" 2>/dev/null)" == "0" ] || n=$((n + 1))
+    echo "$n"
+}
+
+# Ajusta o conteúdo da pasta para o grupo (decisão de 19/10/2026): pasta
+# root:<grupo> 2770; dentro, tudo com o grupo, rw para o grupo (pastas rwx
+# com setgid; arquivo executável continua executável), sem acesso para
+# outros e sem setuid/setgid em arquivo. Os donos não mudam. Não segue
+# links (chgrp -h; links ficam como estão) nem sai do disco (-xdev).
+# Os usuários de arquivos não criam links pelo Samba (SMB2/3 sem as
+# extensões unix), por isso não há troca de pasta por link no meio.
+# Não dá para desfazer; é seguro rodar de novo. Retorna 1 se sobrou algo.
+debkit_shr_ajustar_conteudo() {
+    local pasta="$1" grupo="$2" gid resto total
+    gid=$(getent group "$grupo" | cut -d: -f3)
+    if [ -z "$gid" ] || ! debkit_shr_pasta_segura "$pasta"; then
+        msg_erro "$(t shr.ajustar_invalido "$pasta" "$grupo")"; return 1
+    fi
+    msg_info "$(t shr.ajustando "$pasta")"
+    chown "0:$gid" -- "$pasta" 2>/dev/null; chmod 2770 -- "$pasta" 2>/dev/null
+    find "$pasta" -xdev -mindepth 1 \( -type d -o -type f \) ! -group "$gid" -exec chgrp -h -- "$gid" {} + 2>/dev/null
+    find "$pasta" -xdev -mindepth 1 -type d -exec chmod u+rwx,g+rwxs,o-rwx -- {} + 2>/dev/null
+    find "$pasta" -xdev -mindepth 1 -type f -exec chmod ug-s,o-rwx,ug+rw,g+X -- {} + 2>/dev/null
+    total=$(debkit_shr_contar "$pasta")
+    resto=$(debkit_shr_pendentes "$pasta" "$gid")
+    if [ "$resto" -ne 0 ]; then
+        msg_erro "$(t shr.ajustar_falhou "$pasta" "$resto")"
+        debkit_auditar shr_ajustar "pasta=$pasta grupo=$grupo itens=$total fora=$resto resultado=falha"
+        return 1
+    fi
+    debkit_auditar shr_ajustar "pasta=$pasta grupo=$grupo itens=$total resultado=ok"
+    msg_ok "$(t shr.ajustado "$pasta" "$total")"
+}
+
+# Linhas de acesso que a troca de grupo substitui (nomes como o Samba
+# compara: sem espaços e sem diferenciar maiúsculas; "group" = force group;
+# writeable/writable/write ok = o contrário de read only)
+DEBKIT_SHR_ACESSO=" validusers forcegroup group writelist readlist readonly writeable writable writeok "
+
+# Filtro: na seção DEBKIT_S_NOME (sem diferenciar maiúsculas), tira as
+# linhas de acesso (com as continuações "\") e põe, logo depois do
+# cabeçalho, valid users = @<grupo>, read only = no e force group = <grupo>
+debkit_shr_filtro_grupo() {
+    awk -v s="${DEBKIT_S_NOME,,}" -v g="$DEBKIT_S_GRUPO" -v acesso="$DEBKIT_SHR_ACESSO" '
+        tira { tira = /\\$/; next }
+        segue { segue = /\\$/; print; next }
+        /^[ \t]*\[/ {
+            h = $0; sub(/^[ \t]*\[[ \t]*/, "", h); sub(/[ \t]*\].*$/, "", h); em = (tolower(h) == s); print
+            if (em) printf "   valid users = @%s\n   read only = no\n   force group = %s\n", g, g
+            next
+        }
+        em && /^[ \t]*[^#; \t]/ && /=/ {
+            p = $0; sub(/=.*/, "", p); gsub(/[ \t]/, "", p)
+            if (index(acesso, " " tolower(p) " ")) { tira = /\\$/; next }
+        }
+        { segue = /\\$/; print }'
+}
+
+# Conferência: fora a seção, nada mudou; na seção, só as linhas de acesso
+# mudaram, e agora são exatamente as do grupo novo
+debkit_shr_conferir_grupo() {
+    local outras=$'^\t(valid users|force group|read only|write list|read list) = '
+    cmp -s <(debkit_shr_sem_secao "$1" "$DEBKIT_S_NOME") <(debkit_shr_sem_secao "$2" "$DEBKIT_S_NOME") \
+        && cmp -s <(debkit_shr_secao_efetiva "$1" "$DEBKIT_S_NOME" | grep -vE "$outras") \
+                  <(debkit_shr_secao_efetiva "$2" "$DEBKIT_S_NOME" | grep -vE "$outras") \
+        && [ "$(debkit_shr_secao_efetiva "$2" "$DEBKIT_S_NOME" | grep -E "$outras" | sort)" == \
+             "$(printf '\tforce group = %s\n\tread only = No\n\tvalid users = @%s' "$DEBKIT_S_GRUPO" "$DEBKIT_S_GRUPO")" ]
+}
+
+# Quem perde o acesso na troca: membros (e quem tem como principal) do
+# grupo antigo que não estão no novo. debkit_shr_perdem <antigo> <novo>
+debkit_shr_perdem() {
+    local u
+    while read -r u; do
+        [ -n "$u" ] || continue
+        id -nG -- "$u" 2>/dev/null | tr ' ' '\n' | grep -qxF -- "$2" || echo "$u"
+    done < <({ debkit_grupo_membros "$1"; debkit_grupo_principais "$1"; } | sort -u)
+}
+
+# Entrada: DEBKIT_S_NOME (compartilhamento no padrão) e DEBKIT_S_GRUPO (o
+# grupo novo, gerenciado). Troca as linhas de acesso no smb.conf (edição
+# segura; confere o resultado e, se não bater, restaura), passa o conteúdo
+# para o grupo novo e refaz as sessões de quem perde o acesso.
+debkit_shr_trocar_grupo() {
+    local nome="$DEBKIT_S_NOME" novo="$DEBKIT_S_GRUPO" linha pasta antigo
+    local -a perdem=()
+    linha=$(debkit_shr_gerenciaveis | awk -F'|' -v n="$nome" '$1 == n')
+    if [ -z "$nome" ] || [ -z "$linha" ]; then
+        msg_erro "$(t shr.trocar_falhou "$nome" "$(t shr.nao_gerenciavel "$nome")")"; return 1
+    fi
+    IFS='|' read -r _ pasta antigo <<< "$linha"
+    if [ -z "$novo" ]; then msg_erro "$(t shr.trocar_falhou "$nome" "$(t shr.sem_grupo)")"; return 1; fi
+    if ! debkit_grupo_gerenciado "$novo" || [[ ! "$novo" =~ ^[^[:space:],@+\&\"]+$ ]]; then
+        msg_erro "$(t shr.trocar_falhou "$nome" "$(t grp.nao_gerenciado "$novo")")"; return 1
+    fi
+    if [ "$novo" == "$antigo" ]; then msg_erro "$(t shr.trocar_falhou "$nome" "$(t shr.mesmo_grupo "$novo")")"; return 1; fi
+    mapfile -t perdem < <(debkit_shr_perdem "$antigo" "$novo")
+    msg_info "$(t shr.trocando "$nome")"
+    if ! debkit_smbconf_editar debkit_shr_filtro_grupo debkit_shr_conferir_grupo; then
+        msg_erro "$(t shr.trocar_falhou "$nome" "$(t shr.f_smbconf)")"
+        debkit_auditar shr_grupo "nome=$nome antigo=$antigo novo=$novo resultado=falha"
+        return 1
+    fi
+    if [ "$(debkit_shr_gerenciaveis | awk -F'|' -v n="$nome" '$1 == n')" != "$nome|$pasta|$novo" ]; then
+        debkit_smbconf_restaurar
+        msg_erro "$(t shr.trocar_falhou "$nome" "$(t usr.f_conferencia smb.conf)")"
+        debkit_auditar shr_grupo "nome=$nome antigo=$antigo novo=$novo resultado=falha"
+        return 1
+    fi
+    debkit_auditar shr_grupo "nome=$nome antigo=$antigo novo=$novo resultado=ok"
+    msg_ok "$(t shr.trocado "$nome" "$novo")"
+    debkit_shr_ajustar_conteudo "$pasta" "$novo" || { debkit_samba_reconectar "${perdem[@]}"; return 1; }
+    debkit_samba_reconectar "${perdem[@]}"
+    return 0
+}
+
 # ── Usuários: tela ──────────────────────────────────────────────────────────
 # Lê uma linha para a variável indicada; fim da entrada = cancelar (retorna 1)
 debkit_ler() {
@@ -3155,7 +3374,7 @@ debkit_shr_tela_listar() {
 # Tela: nome, descrição, pasta, o grupo (acesso total), resumo e
 # UMA confirmação
 debkit_shr_tela_criar() {
-    local nome comentario pasta sugestao problema rc grupo
+    local nome comentario pasta sugestao problema rc grupo cheia
     local -a grupos=()
     titulo "$(t shr.titulo_criar)"
     if ! debkit_samba_ambiente_pronto; then msg_erro "$(t usr.ambiente_nao_pronto)"; pausar; return 1; fi
@@ -3193,12 +3412,106 @@ debkit_shr_tela_criar() {
     [ -n "$comentario" ] && echo "    $(t shr.r_comentario "$comentario")"
     if [ -d "$pasta" ]; then echo "    $(t shr.r_pasta_existe "$pasta")"; else echo "    $(t shr.r_pasta_nova "$pasta")"; fi
     echo "    $(t shr.r_grupo "$grupo")"
-    if [ -d "$pasta" ] && [ -n "$(ls -A -- "$pasta" 2>/dev/null)" ]; then msg_aviso "$(t shr.aviso_conteudo "$pasta")"; fi
+    cheia=0
+    if [ -d "$pasta" ] && [ -n "$(ls -A -- "$pasta" 2>/dev/null)" ]; then cheia=1; msg_aviso "$(t shr.aviso_conteudo "$pasta")"; fi
     echo ""
     if ! confirmar "$(t shr.p_confirmar)"; then msg_aviso "$(t usr.cancelado)"; pausar; return 1; fi
     DEBKIT_S_NOME="$nome"; DEBKIT_S_COMENTARIO="$comentario"; DEBKIT_S_PASTA="$pasta"
     DEBKIT_S_GRUPO="$grupo"
     debkit_shr_criar; rc=$?
+    if [ "$rc" -eq 0 ] && [ "$cheia" -eq 1 ]; then
+        echo ""
+        debkit_shr_mostrar_conteudo "$pasta" "$grupo"
+        if [ "$DEBKIT_SHR_FORA_N" -gt 0 ] && confirmar "$(t shr.p_ajustar_agora "$grupo")"; then
+            debkit_shr_ajustar_conteudo "$pasta" "$grupo" || rc=1
+        fi
+    fi
+    pausar
+    return "$rc"
+}
+
+# Escolhe um compartilhamento no padrão: debkit_shr_escolher <variável da
+# linha nome|pasta|grupo>. Retorna 1 se não há nenhum ou cancelou.
+debkit_shr_escolher() {
+    local -n _linha="$1"
+    local l n p g nome
+    local -a linhas=() nomes=() rotulos=()
+    mapfile -t linhas < <(debkit_shr_gerenciaveis)
+    if [ ${#linhas[@]} -eq 0 ]; then msg_info "$(t shr.nenhum_gerenciavel)"; return 1; fi
+    for l in "${linhas[@]}"; do
+        IFS='|' read -r n p g <<< "$l"
+        nomes+=("$n"); rotulos+=("$(t shr.item "$n" "$g" "$p")")
+    done
+    echo "  $(t shr.titulo_lista)"
+    debkit_numerar "${rotulos[@]}"
+    debkit_escolher_um nome "$(t shr.p_compartilhamento)" "${nomes[@]}" || { msg_aviso "$(t usr.cancelado)"; return 1; }
+    for l in "${linhas[@]}"; do [ "${l%%|*}" == "$nome" ] && _linha="$l"; done
+    return 0
+}
+
+# Mostra quantos itens há na pasta e quantos estão fora do padrão (deixa o
+# número em DEBKIT_SHR_FORA_N)
+debkit_shr_mostrar_conteudo() {
+    local pasta="$1" grupo="$2" total
+    total=$(debkit_shr_contar "$pasta")
+    DEBKIT_SHR_FORA_N=$(debkit_shr_pendentes "$pasta" "$(getent group "$grupo" | cut -d: -f3)")
+    if [ "$DEBKIT_SHR_FORA_N" -eq 0 ]; then
+        msg_info "$(t shr.conteudo_ok "$pasta" "$total")"
+    else
+        msg_info "$(t shr.conteudo "$pasta" "$total" "$DEBKIT_SHR_FORA_N")"
+    fi
+}
+
+# Tela: compartilhamento, grupo novo, resumo (quem perde o acesso, quem está
+# conectado, o conteúdo) e UMA confirmação
+debkit_shr_tela_trocar() {
+    local linha nome pasta antigo novo rc g
+    local -a grupos=() perdem=() todos=()
+    titulo "$(t shr.trocar)"
+    if ! debkit_samba_ambiente_pronto; then msg_erro "$(t usr.ambiente_nao_pronto)"; pausar; return 1; fi
+    debkit_shr_escolher linha || { pausar; return 1; }
+    IFS='|' read -r nome pasta antigo <<< "$linha"
+    mapfile -t todos < <(debkit_samba_grupos_comuns)
+    for g in "${todos[@]}"; do [ "$g" != "$antigo" ] && grupos+=("$g"); done
+    echo ""
+    msg_info "$(t shr.atual "$antigo" "$pasta")"
+    if [ ${#grupos[@]} -eq 0 ]; then msg_info "$(t shr.sem_outro_grupo)"; pausar; return 1; fi
+    echo "  $(t grp.titulo_grupos)"
+    debkit_numerar "${grupos[@]}"
+    debkit_escolher_um novo "$(t shr.p_novo_grupo)" "${grupos[@]}" || { msg_aviso "$(t usr.cancelado)"; return 1; }
+    echo ""
+    echo "  $(t usr.titulo_resumo)"
+    echo "    $(t shr.r_nome "$nome")"
+    echo "    $(t shr.r_troca "$antigo" "$novo")"
+    mapfile -t perdem < <(debkit_shr_perdem "$antigo" "$novo")
+    if [ ${#perdem[@]} -gt 0 ]; then
+        msg_aviso "$(t shr.aviso_perdem "$antigo" "$novo" "$(debkit_juntar "${perdem[@]}")")"
+        debkit_aviso_conectados "${perdem[@]}"
+    fi
+    debkit_shr_mostrar_conteudo "$pasta" "$antigo"
+    msg_info "$(t shr.explica_ajuste "$novo")"
+    echo ""
+    if ! confirmar "$(t shr.p_confirmar_trocar "$nome" "$novo")"; then msg_aviso "$(t usr.cancelado)"; pausar; return 1; fi
+    DEBKIT_S_NOME="$nome"; DEBKIT_S_GRUPO="$novo"
+    debkit_shr_trocar_grupo; rc=$?
+    pausar
+    return "$rc"
+}
+
+# Tela: compartilhamento, quanto está fora do padrão e UMA confirmação
+debkit_shr_tela_ajustar() {
+    local linha nome pasta grupo rc
+    titulo "$(t shr.ajustar)"
+    if ! debkit_samba_ambiente_pronto; then msg_erro "$(t usr.ambiente_nao_pronto)"; pausar; return 1; fi
+    debkit_shr_escolher linha || { pausar; return 1; }
+    IFS='|' read -r nome pasta grupo <<< "$linha"
+    echo ""
+    debkit_shr_mostrar_conteudo "$pasta" "$grupo"
+    if [ "$DEBKIT_SHR_FORA_N" -eq 0 ]; then pausar; return 0; fi
+    msg_info "$(t shr.explica_ajuste "$grupo")"
+    echo ""
+    if ! confirmar "$(t shr.p_confirmar_ajustar "$nome")"; then msg_aviso "$(t usr.cancelado)"; pausar; return 1; fi
+    debkit_shr_ajustar_conteudo "$pasta" "$grupo"; rc=$?
     pausar
     return "$rc"
 }
@@ -3386,8 +3699,8 @@ debkit_samba_tela_membros() {
     return "$rc"
 }
 
-# Tela: escolhe o grupo, mostra o que será perdido (membros, smb.conf,
-# arquivos) e pede UMA confirmação (s/n)
+# Tela: escolhe o grupo, recusa o principal de alguém e o usado no smb.conf,
+# mostra o que será perdido (membros, arquivos) e pede UMA confirmação (s/n)
 debkit_samba_tela_remover_grupo() {
     local grupo gid n rc
     local -a grupos=() membros=() usos=() principais=()
@@ -3403,8 +3716,11 @@ debkit_samba_tela_remover_grupo() {
     if [ ${#principais[@]} -gt 0 ]; then
         msg_erro "$(t grp.remover_principal "$grupo" "$(debkit_juntar "${principais[@]}")")"; pausar; return 1
     fi
-    mapfile -t membros < <(debkit_grupo_membros "$grupo")
     mapfile -t usos < <(debkit_samba_grupo_usos "$grupo")
+    if [ ${#usos[@]} -gt 0 ]; then
+        msg_erro "$(t grp.remover_usado "$grupo" "$(printf '[%s] ' "${usos[@]}" | sed 's/ $//')")"; pausar; return 1
+    fi
+    mapfile -t membros < <(debkit_grupo_membros "$grupo")
     gid=$(getent group "$grupo" | cut -d: -f3)
     if [ ${#membros[@]} -gt 0 ]; then
         msg_aviso "$(t grp.aviso_membros "${#membros[@]}" "$(debkit_juntar "${membros[@]}")")"
@@ -3412,9 +3728,6 @@ debkit_samba_tela_remover_grupo() {
         msg_info "$(t grp.sem_membros)"
     fi
     debkit_aviso_conectados "${membros[@]}"
-    if [ ${#usos[@]} -gt 0 ]; then
-        msg_aviso "$(t grp.aviso_usos "$DEBKIT_SMB_CONF" "$(printf '[%s] ' "${usos[@]}")")"
-    fi
     msg_info "$(t grp.procurando "$gid")"
     n=$(debkit_grupo_contar_arquivos "$gid")
     if [ "$n" -ge "$DEBKIT_GRP_ARQUIVOS_MAX" ]; then
@@ -3508,15 +3821,17 @@ debkit_samba_menu_usuarios() {
     done
 }
 
-# Compartilhamentos: listar, criar e o [homes] (Fase 2: permissões e
-# remover vêm nas próximas tarefas)
+# Compartilhamentos: listar, criar, trocar o grupo, ajustar as permissões e
+# o [homes] (Fase 2: remover vem na próxima tarefa)
 debkit_samba_menu_compartilhamentos() {
     local opcao
     while true; do
         titulo "$(t samba.titulo_compartilhamentos)"
         echo "  1) $(t shr.listar)"
         echo "  2) $(t shr.criar)"
-        echo "  3) $(t samba.pastas_pessoais)"
+        echo "  3) $(t shr.trocar)"
+        echo "  4) $(t shr.ajustar)"
+        echo "  5) $(t samba.pastas_pessoais)"
         echo ""
         echo "  0) $(t geral.voltar)"
         echo ""
@@ -3525,7 +3840,9 @@ debkit_samba_menu_compartilhamentos() {
             "") continue ;;
             1)  debkit_shr_tela_listar ;;
             2)  debkit_shr_tela_criar ;;
-            3)  debkit_samba_tela_pastas_pessoais ;;
+            3)  debkit_shr_tela_trocar ;;
+            4)  debkit_shr_tela_ajustar ;;
+            5)  debkit_samba_tela_pastas_pessoais ;;
             0)  return 0 ;;
             *)  msg_erro "$(t geral.opcao_invalida "$opcao")"; pausar ;;
         esac

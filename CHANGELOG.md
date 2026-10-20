@@ -6,6 +6,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 ## [Não lançado]
 
 ### Alterado
+- Remover um grupo usado no `smb.conf` agora é recusado (antes era só um
+  aviso): troque o grupo do compartilhamento ou remova-o antes.
 - **Menu do Samba em submenus:** 1) Usuários (listar, criar, trocar senha,
   criar pasta pessoal), 2) Grupos (listar, criar, membros, remover) e
   3) Compartilhamentos (por enquanto, pastas pessoais e `[homes]`).
@@ -58,6 +60,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   procura o `include` pelo caminho exato da areia.
 
 ### Adicionado
+- **Compartilhamentos: trocar o grupo e ajustar o conteúdo** (Samba →
+  Compartilhamentos → 3 e 4; o antigo 3, Pastas pessoais, virou 5). Trocar:
+  mostra quem perde o acesso e quem está conectado, troca só as linhas de
+  acesso da seção no `smb.conf` (edição segura, conferida), passa o
+  conteúdo para o grupo novo e refaz as sessões de quem perdeu o acesso.
+  Ajustar: tudo para o grupo, rw para o grupo, nada para outros; os donos
+  não mudam. Ao criar numa pasta com arquivos, o debkit oferece ajustar.
 - **Compartilhamentos: listar e criar** (Samba → Compartilhamentos → 1 e
   2). Criar: nome só em minúsculas, descrição opcional, pasta só dentro de
   `/mnt` ou `/srv` (base `SHARES_BASE` definida na primeira vez) e um

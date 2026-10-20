@@ -276,7 +276,7 @@ caso "tela membros: confirmação negada não muda nada"
 saida=$(tela debkit_samba_tela_membros "$(idx_g dkt_rh)" 2 1 n "")
 contem "Cancelado" "$saida"; igual "dkt_c" "$(membros dkt_rh)"
 
-caso "tela remover: avisos (membros, smb.conf, arquivos) e 'n' cancela"
+caso "tela remover: grupo usado no smb.conf é recusado antes de perguntar"
 rm -rf -- "$AREIA/dados/rh" "$AREIA/homes" "$AREIA/fora/w"      # arquivos do dkt_g1 removido (GID pode voltar)
 cat >> "$AREIA/smb.conf" <<EOF
 
@@ -284,10 +284,15 @@ cat >> "$AREIA/smb.conf" <<EOF
    path = $AREIA/dados
    valid users = @dkt_rh
 EOF
+saida=$(tela debkit_samba_tela_remover_grupo "$(idx_g dkt_rh)" s "")
+contem "O grupo dkt_rh é usado no Samba ([dkt_teste])" "$saida"; nao_contem "Procurando arquivos" "$saida" "para antes dos avisos"
+contem "RC=1" "$saida"; verdadeiro "continua" getent group dkt_rh
+contem "é usado no Samba ([dkt_teste])" "$(remover dkt_rh)" "a função também recusa"
+caso "tela remover: avisos (membros, arquivos) e 'n' cancela"
+sed -i 's/^   valid users = @dkt_rh$/   valid users = @dkt_g0/' "$AREIA/smb.conf"   # a pasta continua num compartilhamento
 chgrp dkt_rh "$AREIA/dados/vendas"
 saida=$(tela debkit_samba_tela_remover_grupo "$(idx_g dkt_rh)" n "")
 contem "1 membro(s) perdem o acesso dado por este grupo: dkt_c" "$saida"
-contem "nos compartilhamentos: [dkt_teste]" "$saida"
 contem "1 arquivo(s)/pasta(s) pertencem ao grupo" "$saida"
 contem "Cancelado" "$saida"; verdadeiro "continua" getent group dkt_rh
 caso "tela remover: 's' remove"
@@ -303,6 +308,8 @@ verdadeiro "continua" getent group dkt_gp
 
 caso "listar: grupos, GID, membros, principal e uso no Samba"
 groupadd dkt_rh; gpasswd -M dkt_a,dkt_b dkt_rh >/dev/null
+saida=$(p "debkit_samba_listar_grupos")
+sed -i 's/^   valid users = @dkt_g0$/   valid users = @dkt_rh/' "$AREIA/smb.conf"
 saida=$(p "debkit_samba_listar_grupos")
 contem "dkt_rh" "$saida"; contem "dkt_a, dkt_b" "$saida"; contem "usado no Samba: [dkt_teste]" "$saida"
 contem "dkt_p (principal)" "$saida"; nao_contem "$GRUPO_TESTE" "$saida"

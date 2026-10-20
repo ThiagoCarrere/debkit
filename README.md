@@ -93,6 +93,8 @@ Samba
 └── 3) Compartilhamentos
       ├── Listar compartilhamentos
       ├── Criar compartilhamento (vinculado a um grupo)
+      ├── Trocar o grupo de um compartilhamento
+      ├── Ajustar as permissões do conteúdo
       └── Pastas pessoais: base e compartilhamento [homes]
           (permissões e remover: próximas tarefas da Fase 2)
 ```
@@ -117,7 +119,7 @@ Listar usuários (exemplo com dados fictícios):
 | **Usuários** | criar (dois tipos de conta, nome completo, grupos, pasta pessoal), listar, trocar senha, excluir, verificar e corrigir contas |
 | **Grupos** | criar, listar, adicionar/remover membros com efeito imediato, remover |
 | **Pastas pessoais** | no disco de dados (backup junto com o resto), na criação ou depois, e o compartilhamento `[homes]` |
-| **Compartilhamentos** | listar (inclusive os feitos à mão, com alertas) e criar vinculado a um grupo, cujos membros têm acesso total; pasta em `/mnt` ou `/srv` |
+| **Compartilhamentos** | listar (inclusive os feitos à mão, com alertas), criar vinculado a um grupo, cujos membros têm acesso total (pasta em `/mnt` ou `/srv`), trocar o grupo e ajustar as permissões do conteúdo |
 
 ## Instalação (para testar)
 

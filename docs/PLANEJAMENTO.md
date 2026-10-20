@@ -292,7 +292,7 @@ pastas pessoais nem com a pasta de outro compartilhamento). Bloco no
 smb.conf: `valid users = @<grupo>`, `read only = no`, `force group`,
 `create mask = 0660`, `directory mask = 2770`. Conferência: fora a seção
 nova nada muda, e a seção em vigor é igual ao `testparm` do bloco sozinho.
-Pasta que já existe tem dono e permissões ajustados (o conteúdo, só na
+Pasta que já existe tem dono e permissões ajustados (o conteúdo, na
 2.2); se algo falhar, a pasta nova é apagada ou a existente volta como era
 (`chmod` com 5 dígitos: em pasta, `755` manteria o setgid). A listagem
 mostra todos (inclusive os feitos à mão), com quem acessa calculado como o
@@ -300,6 +300,32 @@ Samba faz (quem só lê aparece marcado), e alerta pasta inexistente,
 `guest ok`, falta de `valid users` e o que está fora do padrão. Prova real
 (`t17b`): os membros do grupo gravam (e um altera e apaga o arquivo do
 outro), e quem está fora do grupo é recusado.
+
+**Como ficou a 2.2 (grupo e permissões; Compartilhamentos → 3 e 4):**
+
+1. **Quais são gerenciáveis:** os que estão no padrão (um grupo gerenciado
+   com acesso total, pasta existente dentro de `/mnt`/`/srv`, sem se
+   misturar com as pastas pessoais nem com outro compartilhamento),
+   inclusive os feitos à mão. Os outros ficam para a 2.4.
+2. **Trocar o grupo:** o resumo mostra quem perde o acesso (membros do
+   antigo que não estão no novo), quem está conectado e o conteúdo; UMA
+   confirmação s/n. No smb.conf (edição segura) só as linhas de acesso da
+   seção mudam (`valid users`, `read only`, `force group`; tira
+   `write list`/`read list`/`writeable`...); a conferência compara o resto
+   e restaura se não bater. Depois o conteúdo passa para o grupo novo e as
+   sessões de quem perdeu o acesso são refeitas.
+3. **Ajustar o conteúdo:** pasta `root:<grupo>` `2770`; dentro, tudo com o
+   grupo, rw para o grupo (pastas com setgid; executável continua
+   executável), nada para outros, sem setuid/setgid em arquivo. Os donos
+   não mudam; não segue links nem sai do disco. Mostra quantos itens estão
+   fora do padrão; tudo certo = não pergunta. Seguro rodar de novo.
+4. **Criar numa pasta com arquivos:** depois de criar, mostra o conteúdo
+   fora do padrão e oferece ajustar.
+5. **Remover grupo usado no smb.conf:** recusado (troque o grupo ou remova
+   o compartilhamento antes); antes era só um aviso.
+
+Prova real (`t18b`): depois da troca, os membros do grupo novo gravam e os
+do antigo são recusados, inclusive com a sessão aberta.
 
 ## 4. O que o debkit gerencia
 
@@ -434,7 +460,7 @@ debkit/
 |---|---|
 | 0. Fundação | 0.1 esqueleto ✔ · 0.2 detecção do ambiente ✔ · 0.3 preparação do ambiente e backups ✔ · 0.4 proteção SSH ✔ · 0.5 firewall ✔ |
 | 1. Usuários e grupos | 1.0 reestruturar ✔ (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário ✔ (tipos, nome completo, grupos; sem home) · 1.1b pasta pessoal ✔ (base no disco de dados, na criação ou depois, `[homes]`) · listar ✔ · trocar senha ✔ · grupos ✔ (criar, remover, entrar/sair) · menu em submenus ✔ · excluir usuário ✔ · consistência Linux x Samba ✔ · ~~desativar/reativar~~ (adiado, 3.4) |
-| 2. Compartilhamentos | decisões na seção 3.7 · 2.0 `map to guest = never` ✔ · 2.1 criar + listar ✔ · 2.2 grupo e permissões (trocar o grupo, ajustar o conteúdo) · 2.3 remover · 2.4 os já existentes |
+| 2. Compartilhamentos | decisões na seção 3.7 · 2.0 `map to guest = never` ✔ · 2.1 criar + listar ✔ · 2.2 grupo e permissões (trocar o grupo, ajustar o conteúdo) ✔ · 2.3 remover · 2.4 os já existentes |
 | 3. Diagnóstico | falhas de login, sessões ativas, saúde do Samba, consulta à auditoria |
 | 4. Publicação | comandos diretos completos, `install.sh`, **desinstalação**, README, mensagens em inglês, testes automáticos e CI |
 
@@ -472,7 +498,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 
 ## 11. Situação atual e próximos passos
 
-*Atualizado em 19/10/2026.*
+*Atualizado em 20/10/2026.*
 
 - Nome decidido: **debkit**; renomeação gsb → debkit feita (arquivos,
   variáveis, funções, grupo `debkit_usuarios`, `/etc/debkit`, testes). As
@@ -521,6 +547,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | 2.0 map to guest = never (+ decisões da Fase 2) | `01658d6` |
 | 2.1 Compartilhamentos: criar e listar | `b976033` |
 | Compartilhamentos: um grupo só, com acesso total | `92ebf2f` |
+| 2.2 Compartilhamentos: trocar o grupo e ajustar o conteúdo | (este commit) |
 
 **Próximos passos:**
 
@@ -616,9 +643,9 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 21. ✔ Revisão do modelo (decisão do Thiago): um grupo só por
     compartilhamento, com acesso total; sem somente leitura (seção 3.7).
     A tela Criar pergunta um grupo.
-22. **Próxima tarefa:** 2.2 grupo e permissões (trocar o grupo vinculado,
-    passando o conteúdo para o novo grupo; ajustar as permissões do
-    conteúdo de uma pasta que já existia).
+22. ✔ 2.2 grupo e permissões (Samba → Compartilhamentos → 3 e 4; seção
+    3.7). Remover grupo usado no smb.conf passa a ser recusado.
+23. **Próxima tarefa:** 2.3 remover compartilhamento (seção 3.7, item 5).
 
 **VM limpa de novo:** `dev/vmnova.sh` → (reinicia) → `dev/vmprepara.sh` →
 `./debkit --preparar` → testes.
@@ -663,7 +690,8 @@ Com a consistência: 1474 + 154 (`t15_consistencia.sh` e
 impressão digital do `run.sh` confere). Com um grupo só por
 compartilhamento: 1658 + 188 (sem os casos de somente leitura; o `t17` usa
 só as seções padrão da cópia do smb.conf, para os compartilhamentos de
-demonstração não interferirem). Os testes também acusam se alguém usar o debkit na VM enquanto rodam (o
+demonstração não interferirem). Com a tarefa 2.2: 1793 + 225 (`t18_permissoes.sh` e
+`t18b_permissoes_real.sh`). Os testes também acusam se alguém usar o debkit na VM enquanto rodam (o
 log e a trava reais mudam): não usar o debkit durante a suíte.
 
 Os testes funcionam com o servidor preparado ou não: em vez de exigir que

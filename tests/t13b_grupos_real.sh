@@ -6,7 +6,8 @@
 # compartilhamento de teste "valid users = @grupo" e um livre (recarrega o
 # smbd) e acessa pelo smbclient: o grupo dá o acesso e entrar, sair ou
 # remover o grupo vale NA HORA, inclusive para quem está com a sessão
-# aberta (o debkit refaz a sessão). Por isso só
+# aberta (o debkit refaz a sessão); o grupo usado no smb.conf não é
+# removido. Por isso só
 # roda com:  DEBKIT_TESTE_REAL=1 tests/run.sh t13b_grupos_real.sh
 # Ao final o smb.conf real volta idêntico (e é recarregado), e os usuários,
 # as contas Samba e o grupo são removidos.
@@ -120,6 +121,13 @@ fechar
 saida=$(smb "$U1" "put a.txt b3.txt"); nao_contem "RC=0" "$saida"
 verdadeiro "conexão nova não grava" test ! -e "$PASTA/b3.txt"
 
+caso "remover o grupo usado num compartilhamento: recusado"
+contem "é usado no Samba ([$SHARE])" "$(s "debkit_grupo_remover $G; echo RC=\$?")"
+verdadeiro "continua" getent group "$G"
+# Sem o grupo no smb.conf (acesso por usuário), o grupo só vale na pasta
+# (root:grupo 2770): remover o grupo ainda corta o acesso na hora
+sed -i "s/^   valid users = @$G\$/   valid users = $U1 $U2/" /etc/samba/smb.conf; systemctl reload smbd; sleep 1
+igual "" "$(s "debkit_samba_grupo_usos $G")" "o grupo saiu do smb.conf"
 caso "remover o grupo com membro conectado: perde o acesso na hora"
 abrir "$U2" "$SHARE"; enviar "put a.txt d1.txt"
 verdadeiro "gravou antes" test -f "$PASTA/d1.txt"
