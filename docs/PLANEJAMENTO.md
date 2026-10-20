@@ -377,6 +377,40 @@ o acesso, e o grupo passa a gravar e alterar os arquivos que já existiam;
 remover outro que divide a pasta com o terceiro não muda a pasta, e o
 terceiro continua funcionando.
 
+### 3.8 Diagnóstico (Fase 3)
+
+Decisão de 20/10/2026 (Thiago):
+
+1. **Menu:** Samba → **4) Diagnóstico**, ao lado de Usuários, Grupos e
+   Compartilhamentos.
+2. **Sessões ativas:** quem está conectado agora (usuário, IP/máquina,
+   compartilhamentos abertos, arquivos travados) e **desconectar** a
+   sessão de um usuário (s/n, com auditoria; o Windows reconecta sozinho
+   se a pessoa ainda tiver acesso).
+3. **Logins (falhas e sucessos):** o debkit **liga o log de autenticação
+   do Samba** na preparação (com backup e conferência, como o `map to
+   guest`): `log level = 1 auth_json_audit:3@/var/log/samba/debkit-auth.json`.
+   Mostra as últimas falhas (senha errada, usuário inexistente, conta
+   desativada), por usuário e IP, e o último login de cada usuário.
+4. **Saúde do Samba:** um relatório só - serviços, smb.conf válido,
+   portas, espaço em disco das pastas, alertas dos compartilhamentos e das
+   contas.
+5. **Consulta à auditoria:** o log do debkit (`/var/log/debkit.log`) com
+   filtro por data, usuário afetado e tipo de ação.
+
+Prova feita na VM (Samba 4.22, servidor independente, 20/10/2026): com o
+`log level` acima, cada tentativa vira uma linha JSON no arquivo próprio,
+com `status` (`NT_STATUS_WRONG_PASSWORD`, `NT_STATUS_OK`,
+`NT_STATUS_NO_SUCH_USER`), `clientAccount`, `remoteAddress` e
+`workstation`. Por padrão (sem isso) o Samba não registra falha de login.
+
+A conferir na 3.0: `log level` já existente no `[global]` (somar a classe,
+sem perder o nível do administrador); rotação do arquivo (`max log size`
+vale para ele? senão, `logrotate`); permissões do arquivo.
+
+Ordem: 3.0 log de autenticação (preparação e verificação) → 3.1 sessões
+ativas → 3.2 logins → 3.3 saúde → 3.4 auditoria.
+
 ## 4. O que o debkit gerencia
 
 Decisão de 15/10/2026 (substitui a regra anterior "só gerencia o que ele
@@ -511,7 +545,7 @@ debkit/
 | 0. Fundação | 0.1 esqueleto ✔ · 0.2 detecção do ambiente ✔ · 0.3 preparação do ambiente e backups ✔ · 0.4 proteção SSH ✔ · 0.5 firewall ✔ |
 | 1. Usuários e grupos | 1.0 reestruturar ✔ (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário ✔ (tipos, nome completo, grupos; sem home) · 1.1b pasta pessoal ✔ (base no disco de dados, na criação ou depois, `[homes]`) · listar ✔ · trocar senha ✔ · grupos ✔ (criar, remover, entrar/sair) · menu em submenus ✔ · excluir usuário ✔ · consistência Linux x Samba ✔ · ~~desativar/reativar~~ (adiado, 3.4) |
 | 2. Compartilhamentos | decisões na seção 3.7 · 2.0 `map to guest = never` ✔ · 2.1 criar + listar ✔ · 2.2 grupo e permissões (trocar o grupo, ajustar o conteúdo) ✔ · 2.3 remover ✔ · 2.4 os já existentes ✔ |
-| 3. Diagnóstico | falhas de login, sessões ativas, saúde do Samba, consulta à auditoria |
+| 3. Diagnóstico | decisões na seção 3.8 · 3.0 log de autenticação · 3.1 sessões ativas · 3.2 logins (falhas e sucessos) · 3.3 saúde do Samba · 3.4 consulta à auditoria |
 | 4. Publicação | comandos diretos completos, `install.sh`, **desinstalação**, README, mensagens em inglês, testes automáticos e CI |
 
 ## 9. Forma de trabalho
@@ -701,8 +735,9 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
     3.7).
 24. ✔ 2.4 os já existentes (Samba → Compartilhamentos → 6 e 5; seção 3.7).
     **Fase 2 concluída.**
-25. **Próximo passo:** decidir a Fase 3 (diagnóstico: falhas de login,
-    sessões ativas, saúde do Samba, consulta à auditoria) com o Thiago.
+25. ✔ Fase 3 decidida (seção 3.8).
+26. **Próxima tarefa:** 3.0 log de autenticação do Samba (preparação e
+    verificação).
 
 **VM limpa de novo:** `dev/vmnova.sh` → (reinicia) → `dev/vmprepara.sh` →
 `./debkit --preparar` → testes.
