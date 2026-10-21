@@ -945,7 +945,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | 4.2 Comandos diretos | `73d9e72` |
 | 4.3 install.sh e 4.4 desinstalação | `9f1390e` |
 | 4.5 Bilíngue pt/en | `4398959` |
-| 4.6 README (pt e en) | (a preencher) |
+| 4.6 README (pt e en) | `9b90f77` |
 
 **Próximos passos:**
 
