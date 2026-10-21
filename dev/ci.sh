@@ -162,13 +162,14 @@ rc=0
 rc=${PIPESTATUS[0]}
 
 # No GitHub, cada falha vira uma anotação (aparece no resumo do run; o
-# GitHub mostra até 10 por passo) e, se falhou, uma última com o fim do log
+# GitHub mostra até 10 por passo) e, se falhou, uma última com os detalhes
 if [ "${GITHUB_ACTIONS:-}" == "true" ]; then
     limpo=$(sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' "$saida")
     grep -E '^ +FALHA |✘✘|FALHA\(S\)|\[X\]' <<< "$limpo" | head -n 9 \
         | while IFS= read -r linha; do echo "::error::${linha#"${linha%%[! ]*}"}"; done
     if [ "$rc" -ne 0 ]; then
-        fim=$(grep -vE '^ +ok ' <<< "$limpo" | tail -n 60)
+        # os detalhes de cada falha (as linhas recuadas depois dela) e o fim do log
+        fim=$( { grep -A12 -E '^ +FALHA |✘✘' <<< "$limpo" | grep -vE '^ +ok ' | head -n 150; echo "────"; grep -vE '^ +ok ' <<< "$limpo" | tail -n 15; } )
         fim="${fim//'%'/'%25'}"; fim="${fim//$'\r'/}"; fim="${fim//$'\n'/'%0A'}"
         echo "::error title=fim do log::$fim"
     fi
