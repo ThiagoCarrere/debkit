@@ -24,6 +24,10 @@ SSH_DROPIN=/etc/ssh/sshd_config.d/debkit.conf
 # Log de auditoria (quem fez o quê e quando; nunca senhas)
 LOG=/var/log/debkit.log
 
+# Regra do logrotate que gira o log de auditoria (todo mês, 24 meses
+# compactados; criada pela preparação, que a recria se mudar)
+LOG_LOGROTATE=/etc/logrotate.d/debkit
+
 # Pasta dos backups dos demais arquivos que o debkit altera (ex: o do SSH)
 BACKUP_DIR=/var/backups/debkit
 

@@ -47,7 +47,8 @@ GRUPO_TESTE="dkt_usuarios"
 # preparado pelo debkit) ou não; os testes só exigem que não mudem.
 ARQUIVOS_REAIS=(/etc/debkit /etc/debkit/debkit.conf /var/log/debkit.log /run/debkit.lock
                 /etc/samba/smb.conf /etc/samba/debkit-shares.conf /etc/samba/conf-bkp
-                /etc/ssh/sshd_config.d/debkit.conf /var/backups/debkit /etc/logrotate.d/debkit-samba-auth)
+                /etc/ssh/sshd_config.d/debkit.conf /var/backups/debkit /etc/logrotate.d/debkit-samba-auth
+                /etc/logrotate.d/debkit)
 
 # Uma linha por arquivo real: "caminho conteúdo/permissão" ou "caminho ausente"
 estado_real() {
@@ -121,6 +122,7 @@ sandbox() {
     copiar_smb_conf "$SANDBOX/smb.conf"
     {
         echo "LOG=$SANDBOX/debkit.log"
+        echo "LOG_LOGROTATE=$SANDBOX/logrotate-debkit"
         echo "TRAVA=$SANDBOX/debkit.lock"
         echo "BACKUP_DIR=$SANDBOX/backups"
         echo "SMB_CONF=$SANDBOX/smb.conf"
@@ -134,6 +136,11 @@ sandbox() {
     } > "$SANDBOX/debkit.conf"
     chmod 644 "$SANDBOX/debkit.conf"
     export DEBKIT_CONF_ARQUIVO="$SANDBOX/debkit.conf"
+    # Rotação do log do debkit (tarefa 4.1) como no servidor real, mas para
+    # o log do sandbox (como a regra do log de autenticação, acima)
+    if [ -f /etc/logrotate.d/debkit ]; then
+        sed "s|^/var/log/debkit.log {|$SANDBOX/debkit.log {|" /etc/logrotate.d/debkit > "$SANDBOX/logrotate-debkit"
+    fi
     # apt e base do dpkg do sandbox: nenhum teste instala ou remove pacote de
     # verdade (o apt do sandbox recusa tudo e anota a tentativa; a base vazia
     # = nada instalado). Testes de pacotes usam o seu apt falso.

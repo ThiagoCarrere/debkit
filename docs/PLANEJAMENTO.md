@@ -546,6 +546,30 @@ no container) e as `t18`/`t19` precisam do `chattr` (e2fsprogs): os testes
 agora acusam se o `chattr +i` da preparação do caso falhar, em vez de
 falhar adiante sem motivo claro.
 
+**Achado do CI (corrigido na 4.1):** no GitHub o SSH do container não
+sobe (a porta 22 é da máquina) e a preparação falhou com "a configuração
+do SSH ficou inválida". O motivo: com o serviço do SSH parado não existe a
+pasta `/run/sshd`, e o `sshd -t`/`-T` recusa ("Missing privilege
+separation directory"). Num servidor de verdade é o mesmo caso com o SSH
+instalado mas desligado. Agora `debkit_sshd` roda o `sshd -t`/`-T`, nesse
+caso, num espaço de montagem só dele (`unshare -m`, com um `/run` vazio e
+a pasta): nada muda no sistema, e um erro de verdade da configuração
+continua aparecendo. `unshare` (util-linux) entrou nas dependências.
+
+**Como ficou a 4.1 (rotação do log do debkit; item da preparação):**
+1. Regra `/etc/logrotate.d/debkit` (chave `LOG_LOGROTATE`): mensal, 24
+   meses, compactada (`delaycompress`), `create 0640 root root`, sem
+   `postrotate` (o debkit abre o log a cada linha). A consulta à auditoria
+   já lia os girados (`.N` e `.N.gz`).
+2. Mesmo jeito da regra do log de autenticação (3.0), agora com o código
+   em comum no núcleo (`debkit_logrotate_ok/gravar/desfazer`): se mudar à
+   mão, a preparação recria com backup; se um passo seguinte falhar, a
+   regra nova sai (ou a antiga volta); o `logrotate -d` confere.
+3. `logrotate` passou a ser dependência do núcleo (antes, do Samba).
+Prova real na VM (21/10/2026): o `--preparar` mostrou só esse item e
+criou a regra; o `logrotate -d` a aceita. Testes: `t26_log_rotacao.sh` (o
+logrotate de verdade gira o log do sandbox e a auditoria lê o girado).
+
 ## 4. O que o debkit gerencia
 
 Decisão de 15/10/2026 (substitui a regra anterior "só gerencia o que ele
@@ -717,7 +741,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 
 ## 11. Situação atual e próximos passos
 
-*Atualizado em 21/10/2026 (4.0).*
+*Atualizado em 21/10/2026 (4.1).*
 
 - Nome decidido: **debkit**; renomeação gsb → debkit feita (arquivos,
   variáveis, funções, grupo `debkit_usuarios`, `/etc/debkit`, testes). As
@@ -777,7 +801,8 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | 3.3 Saúde do Samba (relatório) | `09c0512` |
 | 3.4 Consulta à auditoria | `cb07c7a` |
 | Fase 4 decidida | `3fd3dc7` |
-| 4.0 CI no GitHub | (a preencher) |
+| 4.0 CI no GitHub | `ae621bd` |
+| 4.1 Rotação do log do debkit (+ sshd com o SSH parado) | (a preencher) |
 
 **Próximos passos:**
 
@@ -888,7 +913,8 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
     **Fase 3 concluída.**
 31. ✔ Fase 4 decidida (seção 3.9).
 32. ✔ 4.0 CI no GitHub (seção 3.9; `dev/ci.sh`).
-33. **Próxima tarefa:** 4.1 rotação do log do debkit.
+33. ✔ 4.1 rotação do log do debkit (seção 3.9).
+34. **Próxima tarefa:** 4.2 comandos diretos.
 
 **VM limpa de novo:** `dev/vmnova.sh` → (reinicia) → `dev/vmprepara.sh` →
 `./debkit --preparar` → testes.
@@ -943,7 +969,8 @@ real e o devolve idêntico). Com a tarefa 3.0: 2011 + 302 (`t21_log_auth.sh` e
 `t22b_sessoes_real.sh`). Com a tarefa 3.2: 2113 + 358 (`t23_logins.sh` e
 `t23b_logins_real.sh`). Com a tarefa 3.3: 2175 + 387 (`t24_saude.sh` e
 `t24b_saude_real.sh`). Com a tarefa 3.4: 2229 + 410 (`t25_auditoria.sh` e
-`t25b_auditoria_real.sh`). Os testes também acusam se alguém usar o debkit na VM enquanto rodam (o
+`t25b_auditoria_real.sh`). Com a 4.0 e a 4.1: 2288 + 410 (`t26_log_rotacao.sh`).
+Os testes também acusam se alguém usar o debkit na VM enquanto rodam (o
 log e a trava reais mudam): não usar o debkit durante a suíte.
 
 Os testes funcionam com o servidor preparado ou não: em vez de exigir que

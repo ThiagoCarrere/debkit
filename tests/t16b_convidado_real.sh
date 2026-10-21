@@ -27,7 +27,7 @@ limpar_real() {
 trap limpar_real EXIT
 
 ( umask 027; : > "$SANDBOX/debkit.log" )
-s() { env -u DEBKIT_APT -u DEBKIT_DPKG_ADMIN bash -c "source '$DEBKIT'; debkit_conf_carregar /etc/debkit/debkit.conf >/dev/null; debkit_ler_login_defs; DEBKIT_LOG='$SANDBOX/debkit.log'; $1" 2>&1; }
+s() { env -u DEBKIT_APT -u DEBKIT_DPKG_ADMIN bash -c "source '$DEBKIT'; debkit_conf_carregar /etc/debkit/debkit.conf >/dev/null; debkit_ler_login_defs; DEBKIT_LOG='$SANDBOX/debkit.log'; DEBKIT_LOG_LOGROTATE='$SANDBOX/logrotate-debkit'; $1" 2>&1; }
 smb_login() {  # smb_login <usuário> <senha>
     printf 'username = %s\npassword = %s\n' "$1" "$2" > "$SANDBOX/auth"; chmod 600 "$SANDBOX/auth"
     timeout 20 smbclient -L //127.0.0.1 -A "$SANDBOX/auth" 2>&1; echo "RC=$?"

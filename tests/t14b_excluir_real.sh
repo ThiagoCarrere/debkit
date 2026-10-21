@@ -41,7 +41,7 @@ trap limpar_real EXIT
 trap '' PIPE
 
 ( umask 027; : > "$SANDBOX/debkit.log" )   # senão o plano pediria para criá-lo
-s() { env -u DEBKIT_APT -u DEBKIT_DPKG_ADMIN bash -c "source '$DEBKIT'; debkit_conf_carregar /etc/debkit/debkit.conf >/dev/null; debkit_ler_login_defs; DEBKIT_LOG='$SANDBOX/debkit.log'; $1" 2>&1; }
+s() { env -u DEBKIT_APT -u DEBKIT_DPKG_ADMIN bash -c "source '$DEBKIT'; debkit_conf_carregar /etc/debkit/debkit.conf >/dev/null; debkit_ler_login_defs; DEBKIT_LOG='$SANDBOX/debkit.log'; DEBKIT_LOG_LOGROTATE='$SANDBOX/logrotate-debkit'; $1" 2>&1; }
 smb_login() {
     printf 'username = %s\npassword = %s\n' "$1" "$SENHA" > "$SANDBOX/auth"; chmod 600 "$SANDBOX/auth"
     timeout 20 smbclient -L //127.0.0.1 -A "$SANDBOX/auth" 2>&1; echo "RC=$?"

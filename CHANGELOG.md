@@ -32,6 +32,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   backup é 600).
 
 ### Corrigido
+- Com o SSH instalado mas parado, a proteção SSH não era aplicada ("a
+  configuração do SSH ficou inválida") e a verificação não a via: o
+  `sshd -t`/`-T` exige a pasta `/run/sshd`, que só existe com o serviço no
+  ar. Agora ele roda num espaço de montagem próprio com a pasta, sem
+  mudar nada no sistema.
 - Listar compartilhamentos: os alertas de convidado, "sem valid users" e
   "fora do padrão" saíam repetidos na mesma linha (com a pasta no lugar do
   nome).
@@ -63,6 +68,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   procura o `include` pelo caminho exato do sandbox.
 
 ### Adicionado
+- **Rotação do log de auditoria** (`/var/log/debkit.log`): a preparação
+  cria a regra `/etc/logrotate.d/debkit` (todo mês, 24 meses compactados;
+  chave `LOG_LOGROTATE`).
 - **CI no GitHub** (`.github/workflows/ci.yml`): a cada push, sintaxe e
   `shellcheck` num Debian 13 e a suíte inteira num Debian 13 novo com
   systemd, preparado pelo próprio debkit (`dev/ci.sh`, que também roda na

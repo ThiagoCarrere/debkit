@@ -143,17 +143,17 @@ contem "sessao_fim motivo=fim_da_entrada" "$log"
 contem "sessao_fim motivo=interrompida" "$log"
 igual 640 "$(stat -c %a "$SANDBOX/debkit.log" 2>/dev/null || echo ausente)" "log criado com 640"
 : > "$SANDBOX/debkit.log"; rm -f "$SANDBOX/debkit.log"
-bash -c "source '$DEBKIT'; DEBKIT_LOG='$SANDBOX/debkit.log'; debkit_auditar teste 'a'"
+bash -c "source '$DEBKIT'; DEBKIT_LOG='$SANDBOX/debkit.log'; DEBKIT_LOG_LOGROTATE='$SANDBOX/logrotate-debkit'; debkit_auditar teste 'a'"
 igual 640 "$(stat -c %a "$SANDBOX/debkit.log")" "log novo criado com 640"
 
 caso "auditoria: quebra de linha não forja linhas falsas"
-bash -c "source '$DEBKIT'; DEBKIT_LOG='$SANDBOX/debkit.log'; debkit_auditar 'acao
+bash -c "source '$DEBKIT'; DEBKIT_LOG='$SANDBOX/debkit.log'; DEBKIT_LOG_LOGROTATE='$SANDBOX/logrotate-debkit'; debkit_auditar 'acao
 falsa' \$'detalhe\n2026-01-01 root[1] linha_forjada'"
 igual 2 "$(wc -l < "$SANDBOX/debkit.log")" "continua 1 linha por registro"
 contem "acao_falsa detalhe 2026-01-01" "$(tail -1 "$SANDBOX/debkit.log")"
 
 caso "auditoria registra o usuário real (sudo)"
-bash -c "source '$DEBKIT'; DEBKIT_LOG='$SANDBOX/debkit.log'; SUDO_USER=fulano debkit_auditar teste x"
+bash -c "source '$DEBKIT'; DEBKIT_LOG='$SANDBOX/debkit.log'; DEBKIT_LOG_LOGROTATE='$SANDBOX/logrotate-debkit'; SUDO_USER=fulano debkit_auditar teste x"
 contem " fulano[" "$(tail -1 "$SANDBOX/debkit.log")"
 
 caso "auditoria com log impossível de gravar retorna erro"

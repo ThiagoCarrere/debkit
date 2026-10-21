@@ -12,7 +12,7 @@ getent group "$GRUPO_T" >/dev/null && { echo "grupo $GRUPO_T já existe - aborta
 
 # Ambiente de teste: configuração AINDA NÃO criada, tudo dentro do sandbox
 prep_env() {
-    rm -rf "${SANDBOX:?}/etc" "${SANDBOX:?}/backups" "${SANDBOX:?}/conf-bkp" "${SANDBOX:?}/debkit.log"
+    rm -rf "${SANDBOX:?}/etc" "${SANDBOX:?}/backups" "${SANDBOX:?}/conf-bkp" "${SANDBOX:?}/debkit.log" "${SANDBOX:?}/logrotate-debkit"
     copiar_smb_conf "$SANDBOX/smb.conf"
     # o plano destes testes não depende do "unix password sync" do servidor
     # real (o item que o desliga tem testes próprios, em t12)
@@ -22,7 +22,7 @@ prep_env() {
 }
 # Trecho que configura o debkit (em modo source) para o sandbox
 CFG="DEBKIT_CONF_ARQUIVO='$SANDBOX/etc/debkit/debkit.conf'; debkit_conf_padroes;
-     DEBKIT_LOG='$SANDBOX/debkit.log'; DEBKIT_BACKUP_DIR='$SANDBOX/backups'; DEBKIT_SMB_CONF='$SANDBOX/smb.conf';
+     DEBKIT_LOG='$SANDBOX/debkit.log'; DEBKIT_LOG_LOGROTATE='$SANDBOX/logrotate-debkit'; DEBKIT_BACKUP_DIR='$SANDBOX/backups'; DEBKIT_SMB_CONF='$SANDBOX/smb.conf';
      DEBKIT_SMB_BACKUP_DIR='$SANDBOX/conf-bkp'; DEBKIT_GRUPO_USUARIOS='$GRUPO_T'; DEBKIT_TRAVA='$SANDBOX/debkit.lock';
      DEBKIT_SSH_DROPIN='$SANDBOX/sshd_debkit.conf'; DEBKIT_AUTH_LOG='$SANDBOX/debkit-auth.json';
      DEBKIT_AUTH_LOGROTATE='$SANDBOX/logrotate-debkit-samba-auth';
@@ -54,8 +54,8 @@ plano() { g "$1 debkit_verificar_ambiente >/dev/null; debkit_montar_plano; echo 
 caso "plano numa máquina sem nada do debkit"
 prep_env
 saida=$(plano)
-contem "PLANO=dir_conf conf dir_backup log grupo" "$saida"
-igual "PLANO=dir_conf conf dir_backup log grupo" "$(grep '^PLANO=' <<< "$saida")" "sem shares_conf/include (removidos na 1.0)"
+contem "PLANO=dir_conf conf dir_backup log log_rotacao grupo" "$saida"
+igual "PLANO=dir_conf conf dir_backup log log_rotacao grupo" "$(grep '^PLANO=' <<< "$saida")" "sem shares_conf/include (removidos na 1.0)"
 nao_contem "samba_servico" "$saida" "Samba real ativo e habilitado: não entra"
 caso "plano com Samba parado"
 contem "PLANO=samba_servico" "$(plano 'debkit_servico_ativo() { return 1; };')"
@@ -196,6 +196,7 @@ GRUPO_USUARIOS=$GRUPO_T
 SSH_DROPIN=$SANDBOX/sshd_debkit.conf
 AUTH_LOG=$SANDBOX/debkit-auth.json
 AUTH_LOGROTATE=$SANDBOX/logrotate-debkit-samba-auth
+LOG_LOGROTATE=$SANDBOX/logrotate-debkit
 EOF
 }
 caso "--preparar respondendo n: nada muda, auditoria registra a recusa"

@@ -135,6 +135,33 @@ verdadeiro "backup guardado" test -n "$(find "$SANDBOX/backups" -name 'debkit.co
 caso "remover sem proteção aplicada: nada a fazer"
 igual "RC=0" "$(s 'debkit_ssh_remover_protecao; echo RC=$?')"
 
+# ── SSH parado: sem a pasta /run/sshd (sshd -t/-T falhariam) ─────────────────
+# sshd falso (arquivo, no PATH) que, como o de verdade, recusa sem a pasta
+mkdir -p "$SANDBOX/binssh"
+PRIV="/run/dkt-teste-privsep.$$"
+cat > "$SANDBOX/binssh/sshd" <<EOF2
+#!/bin/sh
+[ -d "$PRIV" ] || { echo "Missing privilege separation directory: $PRIV" >&2; exit 255; }
+[ "\$1" = "-t" ] && grep -q QUEBRADO "$SANDBOX/sshd-quebrado" 2>/dev/null && { echo "linha 1: QUEBRADO" >&2; exit 255; }
+echo "ok \$*"
+EOF2
+chmod 755 "$SANDBOX/binssh/sshd"
+ps() { PATH="$SANDBOX/binssh:$PATH" bash -c "source '$DEBKIT'; DEBKIT_SSHD_PRIVSEP='$PRIV'; $1" 2>&1; }
+caso "SSH parado (sem a pasta): o sshd roda com a pasta só para ele"
+igual "ok -T" "$(ps 'debkit_sshd -T')"
+verdadeiro "a pasta não ficou no sistema" test ! -e "$PRIV"
+verdadeiro "nada montado sobrando" bash -c "! findmnt -rn -o FSTYPE,SOURCE /run | grep -q '^tmpfs debkit'"
+caso "SSH parado: erro de verdade da configuração continua aparecendo"
+echo QUEBRADO > "$SANDBOX/sshd-quebrado"
+saida=$(ps 'debkit_sshd -t; echo RC=$?')
+contem "linha 1: QUEBRADO" "$saida"; contem "RC=255" "$saida"; nao_contem "Missing privilege" "$saida"
+rm -f "$SANDBOX/sshd-quebrado"
+caso "pasta existe: chama o sshd direto"
+mkdir "$PRIV"; igual "ok -t" "$(ps 'unshare() { echo NAO; }; debkit_sshd -t')"; rmdir "$PRIV"
+caso "sem como isolar (unshare falha): chama direto (e o erro do sshd aparece)"
+saida=$(ps 'unshare() { return 1; }; debkit_sshd -T; echo RC=$?')
+contem "Missing privilege separation directory" "$saida"; contem "RC=255" "$saida"
+
 real_intacto
 caso "o SSH real não foi tocado"
 verdadeiro "sshd -T real sem o grupo de teste" bash -c "! sshd -T 2>/dev/null | grep -qw $GRUPO_TESTE"

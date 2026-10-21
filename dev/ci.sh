@@ -161,10 +161,17 @@ rc=0
 } 2>&1 | tee "$saida"
 rc=${PIPESTATUS[0]}
 
-# No GitHub, cada falha vira uma anotação (aparece no resumo do run)
+# No GitHub, cada falha vira uma anotação (aparece no resumo do run; o
+# GitHub mostra até 10 por passo) e, se falhou, uma última com o fim do log
 if [ "${GITHUB_ACTIONS:-}" == "true" ]; then
-    sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' "$saida" | grep -E '^ +FALHA |✘✘|FALHA\(S\)|^ci: |\[X\]' \
-        | head -n 50 | while IFS= read -r linha; do echo "::error::${linha#"${linha%%[! ]*}"}"; done
+    limpo=$(sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' "$saida")
+    grep -E '^ +FALHA |✘✘|FALHA\(S\)|\[X\]' <<< "$limpo" | head -n 9 \
+        | while IFS= read -r linha; do echo "::error::${linha#"${linha%%[! ]*}"}"; done
+    if [ "$rc" -ne 0 ]; then
+        fim=$(grep -vE '^ +ok ' <<< "$limpo" | tail -n 60)
+        fim="${fim//'%'/'%25'}"; fim="${fim//$'\r'/}"; fim="${fim//$'\n'/'%0A'}"
+        echo "::error title=fim do log::$fim"
+    fi
 fi
 if [ "$rc" -eq 0 ]; then info "TUDO CERTO (log: $saida)"; else info "FALHOU (log: $saida)"; fi
 exit "$rc"

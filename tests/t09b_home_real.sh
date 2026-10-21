@@ -49,7 +49,7 @@ mount -o loop "$SANDBOX/disco.img" "$DISCO" || { echo "  não foi possível mont
 # backups e HOMES_BASE só nesta execução (o debkit.conf real não muda)
 ( umask 027; : > "$SANDBOX/debkit.log" ); ( umask 077; mkdir -p "$SANDBOX/backups" )   # senão o plano pediria para criá-los
 s() { env -u DEBKIT_APT -u DEBKIT_DPKG_ADMIN bash -c "source '$DEBKIT'; debkit_conf_carregar /etc/debkit/debkit.conf >/dev/null; debkit_ler_login_defs;
-      DEBKIT_LOG='$SANDBOX/debkit.log'; DEBKIT_SMB_BACKUP_DIR='$SANDBOX/conf-bkp'; DEBKIT_BACKUP_DIR='$SANDBOX/backups'; DEBKIT_HOMES_BASE='$DISCO/homes'; $1" 2>&1; }
+      DEBKIT_LOG='$SANDBOX/debkit.log'; DEBKIT_LOG_LOGROTATE='$SANDBOX/logrotate-debkit'; DEBKIT_SMB_BACKUP_DIR='$SANDBOX/conf-bkp'; DEBKIT_BACKUP_DIR='$SANDBOX/backups'; DEBKIT_HOMES_BASE='$DISCO/homes'; $1" 2>&1; }
 
 caso "ambiente real preparado pelo debkit"
 s 'debkit_samba_ambiente_pronto' >/dev/null || { echo "  o ambiente real não está preparado (rode: debkit --preparar) - abortando"; exit 1; }

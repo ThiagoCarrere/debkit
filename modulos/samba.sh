@@ -1160,7 +1160,6 @@ DEBKIT_DEPENDENCIAS+=(
     "testparm|essencial|samba-common-bin"
     "smbpasswd|essencial|samba-common-bin"
     "smbcontrol|essencial|samba-common-bin"
-    "logrotate|essencial|logrotate"
     "smbclient|desenvolvimento|smbclient"
 )
 
@@ -1620,45 +1619,25 @@ debkit_samba_logrotate_conteudo() {
     printf '# debkit: rotação do log de autenticação do Samba (arquivo do debkit; a preparação recria se mudar)\n'
     printf '%s {\n    weekly\n    rotate 12\n    compress\n    delaycompress\n    missingok\n    notifempty\n}\n' "$DEBKIT_AUTH_LOG"
 }
-debkit_samba_logrotate_ok() {
-    [ -f "$DEBKIT_AUTH_LOGROTATE" ] && cmp -s <(debkit_samba_logrotate_conteudo) "$DEBKIT_AUTH_LOGROTATE"
-}
+debkit_samba_logrotate_ok() { debkit_logrotate_ok "$DEBKIT_AUTH_LOGROTATE" debkit_samba_logrotate_conteudo; }
 
 debkit_descrever_samba_log_auth() { t prep.d_samba_log_auth "$DEBKIT_SMB_CONF" "$DEBKIT_AUTH_LOG" "$DEBKIT_AUTH_LOGROTATE"; }
 
-# smb.conf (edição segura) e regra do logrotate (backup se já existia; o
-# logrotate confere a sintaxe). Deixa DEBKIT_SAMBA_LOGROTATE_ANTES (caminho
-# do backup, "novo" ou vazio) para desfazer.
+# smb.conf (edição segura) e regra do logrotate (debkit_logrotate_gravar:
+# backup se já existia; o logrotate confere a sintaxe)
 debkit_acao_samba_log_auth() {
-    local tmp
-    DEBKIT_SAMBA_LOGROTATE_ANTES=""
+    debkit_logrotate_inicio "$DEBKIT_AUTH_LOGROTATE"
     if ! debkit_samba_auth_ligado; then
         DEBKIT_SAMBA_LOGLEVEL_NOVO=$(debkit_samba_loglevel_novo)
         debkit_smbconf_editar debkit_samba_filtro_auth debkit_samba_conferir_auth || return 1
         debkit_samba_auth_ligado || return 1
     fi
-    debkit_samba_logrotate_ok && return 0
-    if [ -e "$DEBKIT_AUTH_LOGROTATE" ]; then
-        DEBKIT_SAMBA_LOGROTATE_ANTES=$(debkit_backup "$DEBKIT_AUTH_LOGROTATE") || return 1
-    else
-        DEBKIT_SAMBA_LOGROTATE_ANTES=novo
-    fi
-    tmp=$(umask 022; mktemp -- "$(dirname -- "$DEBKIT_AUTH_LOGROTATE")/.debkit-logrotate.XXXXXX") || return 1
-    DEBKIT_TEMPORARIOS+=("$tmp")
-    if ! { debkit_samba_logrotate_conteudo > "$tmp" && chmod 644 -- "$tmp" && mv -f -- "$tmp" "$DEBKIT_AUTH_LOGROTATE"; }; then
-        rm -f -- "$tmp"; return 1
-    fi
-    debkit_samba_logrotate_ok && logrotate -d -- "$DEBKIT_AUTH_LOGROTATE" >/dev/null 2>&1
+    debkit_logrotate_gravar "$DEBKIT_AUTH_LOGROTATE" debkit_samba_logrotate_conteudo
 }
 
 # Volta a regra do logrotate (apaga a nova ou repõe a de antes) e o smb.conf
 debkit_desfazer_samba_log_auth() {
-    if [ "${DEBKIT_SAMBA_LOGROTATE_ANTES:-}" == "novo" ]; then
-        rm -f -- "$DEBKIT_AUTH_LOGROTATE"
-    elif [ -n "${DEBKIT_SAMBA_LOGROTATE_ANTES:-}" ]; then
-        cp -- "$DEBKIT_SAMBA_LOGROTATE_ANTES" "$DEBKIT_AUTH_LOGROTATE" && chmod 644 -- "$DEBKIT_AUTH_LOGROTATE"
-    fi
-    DEBKIT_SAMBA_LOGROTATE_ANTES=""
+    debkit_logrotate_desfazer "$DEBKIT_AUTH_LOGROTATE"
     debkit_smbconf_restaurar
 }
 

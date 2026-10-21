@@ -47,6 +47,7 @@ declare -A DEBKIT_CONF_PADRAO=(
     [GRUPO_USUARIOS]="debkit_usuarios"
     [SSH_DROPIN]="/etc/ssh/sshd_config.d/debkit.conf"
     [LOG]="/var/log/debkit.log"
+    [LOG_LOGROTATE]="/etc/logrotate.d/debkit"
     [BACKUP_DIR]="/var/backups/debkit"
     [BACKUP_MANTER]="30"
     [TRAVA]="/run/debkit.lock"
@@ -59,13 +60,14 @@ declare -A DEBKIT_CONF_TIPO=(
     [GRUPO_USUARIOS]="nome"
     [SSH_DROPIN]="caminho"
     [LOG]="caminho"
+    [LOG_LOGROTATE]="caminho"
     [BACKUP_DIR]="caminho"
     [BACKUP_MANTER]="inteiro_1_9999"
     [TRAVA]="caminho"
 )
 
 # Ordem das chaves no debkit.conf gerado pela preparação
-DEBKIT_CONF_ORDEM=(IDIOMA SENHA_MIN GRUPO_USUARIOS SSH_DROPIN LOG BACKUP_DIR BACKUP_MANTER TRAVA)
+DEBKIT_CONF_ORDEM=(IDIOMA SENHA_MIN GRUPO_USUARIOS SSH_DROPIN LOG LOG_LOGROTATE BACKUP_DIR BACKUP_MANTER TRAVA)
 
 # Chaves de versões anteriores, que não são mais usadas: são ignoradas com
 # um aviso próprio (e não como "desconhecida"), para o administrador saber
@@ -228,6 +230,7 @@ declare -A MSG_pt_BR=(
     [prep.conf_gravar_falhou]="Não foi possível gravar o %s. Nada foi alterado."
     [prep.d_dir_backup]="Criar a pasta de backups %s (acesso só do root)"
     [prep.d_log]="Criar o log de auditoria %s"
+    [prep.d_log_rotacao]="Girar o log de auditoria %s todo mês, guardando 24 meses compactados (regra %s)"
     [prep.d_grupo]="Criar o grupo de sistema %s (usuários do debkit)"
     [prep.pergunta]="Preparar agora?"
     [prep.recusado]="Nada foi alterado. O debkit vai funcionar de forma limitada até o ambiente ser preparado (menu 9)."
@@ -331,6 +334,7 @@ declare -A MSG_en=(
     [prep.conf_gravar_falhou]="Could not write %s. Nothing was changed."
     [prep.d_dir_backup]="Create the backup folder %s (root only)"
     [prep.d_log]="Create the audit log %s"
+    [prep.d_log_rotacao]="Rotate the audit log %s monthly, keeping 24 compressed months (rule %s)"
     [prep.d_grupo]="Create the system group %s (debkit users)"
     [prep.pergunta]="Set up now?"
     [prep.recusado]="Nothing was changed. debkit will work in a limited way until the environment is set up (menu 9)."
@@ -538,6 +542,7 @@ DEBKIT_DEPENDENCIAS=(
     "gpasswd|essencial|passwd"
     "chpasswd|essencial|passwd"
     "flock|essencial|util-linux"
+    "unshare|essencial|util-linux"
     "getent|essencial|libc-bin"
     "awk|essencial|mawk"
     "sed|essencial|sed"
@@ -545,6 +550,7 @@ DEBKIT_DEPENDENCIAS=(
     "stat|essencial|coreutils"
     "mktemp|essencial|coreutils"
     "realpath|essencial|coreutils"
+    "logrotate|essencial|logrotate"
     "systemctl|essencial|systemd"
     "sshd|condicional|openssh-server"
     "shellcheck|desenvolvimento|shellcheck"
@@ -628,10 +634,33 @@ debkit_ssh_aceita_dropin() {
     return 1
 }
 
+# sshd -t / -T. Eles exigem a pasta de separação de privilégios
+# (/run/sshd), que o systemd só cria com o serviço do SSH no ar: com o SSH
+# parado (ou desligado no boot) falham com "Missing privilege separation
+# directory" - e a configuração pareceria inválida. Nesse caso o sshd roda
+# num espaço de montagem só dele, com um /run vazio (tmpfs) e a pasta: nada
+# muda no sistema. Sem como fazer isso (ex: container sem permissão), roda
+# direto.
+DEBKIT_SSHD_PRIVSEP="${DEBKIT_SSHD_PRIVSEP:-/run/sshd}"
+debkit_sshd() {
+    local rc
+    if [ ! -d "$DEBKIT_SSHD_PRIVSEP" ] && [ "$(type -t sshd)" == "file" ] && debkit_tem_comando unshare \
+       && unshare -m --propagation private -- true 2>/dev/null; then
+        # 254 = não deu para montar (o sshd só sai com 0 ou 255)
+        # shellcheck disable=SC2016  # expandido pelo sh de dentro
+        unshare -m --propagation private -- sh -c \
+            'mount -t tmpfs -o mode=755 debkit "$1" 2>/dev/null && mkdir -m 755 -p "$2" || exit 254; shift 2; exec sshd "$@"' \
+            sh "$(dirname -- "$DEBKIT_SSHD_PRIVSEP")" "$DEBKIT_SSHD_PRIVSEP" "$@"
+        rc=$?
+        [ "$rc" -ne 254 ] && return "$rc"
+    fi
+    sshd "$@"
+}
+
 # A proteção está EFETIVA? Consulta a configuração geral em vigor (sshd -T),
 # não só se o arquivo existe: o grupo precisa estar em "denygroups".
 debkit_ssh_protecao_ativa() {
-    sshd -T 2>/dev/null | awk -v g="$DEBKIT_GRUPO_USUARIOS" \
+    debkit_sshd -T 2>/dev/null | awk -v g="$DEBKIT_GRUPO_USUARIOS" \
         '$1 == "denygroups" { for (i = 2; i <= NF; i++) if ($i == g) achou = 1 } END { exit !achou }'
 }
 
@@ -859,7 +888,7 @@ debkit_verificar_ambiente() {
         elif [ "$DEBKIT_SSH_DROPIN_OK" -eq 1 ]; then
             debkit_verif_add ssh info "$(t amb.ssh_protecao_inativa)"
         fi
-        senha_ssh=$(sshd -T 2>/dev/null | awk '$1 == "passwordauthentication" {print $2}')
+        senha_ssh=$(debkit_sshd -T 2>/dev/null | awk '$1 == "passwordauthentication" {print $2}')
         [ "$senha_ssh" == "yes" ] && debkit_verif_add ssh info "$(t amb.ssh_senha)"
     fi
 
@@ -1047,6 +1076,7 @@ debkit_montar_plano() {
     fi
     [ -d "$DEBKIT_BACKUP_DIR" ]      || DEBKIT_PLANO+=(dir_backup)
     [ -f "$DEBKIT_LOG" ]             || DEBKIT_PLANO+=(log)
+    debkit_log_rotacao_ok            || DEBKIT_PLANO+=(log_rotacao)
     getent group "$DEBKIT_GRUPO_USUARIOS" >/dev/null 2>&1 || DEBKIT_PLANO+=(grupo)
     # Proteção SSH: só se há servidor SSH, o sshd_config aceita o arquivo do
     # debkit e a proteção ainda não está efetiva
@@ -1069,6 +1099,7 @@ debkit_descrever_acao() {
         conf_obsoletas) t prep.d_conf_obsoletas "$DEBKIT_CONF_ARQUIVO" "$(debkit_conf_obsoletas_no_arquivo)" ;;
         dir_backup)    t prep.d_dir_backup "$DEBKIT_BACKUP_DIR" ;;
         log)           t prep.d_log "$DEBKIT_LOG" ;;
+        log_rotacao)   t prep.d_log_rotacao "$DEBKIT_LOG" "$DEBKIT_LOG_LOGROTATE" ;;
         grupo)         t prep.d_grupo "$DEBKIT_GRUPO_USUARIOS" ;;
         ssh_protecao)  t prep.d_ssh_protecao "$DEBKIT_SSH_DROPIN" "$DEBKIT_GRUPO_USUARIOS" ;;
         firewall)      t prep.d_firewall "$DEBKIT_FW_PORTA" "$DEBKIT_FW_TIPO" "$(debkit_redes_locais | paste -sd, - | sed 's/,/, /g')" ;;
@@ -1272,6 +1303,62 @@ debkit_conf_restaurar() {
     return 1
 }
 
+# ── Rotação de logs (logrotate) ─────────────────────────────────────────────
+# As regras em /etc/logrotate.d são arquivos do debkit: se mudarem, a
+# preparação recria (com backup da anterior). Não precisam de postrotate:
+# o debkit abre o log a cada linha gravada (e o Samba, a cada conexão).
+
+# debkit_logrotate_ok <regra> <função que imprime o conteúdo>
+debkit_logrotate_ok() { [ -f "$1" ] && cmp -s <("$2") "$1"; }
+
+# debkit_logrotate_gravar <regra> <função que imprime o conteúdo>
+# Grava a regra (backup se já existia; troca atômica) e confere com o
+# "logrotate -d". Guarda em DEBKIT_LOGROTATE_ANTES[<regra>] o backup (ou
+# "novo") para debkit_logrotate_desfazer.
+declare -A DEBKIT_LOGROTATE_ANTES=()
+debkit_logrotate_gravar() {
+    local regra="$1" conteudo="$2" tmp antes
+    DEBKIT_LOGROTATE_ANTES[$regra]=""
+    debkit_logrotate_ok "$regra" "$conteudo" && return 0
+    if [ -e "$regra" ]; then
+        antes=$(debkit_backup "$regra") || return 1
+    else
+        antes=novo
+    fi
+    DEBKIT_LOGROTATE_ANTES[$regra]="$antes"
+    tmp=$(umask 022; mktemp -- "$(dirname -- "$regra")/.debkit-logrotate.XXXXXX") || return 1
+    DEBKIT_TEMPORARIOS+=("$tmp")
+    if ! { "$conteudo" > "$tmp" && chmod 644 -- "$tmp" && mv -f -- "$tmp" "$regra"; }; then
+        rm -f -- "$tmp"; return 1
+    fi
+    debkit_logrotate_ok "$regra" "$conteudo" && logrotate -d -- "$regra" >/dev/null 2>&1
+}
+
+# Esquece o estado de uma gravação anterior (início de uma ação que pode
+# falhar antes de gravar a regra: o desfazer não mexe nela)
+debkit_logrotate_inicio() { DEBKIT_LOGROTATE_ANTES[$1]=""; }
+
+# Volta a regra como estava antes de debkit_logrotate_gravar (apaga a nova
+# ou repõe a de antes)
+debkit_logrotate_desfazer() {
+    local regra="$1" antes="${DEBKIT_LOGROTATE_ANTES[$1]:-}"
+    if [ "$antes" == "novo" ]; then
+        rm -f -- "$regra"
+    elif [ -n "$antes" ]; then
+        cp -- "$antes" "$regra" && chmod 644 -- "$regra"
+    fi
+    DEBKIT_LOGROTATE_ANTES[$regra]=""
+}
+
+# Regra do log de auditoria do debkit: uma linha por ação, então é pequeno;
+# mensal, 24 meses (a consulta à auditoria lê também os girados .N/.N.gz)
+debkit_log_rotacao_conteudo() {
+    printf '# debkit: rotação do log de auditoria do debkit (arquivo do debkit; a preparação recria se mudar)\n'
+    printf '%s {\n    monthly\n    rotate 24\n    compress\n    delaycompress\n    missingok\n    notifempty\n    create 0640 root root\n}\n' "$DEBKIT_LOG"
+}
+debkit_log_rotacao_ok() { debkit_logrotate_ok "$DEBKIT_LOG_LOGROTATE" debkit_log_rotacao_conteudo; }
+debkit_acao_log_rotacao() { debkit_logrotate_gravar "$DEBKIT_LOG_LOGROTATE" debkit_log_rotacao_conteudo; }
+
 # ── Proteção SSH ────────────────────────────────────────────────────────────
 # A marca identifica o arquivo como do debkit. NÃO mudar o texto: servidores
 # já preparados têm o arquivo com esta marca (mesmo com o nome antigo
@@ -1317,7 +1404,7 @@ debkit_acao_ssh_protecao() {
     DEBKIT_SSH_ESCRITO=1
     chmod 644 -- "$DEBKIT_SSH_DROPIN" || return 1
 
-    if ! erros=$(sshd -t 2>&1); then
+    if ! erros=$(debkit_sshd -t 2>&1); then
         msg_erro "$(t prep.ssh_invalido)"
         printf '%s\n' "$erros" | head -5 | sed 's/^/     /' >&2
         return 1
@@ -1344,7 +1431,7 @@ debkit_ssh_desfazer() {
     elif [ -f "$DEBKIT_SSH_DROPIN" ] && grep -qxF "$DEBKIT_SSH_MARCA" "$DEBKIT_SSH_DROPIN"; then
         rm -f -- "$DEBKIT_SSH_DROPIN"
     fi
-    if [ "${DEBKIT_SSH_RECARREGADO:-0}" -eq 1 ] && sshd -t >/dev/null 2>&1; then
+    if [ "${DEBKIT_SSH_RECARREGADO:-0}" -eq 1 ] && debkit_sshd -t >/dev/null 2>&1; then
         debkit_ssh_recarregar
     fi
 }
@@ -1441,6 +1528,7 @@ debkit_desfazer() {
                          && groupdel -- "$DEBKIT_GRUPO_USUARIOS" ;;
         ssh_protecao) debkit_ssh_desfazer ;;
         firewall)    debkit_fw_desfazer ;;
+        log_rotacao) debkit_logrotate_desfazer "$DEBKIT_LOG_LOGROTATE" ;;
         # Ações dos módulos: debkit_desfazer_<id>, se existir. Pacotes e log
         # não são desfeitos.
         *)           if declare -F "debkit_desfazer_$1" >/dev/null; then "debkit_desfazer_$1"; fi ;;
