@@ -508,6 +508,23 @@ tipo; o log real é só lido.
 Ordem: 3.0 log de autenticação (preparação e verificação) → 3.1 sessões
 ativas → 3.2 logins → 3.3 saúde → 3.4 auditoria.
 
+### 3.9 Publicação (Fase 4)
+
+Decisão de 21/10/2026 (Thiago), nesta ordem:
+
+| Tarefa | O quê |
+|---|---|
+| 4.0 | **CI no GitHub:** a cada push, `bash -n` e `shellcheck` em todos os arquivos e a suíte normal (sandbox) num Debian 13 de verdade (com systemd) |
+| 4.1 | **Rotação do `/var/log/debkit.log`** (pendência da Fase 3): regra do logrotate criada pela preparação |
+| 4.2 | **Comandos diretos** para todas as ações (ex.: `debkit samba usuario criar ana --tipo arquivos`), para scripts e cron. **O menu continua** sendo a forma principal; os comandos fazem as mesmas ações, com as mesmas validações, resumo e confirmação (que `--sim` pula) |
+| 4.3 | **`install.sh`:** programa em `/opt/debkit`, link `/usr/local/sbin/debkit`, configuração em `/etc/debkit` |
+| 4.4 | **Desinstalação** (`debkit --desinstalar`): tira o programa sem mexer nos usuários, grupos, compartilhamentos e no `smb.conf` |
+| 4.5 | **Bilíngue pt/en:** o idioma vem do `IDIOMA` do `debkit.conf` ou, sem ele, do `LANG` do sistema |
+| 4.6 | **README final** (pt e en) e **versão 1.0** (a `main` recebe a `dev` e ganha a tag quando o Thiago confirmar) |
+
+Os textos novos (comandos diretos) vêm antes da tradução, para traduzir uma
+vez só.
+
 ## 4. O que o debkit gerencia
 
 Decisão de 15/10/2026 (substitui a regra anterior "só gerencia o que ele
@@ -599,8 +616,8 @@ compartilhamentos.
 
 - **Núcleo + módulos:** um comando `debkit` (menu principal que lista os
   módulos), o núcleo em arquivo próprio (`lib/nucleo.sh`) e cada módulo em
-  seu arquivo (`modulos/samba.sh`). Instalação em `/usr/local/lib/debkit/`
-  com link `/usr/local/sbin/debkit` (o `debkit` acha os arquivos pela pasta
+  seu arquivo (`modulos/samba.sh`). Instalação em `/opt/debkit/`
+  (decisão de 21/10/2026) com link `/usr/local/sbin/debkit` (o `debkit` acha os arquivos pela pasta
   real, seguindo o link).
 - **Como um módulo se encaixa** (feito na tarefa 1.0): o arquivo em
   `modulos/` chama `debkit_modulo_registrar <nome>`, acrescenta suas chaves
@@ -643,7 +660,7 @@ debkit/
 | 1. Usuários e grupos | 1.0 reestruturar ✔ (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário ✔ (tipos, nome completo, grupos; sem home) · 1.1b pasta pessoal ✔ (base no disco de dados, na criação ou depois, `[homes]`) · listar ✔ · trocar senha ✔ · grupos ✔ (criar, remover, entrar/sair) · menu em submenus ✔ · excluir usuário ✔ · consistência Linux x Samba ✔ · ~~desativar/reativar~~ (adiado, 3.4) |
 | 2. Compartilhamentos | decisões na seção 3.7 · 2.0 `map to guest = never` ✔ · 2.1 criar + listar ✔ · 2.2 grupo e permissões (trocar o grupo, ajustar o conteúdo) ✔ · 2.3 remover ✔ · 2.4 os já existentes ✔ |
 | 3. Diagnóstico | decisões na seção 3.8 · 3.0 log de autenticação ✔ · 3.1 sessões ativas ✔ · 3.2 logins (falhas e sucessos) ✔ · 3.3 saúde do Samba ✔ · 3.4 consulta à auditoria ✔ |
-| 4. Publicação | comandos diretos completos, `install.sh`, **desinstalação**, README, mensagens em inglês, testes automáticos e CI |
+| 4. Publicação | decisões na seção 3.9 · 4.0 CI · 4.1 rotação do log · 4.2 comandos diretos · 4.3 `install.sh` · 4.4 desinstalação · 4.5 bilíngue pt/en · 4.6 README e versão 1.0 |
 
 ## 9. Forma de trabalho
 
@@ -679,7 +696,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 
 ## 11. Situação atual e próximos passos
 
-*Atualizado em 20/10/2026 (3.4; Fase 3 concluída).*
+*Atualizado em 21/10/2026 (Fase 4 decidida).*
 
 - Nome decidido: **debkit**; renomeação gsb → debkit feita (arquivos,
   variáveis, funções, grupo `debkit_usuarios`, `/etc/debkit`, testes). As
@@ -846,7 +863,8 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 29. ✔ 3.3 saúde do Samba (Samba → 4) Diagnóstico → 3; seção 3.8).
 30. ✔ 3.4 consulta à auditoria (Samba → 4) Diagnóstico → 4; seção 3.8).
     **Fase 3 concluída.**
-31. **Próxima tarefa:** decidir a Fase 4 (publicação) com o Thiago.
+31. ✔ Fase 4 decidida (seção 3.9).
+32. **Próxima tarefa:** 4.0 CI no GitHub.
 
 **VM limpa de novo:** `dev/vmnova.sh` → (reinicia) → `dev/vmprepara.sh` →
 `./debkit --preparar` → testes.
