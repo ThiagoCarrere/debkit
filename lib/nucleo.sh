@@ -42,7 +42,7 @@ DEBKIT_CONF_ARQUIVO="${DEBKIT_CONF_ARQUIVO:-/etc/debkit/debkit.conf}"
 
 # Chave -> valor padrão
 declare -A DEBKIT_CONF_PADRAO=(
-    [IDIOMA]="pt_BR"
+    [IDIOMA]="auto"
     [SENHA_MIN]="4"
     [GRUPO_USUARIOS]="debkit_usuarios"
     [SSH_DROPIN]="/etc/ssh/sshd_config.d/debkit.conf"
@@ -71,10 +71,10 @@ DEBKIT_CONF_ORDEM=(IDIOMA SENHA_MIN GRUPO_USUARIOS SSH_DROPIN LOG LOG_LOGROTATE 
 
 # Chaves de versões anteriores, que não são mais usadas: são ignoradas com
 # um aviso próprio (e não como "desconhecida"), para o administrador saber
-# que pode apagar a linha. Chave -> por que saiu.
+# que pode apagar a linha. Chave -> mensagem com o porquê saiu.
 declare -A DEBKIT_CONF_OBSOLETA=(
-    [SHARES_CONF]="o debkit edita o smb.conf diretamente"
-    [PREFIXO_GRUPO]="o debkit gerencia todos os grupos comuns"
+    [SHARES_CONF]="conf.obs_shares_conf"
+    [PREFIXO_GRUPO]="conf.obs_prefixo_grupo"
 )
 
 # Classes de caracteres SEM intervalos: num idioma como pt_BR, [a-z] no
@@ -87,7 +87,7 @@ DEBKIT_DIGITOS="0123456789"
 debkit_conf_valor_valido() {
     local tipo="$1" valor="$2"
     case "$tipo" in
-        idioma)         [[ "$valor" == "pt_BR" || "$valor" == "en" ]] ;;
+        idioma)         [[ "$valor" == "auto" || "$valor" == "pt_BR" || "$valor" == "en" ]] ;;
         inteiro_1_128)  [[ "$valor" =~ ^[0-9]{1,3}$ ]] && [ "$valor" -ge 1 ] && [ "$valor" -le 128 ] ;;
         inteiro_1_9999) [[ "$valor" =~ ^[0-9]{1,4}$ ]] && [ "$valor" -ge 1 ] ;;
         nome)           [[ "$valor" =~ ^[${DEBKIT_MINUSCULAS}_][${DEBKIT_MINUSCULAS}${DEBKIT_DIGITOS}_-]{0,31}$ ]] ;;
@@ -116,14 +116,14 @@ debkit_conf_carregar() {
     [ -e "$arquivo" ] || return 0
 
     if [ ! -f "$arquivo" ] || [ ! -r "$arquivo" ]; then
-        DEBKIT_CONF_ERROS="$arquivo: não é um arquivo legível"
+        DEBKIT_CONF_ERROS="$(t conf.e_ilegivel "$arquivo")"
         return 1
     fi
     # Segurança: só root pode poder alterar o arquivo
     dono=$(stat -c '%u' -- "$arquivo")
     perm=$(stat -c '%a' -- "$arquivo")
     if [ "$dono" != "0" ] || (( 8#$perm & 8#022 )); then
-        DEBKIT_CONF_ERROS="$arquivo: precisa pertencer ao root e não ter escrita para grupo/outros (atual: dono UID $dono, permissão $perm)"
+        DEBKIT_CONF_ERROS="$(t conf.e_inseguro "$arquivo" "$dono" "$perm")"
         return 1
     fi
 
@@ -132,7 +132,7 @@ debkit_conf_carregar() {
         linha="${linha%$'\r'}"
         [[ "$linha" =~ ^[[:space:]]*(#.*)?$ ]] && continue
         if [[ ! "$linha" =~ ^[[:space:]]*([A-Z_]+)[[:space:]]*=[[:space:]]*(.*)$ ]]; then
-            DEBKIT_CONF_ERROS+="linha $n: formato inválido (use CHAVE=valor)"$'\n'
+            DEBKIT_CONF_ERROS+="$(t conf.e_formato "$n")"$'\n'
             continue
         fi
         chave="${BASH_REMATCH[1]}"
@@ -142,15 +142,15 @@ debkit_conf_carregar() {
             valor="${BASH_REMATCH[1]}"                    # tira aspas
         fi
         if [ -n "${DEBKIT_CONF_OBSOLETA[$chave]+x}" ]; then
-            DEBKIT_CONF_AVISOS+="linha $n: a chave '$chave' não é mais usada (${DEBKIT_CONF_OBSOLETA[$chave]}): ignorada; pode apagar a linha"$'\n'
+            DEBKIT_CONF_AVISOS+="$(t conf.a_obsoleta "$n" "$chave" "$(t "${DEBKIT_CONF_OBSOLETA[$chave]}")")"$'\n'
             continue
         fi
         if [ -z "${DEBKIT_CONF_TIPO[$chave]+x}" ]; then
-            DEBKIT_CONF_AVISOS+="linha $n: chave desconhecida '$chave' (ignorada)"$'\n'
+            DEBKIT_CONF_AVISOS+="$(t conf.a_desconhecida "$n" "$chave")"$'\n'
             continue
         fi
         if ! debkit_conf_valor_valido "${DEBKIT_CONF_TIPO[$chave]}" "$valor"; then
-            DEBKIT_CONF_ERROS+="linha $n: valor inválido para $chave: '$valor'"$'\n'
+            DEBKIT_CONF_ERROS+="$(t conf.e_valor "$n" "$chave" "$valor")"$'\n'
             continue
         fi
         printf -v "DEBKIT_${chave}" '%s' "$valor"
@@ -182,6 +182,20 @@ declare -A MSG_pt_BR=(
     [erro.root]="Este comando precisa ser executado como root (ex: sudo debkit)."
     [erro.uso]="Opção desconhecida: '%s'. Veja: debkit --ajuda"
     [cli.sim_resposta]="s (--sim)"
+    [conf.e_ilegivel]="%s: não é um arquivo legível"
+    [conf.e_inseguro]="%s: precisa pertencer ao root e não ter escrita para grupo/outros (atual: dono UID %s, permissão %s)"
+    [conf.e_formato]="linha %d: formato inválido (use CHAVE=valor)"
+    [conf.e_valor]="linha %d: valor inválido para %s: '%s'"
+    [conf.a_obsoleta]="linha %d: a chave '%s' não é mais usada (%s): ignorada; pode apagar a linha"
+    [conf.a_desconhecida]="linha %d: chave desconhecida '%s' (ignorada)"
+    [conf.obs_shares_conf]="o debkit edita o smb.conf diretamente"
+    [conf.obs_prefixo_grupo]="o debkit gerencia todos os grupos comuns"
+    [conf.cabecalho]="%s - gerado pelo debkit %s em %s"
+    [conf.cabecalho_exemplo]="Descrição de cada opção: debkit.conf.exemplo (em /opt/debkit ou no repositório do debkit)."
+    [conf.cabecalho_formato]="Formato CHAVE=valor; o arquivo é lido, nunca executado."
+    [amb.c_ausente]="arquivo ausente ou ilegível"
+    [amb.c_invalido]="%s inválido ('%s')"
+    [amb.c_invertida]="%s_MIN maior que %s_MAX"
     [desi.titulo]="debkit - desinstalação"
     [desi.vai]="A desinstalação vai remover:"
     [desi.fica]="Fica no servidor:"
@@ -354,6 +368,20 @@ declare -A MSG_en=(
     [erro.root]="This command must be run as root (e.g. sudo debkit)."
     [erro.uso]="Unknown option: '%s'. See: debkit --help"
     [cli.sim_resposta]="y (--yes)"
+    [conf.e_ilegivel]="%s: not a readable file"
+    [conf.e_inseguro]="%s: must belong to root, with no write for group/others (now: owner UID %s, permissions %s)"
+    [conf.e_formato]="line %d: invalid format (use KEY=value)"
+    [conf.e_valor]="line %d: invalid value for %s: '%s'"
+    [conf.a_obsoleta]="line %d: the key '%s' is no longer used (%s): ignored; the line can be deleted"
+    [conf.a_desconhecida]="line %d: unknown key '%s' (ignored)"
+    [conf.obs_shares_conf]="debkit edits smb.conf directly"
+    [conf.obs_prefixo_grupo]="debkit manages all regular groups"
+    [conf.cabecalho]="%s - generated by debkit %s on %s"
+    [conf.cabecalho_exemplo]="Description of each option: debkit.conf.exemplo (in /opt/debkit or in the debkit repository)."
+    [conf.cabecalho_formato]="KEY=value format; the file is read, never executed."
+    [amb.c_ausente]="missing or unreadable file"
+    [amb.c_invalido]="invalid %s ('%s')"
+    [amb.c_invertida]="%s_MIN greater than %s_MAX"
     [desi.titulo]="debkit - uninstall"
     [desi.vai]="The uninstall will remove:"
     [desi.fica]="Stays on the server:"
@@ -512,11 +540,27 @@ Configuration: %s
 Documentation: https://github.com/ThiagoCarrere/debkit"
 )
 
+# Idioma "auto" (o padrão): o do sistema, na ordem do gettext - LANGUAGE
+# (se o idioma não for C/POSIX), LC_ALL, LC_MESSAGES, LANG: português
+# (pt...) ou, qualquer outro, inglês. O sudo do Debian mantém essas
+# variáveis. Deixa o resultado em DEBKIT_IDIOMA_EF (sem subshell: o t() é
+# chamado o tempo todo).
+debkit_idioma_efetivo() {
+    local loc="${LC_ALL:-${LC_MESSAGES:-${LANG:-}}}" l
+    case "${DEBKIT_IDIOMA:-auto}" in
+        pt_BR|en) DEBKIT_IDIOMA_EF="$DEBKIT_IDIOMA"; return ;;
+    esac
+    l="$loc"
+    if [ -n "${LANGUAGE:-}" ] && [ "$loc" != "C" ] && [ "$loc" != "POSIX" ]; then l="${LANGUAGE%%:*}"; fi
+    if [[ "$l" == pt* ]]; then DEBKIT_IDIOMA_EF=pt_BR; else DEBKIT_IDIOMA_EF=en; fi
+}
+
 # Imprime a mensagem <chave> formatada com os argumentos (sem quebra de linha)
 t() {
-    local chave="$1" formato
+    local chave="$1" formato idioma
     shift
-    if [ "${DEBKIT_IDIOMA:-pt_BR}" == "en" ] && [ -n "${MSG_en[$chave]+x}" ]; then
+    debkit_idioma_efetivo; idioma="$DEBKIT_IDIOMA_EF"
+    if [ "$idioma" == "en" ] && [ -n "${MSG_en[$chave]+x}" ]; then
         formato="${MSG_en[$chave]}"
     elif [ -n "${MSG_pt_BR[$chave]+x}" ]; then
         formato="${MSG_pt_BR[$chave]}"
@@ -829,7 +873,7 @@ debkit_ler_login_defs() {
     DEBKIT_GID_MIN=$DEBKIT_CONTAS_PADRAO_MIN; DEBKIT_GID_MAX=$DEBKIT_CONTAS_PADRAO_MAX
     DEBKIT_CONTAS_ERRO=""
     if [ ! -r "$DEBKIT_ARQ_LOGIN_DEFS" ]; then
-        DEBKIT_CONTAS_ERRO="arquivo ausente ou ilegível"
+        DEBKIT_CONTAS_ERRO="$(t amb.c_ausente)"
         return 1
     fi
     # Como no login.defs, a última ocorrência de uma chave é a que vale
@@ -848,14 +892,14 @@ debkit_ler_login_defs() {
         if [[ "$valor" =~ ^[1-9][0-9]{0,9}$ ]]; then
             printf -v "DEBKIT_$chave" '%s' "$valor"
         else
-            DEBKIT_CONTAS_ERRO+="${DEBKIT_CONTAS_ERRO:+; }$chave inválido ('$valor')"
+            DEBKIT_CONTAS_ERRO+="${DEBKIT_CONTAS_ERRO:+; }$(t amb.c_invalido "$chave" "$valor")"
         fi
     done
     # Faixa invertida: volta ao padrão só daquele tipo
     for tipo in UID GID; do
         min="DEBKIT_${tipo}_MIN"; max="DEBKIT_${tipo}_MAX"
         if [ "${!min}" -gt "${!max}" ]; then
-            DEBKIT_CONTAS_ERRO+="${DEBKIT_CONTAS_ERRO:+; }${tipo}_MIN maior que ${tipo}_MAX"
+            DEBKIT_CONTAS_ERRO+="${DEBKIT_CONTAS_ERRO:+; }$(t amb.c_invertida "$tipo" "$tipo")"
             printf -v "$min" '%s' "$DEBKIT_CONTAS_PADRAO_MIN"
             printf -v "$max" '%s' "$DEBKIT_CONTAS_PADRAO_MAX"
         fi
@@ -1301,11 +1345,12 @@ debkit_acao_log()        { ( umask 027; : >> "$DEBKIT_LOG" ) && chmod 640 -- "$D
 debkit_acao_grupo()      { groupadd --system -- "$DEBKIT_GRUPO_USUARIOS" && getent group "$DEBKIT_GRUPO_USUARIOS" >/dev/null; }
 
 debkit_acao_conf() {
-    local chave var
+    local chave var cabecalho
+    cabecalho=$(t conf.cabecalho "$DEBKIT_CONF_ARQUIVO" "$DEBKIT_VERSAO" "$(date '+%Y-%m-%d %H:%M')")
     {
-        echo "# /etc/debkit/debkit.conf - gerado pelo debkit $DEBKIT_VERSAO em $(date '+%Y-%m-%d %H:%M')"
-        echo "# Descrição de cada opção: debkit.conf.exemplo (no repositório do debkit)."
-        echo "# Formato CHAVE=valor; o arquivo é lido, nunca executado."
+        printf '# %s\n' "$cabecalho"
+        printf '# %s\n' "$(t conf.cabecalho_exemplo)"
+        printf '# %s\n' "$(t conf.cabecalho_formato)"
         echo ""
         for chave in "${DEBKIT_CONF_ORDEM[@]}"; do
             var="DEBKIT_$chave"
@@ -2025,10 +2070,14 @@ debkit_cli_sessao() {
 
 # Lê os argumentos de um comando direto:
 #   debkit_cli_ler "<opções com valor>" "<opções sem valor>" "$@"
-# (nomes sem o "--", separados por espaço). "--opcao valor" ou
+# (nomes sem o "--", separados por espaço; os em inglês de DEBKIT_CLI_ALIAS
+# viram o nome em português). "--opcao valor" ou
 # "--opcao=valor"; o resto vai, na ordem, para DEBKIT_ARGS. As opções ficam em
 # DEBKIT_OPCOES[nome] (as sem valor, com 1). Opção desconhecida ou sem valor:
 # mensagem e retorna 1. "--" encerra as opções.
+# Nomes de opção em inglês -> o nome em português que o comando usa (os
+# módulos acrescentam os seus)
+declare -A DEBKIT_CLI_ALIAS=()
 # shellcheck disable=SC2034  # DEBKIT_OPCOES é lido pelos módulos
 declare -A DEBKIT_OPCOES=()
 DEBKIT_ARGS=()
@@ -2043,10 +2092,12 @@ debkit_cli_ler() {
             --) DEBKIT_ARGS+=("$@"); break ;;
             --?*=*)
                 nome="${a%%=*}"; nome="${nome#--}"
+                [ -n "${DEBKIT_CLI_ALIAS[$nome]+x}" ] && nome="${DEBKIT_CLI_ALIAS[$nome]}"
                 if [[ "$com" != *" $nome "* ]]; then msg_erro "$(t cli.opcao_desconhecida "${a%%=*}")"; return 1; fi
                 DEBKIT_OPCOES[$nome]="${a#*=}" ;;
             --?*)
                 nome="${a#--}"
+                [ -n "${DEBKIT_CLI_ALIAS[$nome]+x}" ] && nome="${DEBKIT_CLI_ALIAS[$nome]}"
                 if [[ "$com" == *" $nome "* ]]; then
                     if [ $# -eq 0 ]; then msg_erro "$(t cli.falta_valor "$a")"; return 1; fi
                     DEBKIT_OPCOES[$nome]="$1"; shift

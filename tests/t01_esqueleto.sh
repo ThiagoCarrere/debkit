@@ -117,6 +117,28 @@ igual "só em pt" "$(bash -c "source '$DEBKIT'; MSG_pt_BR[teste.so_pt]='só em p
 igual "chave.que.nao.existe" "$(bash -c "source '$DEBKIT'; t chave.que.nao.existe")"
 igual "Opção inválida: '100%s %d'" "$(bash -c "source '$DEBKIT'; t geral.opcao_invalida '100%s %d'")"
 
+caso "idioma auto (o padrão): o do sistema, na ordem do gettext"
+idi() { env -u LANGUAGE -u LC_ALL -u LC_MESSAGES "$@" bash -c "source '$DEBKIT'; debkit_conf_padroes; t geral.sair"; }
+igual "auto" "$(bash -c "source '$DEBKIT'; debkit_conf_padroes; echo \$DEBKIT_IDIOMA")" "padrão auto"
+igual "Sair" "$(idi LANG=pt_BR.UTF-8)" "LANG pt_BR"
+igual "Sair" "$(idi LANG=pt_PT.UTF-8)" "LANG pt_PT"
+igual "Exit" "$(idi LANG=en_US.UTF-8)" "LANG en_US"
+igual "Exit" "$(idi LANG=C.UTF-8)" "LANG C.UTF-8"
+igual "Exit" "$(idi LANG=de_DE.UTF-8)" "outro idioma: inglês"
+igual "Exit" "$(idi -u LANG)" "sem LANG: inglês"
+igual "Sair" "$(idi LANG=C.UTF-8 LANGUAGE=pt_BR:en)" "LANGUAGE vale"
+igual "Exit" "$(idi LANG=C LANGUAGE=pt_BR)" "com o idioma C o LANGUAGE não vale (como no gettext)"
+igual "Exit" "$(idi LANG=pt_BR.UTF-8 LC_MESSAGES=en_US.UTF-8)" "LC_MESSAGES antes do LANG"
+igual "Sair" "$(idi LANG=en_US.UTF-8 LC_ALL=pt_BR.UTF-8 2>/dev/null)" "LC_ALL antes de tudo"
+igual "Sair" "$(env -u LANGUAGE LANG=en_US.UTF-8 bash -c "source '$DEBKIT'; debkit_conf_padroes; DEBKIT_IDIOMA=pt_BR; t geral.sair")" "IDIOMA=pt_BR fixo ganha do sistema"
+conf 'IDIOMA=auto'; contem "rc=0 auto" "$(carregar '$DEBKIT_IDIOMA')" "auto aceito no debkit.conf"
+caso "toda chave citada no código existe no catálogo"
+faltas=$(grep -ohE "\bt \"?[a-z]+\.[a-z0-9_]+\"?( |\)|$)" "$DEBKIT" "$REPO"/install.sh "$REPO"/lib/*.sh "$REPO"/modulos/*.sh \
+    | sed -E 's/^t "?//; s/"?[ )]?$//' | sort -u | bash -c "source '$DEBKIT'; while read -r k; do [ -n \"\${MSG_pt_BR[\$k]+x}\" ] || echo \"falta \$k\"; done")
+igual "" "$faltas"
+caso "t(): argumentos a mais não repetem a frase"
+igual "debkit 1" "$(bash -c "source '$DEBKIT'; DEBKIT_IDIOMA=pt_BR; t geral.versao 1 2 3")"
+
 # ── Menu ─────────────────────────────────────────────────────────────────────
 preparar_sandbox
 caso "menu: abrir, opção inválida, Enter vazio e sair"

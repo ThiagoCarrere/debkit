@@ -24,12 +24,19 @@
 # Desenvolvido por Thiago Carrere em parceria com Claude (Anthropic).
 
 # Só sintaxe POSIX até conferir o bash (pode ser chamado com "sh install.sh")
+# Idioma destas primeiras mensagens (antes do catálogo e da configuração):
+# o do sistema, como o idioma "auto" do núcleo
+_debkit_loc="${LC_ALL:-${LC_MESSAGES:-${LANG:-}}}"
+case "$_debkit_loc" in C|POSIX) _debkit_l="$_debkit_loc" ;; *) _debkit_l="${LANGUAGE:-$_debkit_loc}" ;; esac
+case "$_debkit_l" in pt*) _debkit_pt=1 ;; *) _debkit_pt=0 ;; esac
 if [ -z "${BASH_VERSINFO:-}" ]; then
-    echo "install.sh: este programa precisa do bash (execute: sudo bash install.sh)" >&2
+    if [ "$_debkit_pt" = 1 ]; then echo "install.sh: este programa precisa do bash (execute: sudo bash install.sh)" >&2
+    else echo "install.sh: this program needs bash (run: sudo bash install.sh)" >&2; fi
     exit 1
 fi
 if [ "${BASH_VERSINFO[0]}" -lt 4 ] || { [ "${BASH_VERSINFO[0]}" -eq 4 ] && [ "${BASH_VERSINFO[1]}" -lt 4 ]; }; then
-    echo "install.sh: é necessário bash 4.4 ou mais novo (atual: ${BASH_VERSION})" >&2
+    if [ "$_debkit_pt" = 1 ]; then echo "install.sh: é necessário bash 4.4 ou mais novo (atual: ${BASH_VERSION})" >&2
+    else echo "install.sh: bash 4.4 or newer is required (current: ${BASH_VERSION})" >&2; fi
     exit 1
 fi
 
@@ -39,11 +46,12 @@ DESTINO="${DEBKIT_INSTALAR_DIR:-/opt/debkit}"
 LINK="${DEBKIT_INSTALAR_LINK:-/usr/local/sbin/debkit}"
 MARCA=".debkit-instalado"
 # O que vai para a instalação (o resto do repositório não)
-ARQUIVOS=(debkit install.sh debkit.conf.exemplo LICENSE README.md CHANGELOG.md)
+ARQUIVOS=(debkit install.sh debkit.conf.exemplo LICENSE README.md README.en.md CHANGELOG.md)
 PASTAS=(lib modulos docs)
 
 if [ ! -f "$ORIGEM/debkit" ] || [ ! -f "$ORIGEM/lib/nucleo.sh" ]; then
-    echo "install.sh: $ORIGEM não tem o debkit completo (debkit e lib/nucleo.sh)" >&2
+    if [ "$_debkit_pt" = 1 ]; then echo "install.sh: $ORIGEM não tem o debkit completo (debkit e lib/nucleo.sh)" >&2
+    else echo "install.sh: $ORIGEM does not have the complete debkit (debkit and lib/nucleo.sh)" >&2; fi
     exit 1
 fi
 # Mensagens, saída, confirmação e auditoria vêm do núcleo do debkit (o

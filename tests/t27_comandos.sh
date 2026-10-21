@@ -204,6 +204,22 @@ saida=$(sem usuario excluir dkt_c3 --sim); contem "RC=0" "$saida"; verdadeiro "e
 saida=$(sem usuario excluir dkt_c3 --sim); contem "RC=1" "$saida"
 saida=$(sem usuario excluir root --sim); contem "RC=1" "$saida"; verdadeiro "root intacto" id root
 
+caso "nomes em inglês (comandos, opções e valores)"
+saida=$(printf '%s\n%s\n' "$SENHA" 'Outra#Linux2' | DEBKIT_IDIOMA=en cli user create dkt_e1 --name "English One" --type server --different-linux-password --groups dkt_g1 --yes)
+contem "RC=0" "$saida"; contem "Linux password: its own" "$saida"; igual "/bin/bash" "$(getent passwd dkt_e1 | cut -d: -f7)"
+contem "dkt_g1" "$(id -nG dkt_e1)"
+saida=$(DEBKIT_IDIOMA=en cli group create dkt_ge --members dkt_e1 --yes < /dev/null); contem "RC=0" "$saida"
+saida=$(DEBKIT_IDIOMA=en cli share create dkt-en --group dkt_ge --folder "$T/base/en" --description "English" --yes < /dev/null)
+contem "RC=0" "$saida"; igual "@dkt_ge" "$(param dkt-en 'valid users')"
+contem "dkt-en" "$(DEBKIT_IDIOMA=en cli share list < /dev/null)"
+saida=$(DEBKIT_IDIOMA=en cli diagnostics audit --days 1 --type shares < /dev/null); contem "dkt-en" "$saida"; contem "RC=0" "$saida"
+saida=$(DEBKIT_IDIOMA=en cli user create dkt_e2 --type xx < /dev/null); contem "use files or server" "$saida"; contem "RC=2" "$saida"
+contem "RC=0" "$(DEBKIT_IDIOMA=en cli share remove dkt-en --yes < /dev/null)"
+contem "RC=0" "$(DEBKIT_IDIOMA=en cli user delete dkt_e1 --yes < /dev/null)"
+contem "RC=0" "$(DEBKIT_IDIOMA=en cli group remove dkt_ge --yes < /dev/null)"
+caso "nomes em português continuam valendo com o idioma em inglês"
+contem "RC=0" "$(DEBKIT_IDIOMA=en cli usuario listar < /dev/null)"
+
 caso "inglês"
 DEBKIT_IDIOMA=en contem "Usage: debkit samba <group> <action>" "$(DEBKIT_IDIOMA=en bash "$DEBKIT" samba --ajuda)"
 contem "y (--yes)" "$(DEBKIT_IDIOMA=en bash "$DEBKIT" samba grupo criar dkt_g7 --yes < /dev/null 2>&1)"

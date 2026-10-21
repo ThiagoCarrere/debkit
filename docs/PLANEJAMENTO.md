@@ -676,6 +676,28 @@ arquivo). Provas: `t29_desinstalar.sh` (sandbox), `t29b_desinstalar_real.sh`
 CI, que no container instala, usa e desinstala com `--tudo` (o grupo está
 vazio: a proteção sai e o `sshd -T` confirma).
 
+**Como ficou a 4.5 (bilíngue pt/en):** o catálogo já tinha as duas
+línguas para todas as mensagens (723 chaves cada; o t01 confere que são as
+mesmas e que toda chave citada no código existe). O que mudou:
+1. **`IDIOMA=auto`** (o novo padrão; `pt_BR` e `en` continuam valendo e
+   fixam o idioma): o do sistema, na ordem do gettext - `LANGUAGE` (se o
+   idioma não for C/POSIX), `LC_ALL`, `LC_MESSAGES`, `LANG`; português
+   (`pt...`) ou, qualquer outro, inglês. O sudo do Debian mantém essas
+   variáveis. Servidores já preparados têm `IDIOMA=pt_BR` no `debkit.conf`
+   e continuam em português.
+2. **Textos que estavam fora do catálogo:** os avisos de antes do catálogo
+   (bash, arquivos inseguros, módulo com erro; escolhidos pelo mesmo
+   critério), os erros e avisos do `debkit.conf`, os motivos das
+   conferências, o cabeçalho do `debkit.conf` gerado e o instalador.
+3. **Comandos em inglês:** `debkit samba user create ana --name "Ana" --type
+   server --yes`, `share change-group`, `diagnostics audit --type shares`...
+   (tabela de nomes no módulo; os em português continuam valendo). A ajuda
+   em inglês mostra os nomes em inglês; `--check`, `--setup`,
+   `--uninstall`, `--all`, `--yes` e, no instalador, `--dry-run`.
+4. Os testes fixam o português (`LANGUAGE=pt_BR` e `IDIOMA=pt_BR` no
+   sandbox); `t30_ingles.sh` percorre o menu e as telas só de leitura em
+   inglês e confere que não sobra português.
+
 ## 4. O que o debkit gerencia
 
 Decisão de 15/10/2026 (substitui a regra anterior "só gerencia o que ele
@@ -787,8 +809,8 @@ usuários de arquivos (detalhes na seção 3.9, tarefa 4.4).
 - **Distribuição:** foco em **Debian 12/13** (Ubuntu, derivado do Debian,
   tende a funcionar). O que muda entre distribuições (nomes de serviços,
   caminhos) fica isolado em um único ponto, para facilitar suporte futuro.
-- **Idioma:** todas as mensagens num catálogo; português do Brasil é o
-  padrão, preparado para inglês.
+- **Idioma:** todas as mensagens num catálogo, em português do Brasil e
+  inglês; por padrão, o idioma do sistema (tarefa 4.5).
 
 Estrutura do repositório (feita na tarefa 1.0; `install.sh` vem na Fase 4):
 
@@ -848,7 +870,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 
 ## 11. Situação atual e próximos passos
 
-*Atualizado em 21/10/2026 (4.4).*
+*Atualizado em 21/10/2026 (4.5).*
 
 - Nome decidido: **debkit**; renomeação gsb → debkit feita (arquivos,
   variáveis, funções, grupo `debkit_usuarios`, `/etc/debkit`, testes). As
@@ -911,7 +933,8 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | 4.0 CI no GitHub | `ae621bd` |
 | 4.1 Rotação do log do debkit (+ sshd com o SSH parado) | `882cb1f` |
 | 4.2 Comandos diretos | `73d9e72` |
-| 4.3 install.sh e 4.4 desinstalação | (a preencher) |
+| 4.3 install.sh e 4.4 desinstalação | `9f1390e` |
+| 4.5 Bilíngue pt/en | (a preencher) |
 
 **Próximos passos:**
 
@@ -1026,7 +1049,8 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 34. ✔ 4.2 comandos diretos (seção 3.9).
 35. ✔ 4.3 `install.sh` (seção 3.9).
 36. ✔ 4.4 desinstalação (seção 3.9).
-37. **Próxima tarefa:** 4.5 bilíngue pt/en.
+37. ✔ 4.5 bilíngue pt/en (seção 3.9).
+38. **Próxima tarefa:** 4.6 README e versão 1.0.
 
 **VM limpa de novo:** `dev/vmnova.sh` → (reinicia) → `dev/vmprepara.sh` →
 `./debkit --preparar` → testes.

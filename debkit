@@ -32,12 +32,19 @@
 # ── Bash ────────────────────────────────────────────────────────────────────
 # Esta verificação usa só sintaxe POSIX, para funcionar mesmo se o arquivo
 # for executado por outro shell (ex: "sh debkit").
+# Idioma destas primeiras mensagens (antes do catálogo e da configuração):
+# o do sistema, como o idioma "auto" do núcleo
+_debkit_loc="${LC_ALL:-${LC_MESSAGES:-${LANG:-}}}"
+case "$_debkit_loc" in C|POSIX) _debkit_l="$_debkit_loc" ;; *) _debkit_l="${LANGUAGE:-$_debkit_loc}" ;; esac
+case "$_debkit_l" in pt*) _debkit_pt=1 ;; *) _debkit_pt=0 ;; esac
 if [ -z "${BASH_VERSINFO:-}" ]; then
-    echo "debkit: este programa precisa do bash (execute: bash debkit)" >&2
+    if [ "$_debkit_pt" = 1 ]; then echo "debkit: este programa precisa do bash (execute: bash debkit)" >&2
+    else echo "debkit: this program needs bash (run: bash debkit)" >&2; fi
     exit 1
 fi
 if [ "${BASH_VERSINFO[0]}" -lt 4 ] || { [ "${BASH_VERSINFO[0]}" -eq 4 ] && [ "${BASH_VERSINFO[1]}" -lt 4 ]; }; then
-    echo "debkit: é necessário bash 4.4 ou mais novo (atual: ${BASH_VERSION})" >&2
+    if [ "$_debkit_pt" = 1 ]; then echo "debkit: é necessário bash 4.4 ou mais novo (atual: ${BASH_VERSION})" >&2
+    else echo "debkit: bash 4.4 or newer is required (current: ${BASH_VERSION})" >&2; fi
     exit 1
 fi
 
@@ -47,17 +54,19 @@ DEBKIT_DIR="$(dirname -- "$(realpath -- "${BASH_SOURCE[0]}")")"
 # O debkit roda como root: um arquivo de código (ou a pasta dele) que outra
 # pessoa possa alterar daria a ela os poderes do root. Só carrega o que
 # pertence ao root (ou a quem está executando) e não tem escrita para
-# grupo/outros. As mensagens daqui são fixas: o catálogo ainda não foi
-# carregado.
+# grupo/outros. As mensagens daqui são fixas (pt e en): o catálogo ainda
+# não foi carregado.
 debkit_caminho_seguro() {
     local p="$1" tipo="$2" dono perm
     if [ -L "$p" ] || { [ "$tipo" == "pasta" ] && [ ! -d "$p" ]; } || { [ "$tipo" == "arquivo" ] && [ ! -f "$p" ]; }; then
-        echo "debkit: $p ausente ou é um link (instalação incompleta?)" >&2
+        if [ "$_debkit_pt" = 1 ]; then echo "debkit: $p ausente ou é um link (instalação incompleta?)" >&2
+        else echo "debkit: $p is missing or is a link (incomplete installation?)" >&2; fi
         return 1
     fi
     dono=$(stat -c '%u' -- "$p") && perm=$(stat -c '%a' -- "$p") || return 1
     if { [ "$dono" != "0" ] && [ "$dono" != "$EUID" ]; } || (( 8#$perm & 8#022 )); then
-        echo "debkit: $p não é seguro: precisa pertencer ao root e não ter escrita para grupo/outros (atual: dono UID $dono, permissão $perm)" >&2
+        if [ "$_debkit_pt" = 1 ]; then echo "debkit: $p não é seguro: precisa pertencer ao root e não ter escrita para grupo/outros (atual: dono UID $dono, permissão $perm)" >&2
+        else echo "debkit: $p is not safe: it must belong to root, with no write for group/others (now: owner UID $dono, permissions $perm)" >&2; fi
         return 1
     fi
 }
@@ -77,11 +86,12 @@ for _debkit_mod in "$DEBKIT_DIR"/modulos/*.sh; do
     # termina com status 0.)
     # shellcheck source=/dev/null  # cada módulo é verificado à parte
     if ! source "$_debkit_mod"; then
-        echo "debkit: erro ao carregar $_debkit_mod (instalação danificada?)" >&2
+        if [ "$_debkit_pt" = 1 ]; then echo "debkit: erro ao carregar $_debkit_mod (instalação danificada?)" >&2
+        else echo "debkit: error loading $_debkit_mod (damaged installation?)" >&2; fi
         exit 1
     fi
 done
-unset _debkit_mod
+unset _debkit_mod _debkit_loc _debkit_l _debkit_pt
 
 # Só executa quando chamado diretamente; com "source" apenas carrega
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then

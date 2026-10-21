@@ -6,6 +6,10 @@
 # servidor: log, trava e configuração ficam numa pasta temporária.
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Os testes conferem as mensagens em português: com o idioma "auto" (o
+# padrão), o LANGUAGE manda, qualquer que seja o LANG da máquina (no CI é
+# C.UTF-8). Os testes do inglês usam DEBKIT_IDIOMA=en.
+export LANGUAGE=pt_BR
 # shellcheck disable=SC2034  # usado pelos arquivos de teste que carregam esta biblioteca
 DEBKIT="$REPO/debkit"
 
@@ -121,6 +125,7 @@ sandbox() {
     chmod 755 "$SANDBOX"
     copiar_smb_conf "$SANDBOX/smb.conf"
     {
+        echo "IDIOMA=pt_BR"
         echo "LOG=$SANDBOX/debkit.log"
         echo "LOG_LOGROTATE=$SANDBOX/logrotate-debkit"
         echo "TRAVA=$SANDBOX/debkit.lock"

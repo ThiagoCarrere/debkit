@@ -9,8 +9,9 @@
 
 # ── Núcleo ──────────────────────────────────────────────────────────────────
 
-# Idioma das mensagens: pt_BR ou en
-IDIOMA=pt_BR
+# Idioma das mensagens: auto (o do sistema: LANG/LANGUAGE em português =
+# pt_BR, qualquer outro = en), pt_BR ou en
+IDIOMA=auto
 
 # Mínimo de caracteres da senha (Linux e Samba), de 1 a 128
 SENHA_MIN=4

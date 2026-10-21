@@ -76,6 +76,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   procura o `include` pelo caminho exato do sandbox.
 
 ### Adicionado
+- **Português e inglês:** com `IDIOMA=auto` (o novo padrão) o debkit fala
+  a língua do sistema (`LANG`/`LANGUAGE`); `pt_BR` ou `en` fixam o idioma.
+  Os comandos diretos também aceitam os nomes em inglês (`debkit samba user
+  create ...`).
 - **Desinstalação** (`debkit --desinstalar [--tudo]`): remove o comando e
   o programa; com `--tudo`, também a configuração, o log e os backups.
   Usuários, grupos, compartilhamentos e o smb.conf ficam; a proteção SSH só

@@ -36,7 +36,7 @@ saida=$(printf 'n\n' | inst); contem "Cancelado" "$saida"; contem "RC=1" "$saida
 caso "instalação nova (sem preparar)"
 saida=$(printf 's\nn\n' | inst)
 contem "RC=0" "$saida"; contem "instalado em $DEST. Comando: $LNK" "$saida"; contem "Quando quiser: sudo debkit --preparar" "$saida"
-for f in debkit install.sh lib/nucleo.sh modulos/samba.sh debkit.conf.exemplo LICENSE README.md CHANGELOG.md docs/PLANEJAMENTO.md .debkit-instalado; do
+for f in debkit install.sh lib/nucleo.sh modulos/samba.sh debkit.conf.exemplo LICENSE README.md README.en.md CHANGELOG.md docs/PLANEJAMENTO.md .debkit-instalado; do
     verdadeiro "$f" test -f "$DEST/$f"
 done
 for f in tests dev .git .github; do verdadeiro "sem $f" test ! -e "$DEST/$f"; done

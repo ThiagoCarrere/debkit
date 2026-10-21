@@ -37,6 +37,13 @@ debkit_modulo_registrar samba
 # ── Mensagens ───────────────────────────────────────────────────────────────
 # shellcheck disable=SC2034  # catálogo do núcleo
 MSG_pt_BR+=(
+    [usr.m_grupo_pessoal]="grupo pessoal"
+    [usr.m_grupo]="grupo %s"
+    [usr.m_senha_linux]="senha do Linux não bloqueada"
+    [usr.m_pasta]="pasta pessoal"
+    [usr.m_existe]="%s existe"
+    [grp.m_membros]="membros"
+    [grp.m_comum]="grupo comum"
     [menu.samba]="Samba: usuários, grupos e compartilhamentos"
     [samba.titulo]="Samba"
     [amb.grupo_samba]="Samba"
@@ -233,6 +240,13 @@ MSG_pt_BR+=(
 )
 # shellcheck disable=SC2034  # catálogo do núcleo
 MSG_en+=(
+    [usr.m_grupo_pessoal]="personal group"
+    [usr.m_grupo]="group %s"
+    [usr.m_senha_linux]="Linux password not locked"
+    [usr.m_pasta]="home folder"
+    [usr.m_existe]="%s exists"
+    [grp.m_membros]="members"
+    [grp.m_comum]="regular group"
     [menu.samba]="Samba: users, groups and shares"
     [samba.titulo]="Samba"
     [amb.grupo_samba]="Samba"
@@ -1915,22 +1929,22 @@ debkit_usuario_criar() {
     # 4. Conferência final (resultado real, não só o código de saída)
     estado=$(getent passwd "$nome" | cut -d: -f6,7)
     [ "$estado" == "$home:$shell" ] || motivo="home/shell"
-    [ "$(getent group "$nome" | cut -d: -f3)" == "$gid" ] || motivo="grupo pessoal"
+    [ "$(getent group "$nome" | cut -d: -f3)" == "$gid" ] || motivo="$(t usr.m_grupo_pessoal)"
     for g in "${membros[@]}"; do
-        id -nG -- "$nome" 2>/dev/null | tr ' ' '\n' | grep -qxF "$g" || motivo="grupo $g"
+        id -nG -- "$nome" 2>/dev/null | tr ' ' '\n' | grep -qxF "$g" || motivo="$(t usr.m_grupo "$g")"
     done
     if [ "$DEBKIT_U_TIPO" == "servidor" ] && id -nG -- "$nome" | tr ' ' '\n' | grep -qxF "$DEBKIT_GRUPO_USUARIOS"; then
-        motivo="grupo $DEBKIT_GRUPO_USUARIOS"
+        motivo="$(t usr.m_grupo "$DEBKIT_GRUPO_USUARIOS")"
     fi
     # O Samba não pode ter mexido na senha do Linux (ex: "unix password sync")
     if [ "$DEBKIT_U_TIPO" == "arquivos" ] && [ "$(passwd -S -- "$nome" 2>/dev/null | awk '{print $2}')" != "L" ]; then
-        motivo="senha do Linux não bloqueada"
+        motivo="$(t usr.m_senha_linux)"
     fi
     debkit_samba_conta_existe "$nome" || motivo="Samba"
     if [ "${DEBKIT_U_HOME:-0}" -eq 1 ]; then
-        [ "$(stat -c '%u %g %a' -- "$home" 2>/dev/null)" == "$uid $gid 700" ] || motivo="pasta pessoal"
+        [ "$(stat -c '%u %g %a' -- "$home" 2>/dev/null)" == "$uid $gid 700" ] || motivo="$(t usr.m_pasta)"
     elif [ -d "$DEBKIT_USR_HOME" ]; then
-        motivo="$DEBKIT_USR_HOME existe"
+        motivo="$(t usr.m_existe "$DEBKIT_USR_HOME")"
     fi
     if [ -n "$motivo" ]; then
         debkit_usuario_falhou "$(t usr.f_conferencia "$motivo")"
@@ -3217,8 +3231,8 @@ debkit_grupo_criar() {
     fi
     # Conferência final (resultado real)
     esperado=$(printf '%s\n' "${membros[@]}" | sed '/^$/d' | sort)
-    [ "$(debkit_grupo_membros "$nome")" == "$esperado" ] || motivo="membros"
-    debkit_grupo_gerenciado "$nome" || motivo="grupo comum"
+    [ "$(debkit_grupo_membros "$nome")" == "$esperado" ] || motivo="$(t grp.m_membros)"
+    debkit_grupo_gerenciado "$nome" || motivo="$(t grp.m_comum)"
     if [ -n "$motivo" ]; then
         debkit_grupo_falhou "$(t usr.f_conferencia "$motivo")"; return 1
     fi
@@ -5173,6 +5187,8 @@ da entrada padrão, uma por linha (servidor com --senha-linux-diferente: a do
 Samba e depois a do Linux). Ex:
   printf '%%s\\\\n' \"\$SENHA\" | debkit samba usuario criar ana --nome \"Ana Souza\" --sim
 
+Os nomes em inglês também valem (user create, share list...).
+
 --sim responde \"s\" às confirmações. Saída: 0 certo, 1 recusado/cancelado/falhou,
 2 uso incorreto. \"diagnostico saude\" sai com 1 se houver problema;
 \"usuario conferir\", se houver algo fora do padrão."
@@ -5207,73 +5223,91 @@ MSG_en+=(
     [cli.ajuda_samba]="Usage: debkit samba <group> <action> [arguments] [--yes]
 
 Users
-  usuario listar
-  usuario criar <login> [--nome \"Full Name\"] [--tipo arquivos|servidor]
-                [--grupos g1,g2] [--pasta-pessoal] [--senha-linux-diferente]
-  usuario senha <login> [--samba | --linux | --ambas]
-  usuario pasta-pessoal <login>
-  usuario excluir <login>
-  usuario conferir [--corrigir]
+  user list
+  user create <login> [--name \"Full Name\"] [--type files|server]
+              [--groups g1,g2] [--home] [--different-linux-password]
+  user password <login> [--samba | --linux | --both]
+  user home <login>
+  user delete <login>
+  user check [--fix]
 
 Groups
-  grupo listar
-  grupo criar <group> [--membros u1,u2]
-  grupo membros <group> [--adicionar u1,u2] [--remover u3,u4]
-  grupo remover <group>
+  group list
+  group create <group> [--members u1,u2]
+  group members <group> [--add u1,u2] [--remove u3,u4]
+  group remove <group>
 
 Shares
-  compartilhamento listar
-  compartilhamento criar <name> --grupo <group> [--pasta <folder>]
-                         [--descricao \"text\"] [--base <folder>] [--ajustar]
-  compartilhamento trocar-grupo <name> <group>
-  compartilhamento ajustar <name>
-  compartilhamento remover <name>
-  compartilhamento padronizar <name> <group>
-  pastas-pessoais [--base <folder>]
+  share list
+  share create <name> --group <group> [--folder <folder>]
+               [--description \"text\"] [--base <folder>] [--adjust]
+  share change-group <name> <group>
+  share adjust <name>
+  share remove <name>
+  share standardize <name> <group>
+  homes [--base <folder>]
 
 Diagnostics
-  diagnostico sessoes
-  diagnostico desconectar <pid>
-  diagnostico logins
-  diagnostico saude
-  diagnostico auditoria [--dias N | --dia dd/mm/yyyy] [--afetado <name>]
-                        [--tipo usuarios|grupos|compartilhamentos|sessoes|preparacao|uso]
+  diagnostics sessions
+  diagnostics disconnect <pid>
+  diagnostics logins
+  diagnostics health
+  diagnostics audit [--days N | --day dd/mm/yyyy] [--affected <name>]
+                    [--type users|groups|shares|sessions|setup|usage]
+
+The Portuguese names also work (usuario criar, compartilhamento listar...).
 
 Passwords: asked on the terminal (no echo, twice) or, in a script, read from
-standard input, one per line (server with --senha-linux-diferente: the Samba
-one and then the Linux one). E.g.:
-  printf '%%s\\\\n' \"\$PASSWORD\" | debkit samba usuario criar ana --nome \"Ana Souza\" --yes
+standard input, one per line (server with --different-linux-password: the
+Samba one and then the Linux one). E.g.:
+  printf '%%s\\n' \"\$PASSWORD\" | debkit samba user create ana --name \"Ana Souza\" --yes
 
 --yes answers \"y\" to the confirmations. Exit: 0 ok, 1 refused/cancelled/failed,
-2 incorrect usage. \"diagnostico saude\" exits with 1 if there is a problem;
-\"usuario conferir\", if something is out of standard."
+2 incorrect usage. \"diagnostics health\" exits with 1 if there is a problem;
+\"user check\", if something is out of standard."
     [cli.desconhecido]="Unknown command: '%s'"
     [cli.opcao_desconhecida]="Unknown option: '%s'"
     [cli.falta_valor]="Missing the value of %s"
     [cli.nao_pronto]="The environment is not set up yet. Run: debkit --setup"
     [cli.senha_sem_entrada]="No password on standard input (one per line)."
-    [cli.tipo_invalido]="Invalid type: '%s' (use arquivos or servidor)"
-    [cli.grupo_invalido]="'%s' is not a regular group (see: debkit samba grupo listar)"
-    [cli.usuario_invalido]="'%s' is not a regular user (see: debkit samba usuario listar)"
-    [cli.senha_linux_so_servidor]="--senha-linux-diferente only applies to --tipo servidor"
-    [cli.um_alvo]="Use only one of --samba, --linux and --ambas"
-    [cli.sem_base_homes]="The home folders base is not defined yet. Define it first: debkit samba pastas-pessoais --base <folder> (data disks: %s)"
+    [cli.tipo_invalido]="Invalid type: '%s' (use files or server)"
+    [cli.grupo_invalido]="'%s' is not a regular group (see: debkit samba group list)"
+    [cli.usuario_invalido]="'%s' is not a regular user (see: debkit samba user list)"
+    [cli.senha_linux_so_servidor]="--different-linux-password only applies to --type server"
+    [cli.um_alvo]="Use only one of --samba, --linux and --both"
+    [cli.sem_base_homes]="The home folders base is not defined yet. Define it first: debkit samba homes --base <folder> (data disks: %s)"
     [cli.base_ja_definida]="The home folders base is already %s (debkit does not change it)."
     [cli.sem_pasta_candidato]="%s is not a regular user without a home folder."
-    [cli.sem_base_shr]="The shares base is not defined yet: use --base <folder> (suggestion: %s) or --pasta"
-    [cli.falta_grupo]="Missing --grupo <group> (the group with full access)"
-    [cli.shr_nao_gerenciavel]="'%s' is not a share in the debkit pattern (see: debkit samba compartilhamento listar)"
-    [cli.shr_nao_existe]="Share '%s' not found (see: debkit samba compartilhamento listar)"
+    [cli.sem_base_shr]="The shares base is not defined yet: use --base <folder> (suggestion: %s) or --folder"
+    [cli.falta_grupo]="Missing --group <group> (the group with full access)"
+    [cli.shr_nao_gerenciavel]="'%s' is not a share in the debkit pattern (see: debkit samba share list)"
+    [cli.shr_nao_existe]="Share '%s' not found (see: debkit samba share list)"
     [cli.shr_nao_padronizavel]="'%s' is not an out-of-pattern share that debkit can bring to the pattern"
     [cli.mesmo_grupo]="The share %s already belongs to group %s."
-    [cli.shr_ajustar_depois]="To adjust the permissions: debkit samba compartilhamento ajustar %s (or create it with --ajustar)"
-    [cli.conferir_corrigir]="To fix: debkit samba usuario conferir --corrigir"
-    [cli.um_periodo]="Use --dias or --dia, not both"
-    [cli.tipo_aud_invalido]="Invalid type: '%s' (use usuarios, grupos, compartilhamentos, sessoes, preparacao or uso)"
+    [cli.shr_ajustar_depois]="To adjust the permissions: debkit samba share adjust %s (or create it with --adjust)"
+    [cli.conferir_corrigir]="To fix: debkit samba user check --fix"
+    [cli.um_periodo]="Use --days or --day, not both"
+    [cli.tipo_aud_invalido]="Invalid type: '%s' (use users, groups, shares, sessions, setup or usage)"
     [cli.membros_atuais]="Group %s"
     [grp.p_confirmar_entrar_sair]="Add %s and remove %s from group %s?"
-    [diag.sem_sessao]="No Samba session with PID %s right now (see: debkit samba diagnostico sessoes)."
+    [diag.sem_sessao]="No Samba session with PID %s right now (see: debkit samba diagnostics sessions)."
 )
+
+# Nomes em inglês (tarefa 4.5): grupo, ação, opções e valores. Os em
+# português continuam valendo.
+declare -A DEBKIT_SAMBA_CLI_GRUPO=([user]=usuario [group]=grupo [share]=compartilhamento
+    [homes]=pastas-pessoais [diagnostics]=diagnostico)
+declare -A DEBKIT_SAMBA_CLI_ACAO=([list]=listar [create]=criar [password]=senha [home]=pasta-pessoal
+    [delete]=excluir [check]=conferir [members]=membros [remove]=remover [change-group]=trocar-grupo
+    [adjust]=ajustar [standardize]=padronizar [sessions]=sessoes [disconnect]=desconectar
+    [health]=saude [audit]=auditoria)
+DEBKIT_CLI_ALIAS+=([name]=nome [type]=tipo [groups]=grupos [home]=pasta-pessoal
+    [different-linux-password]=senha-linux-diferente [both]=ambas [fix]=corrigir [members]=membros
+    [add]=adicionar [remove]=remover [group]=grupo [folder]=pasta [description]=descricao
+    [adjust]=ajustar [days]=dias [day]=dia [affected]=afetado)
+declare -A DEBKIT_SAMBA_CLI_VALOR=([files]=arquivos [server]=servidor [users]=usuarios [groups]=grupos
+    [shares]=compartilhamentos [sessions]=sessoes [setup]=preparacao [usage]=uso)
+debkit_samba_cli_valor() { if [ -n "${DEBKIT_SAMBA_CLI_VALOR[$1]+x}" ]; then echo "${DEBKIT_SAMBA_CLI_VALOR[$1]}"; else echo "$1"; fi; }
 
 # Uso errado: mensagem e onde ver a ajuda (retorna 2)
 debkit_samba_cli_uso() { msg_erro "$(t cli.uso "$1" "debkit samba --ajuda")"; return 2; }
@@ -5315,6 +5349,8 @@ debkit_samba_comando() {
         ""|-h|--ajuda|--help|ajuda) t cli.ajuda_samba; echo; return 0 ;;
     esac
     debkit_ler_login_defs >/dev/null 2>&1
+    [ -n "${DEBKIT_SAMBA_CLI_GRUPO[$grupo]+x}" ] && grupo="${DEBKIT_SAMBA_CLI_GRUPO[$grupo]}"
+    [ -n "${DEBKIT_SAMBA_CLI_ACAO[$acao]+x}" ] && acao="${DEBKIT_SAMBA_CLI_ACAO[$acao]}"
     if [ "$grupo" == "pastas-pessoais" ]; then
         shift; debkit_samba_cmd_pastas_pessoais "$@"; return
     fi
@@ -5340,7 +5376,7 @@ debkit_samba_cmd_usuario_criar() {
     local -a grupos=()
     debkit_cli_ler "nome tipo grupos" "pasta-pessoal senha-linux-diferente" "$@" || return 2
     [ ${#DEBKIT_ARGS[@]} -eq 1 ] || { debkit_samba_cli_uso "usuario criar <login> [opções]"; return 2; }
-    nome="${DEBKIT_ARGS[0]}"; gecos="${DEBKIT_OPCOES[nome]:-}"; tipo="${DEBKIT_OPCOES[tipo]:-arquivos}"
+    nome="${DEBKIT_ARGS[0]}"; gecos="${DEBKIT_OPCOES[nome]:-}"; tipo=$(debkit_samba_cli_valor "${DEBKIT_OPCOES[tipo]:-arquivos}")
     case "$tipo" in arquivos|servidor) ;; *) msg_erro "$(t cli.tipo_invalido "$tipo")"; return 2 ;; esac
     if [ -n "${DEBKIT_OPCOES[senha-linux-diferente]:-}" ]; then
         [ "$tipo" == "servidor" ] || { msg_erro "$(t cli.senha_linux_so_servidor)"; return 2; }
@@ -5650,7 +5686,7 @@ debkit_samba_cmd_diagnostico_auditoria() {
     periodo="${DEBKIT_OPCOES[dia]:-${DEBKIT_OPCOES[dias]:-$DEBKIT_AUD_DIAS}}"
     if [ -n "${DEBKIT_OPCOES[dias]:-}" ] && [[ ! "$periodo" =~ ^[0-9]+$ ]]; then msg_erro "$(t aud.periodo_invalido "$periodo")"; return 2; fi
     debkit_aud_periodo "$periodo" || { msg_erro "$(t aud.periodo_invalido "$periodo")"; return 2; }
-    tipo="${DEBKIT_OPCOES[tipo]:-}"
+    tipo=$(debkit_samba_cli_valor "${DEBKIT_OPCOES[tipo]:-}")
     case "$tipo" in
         ""|usuarios|grupos|sessoes|preparacao|uso) ;;
         compartilhamentos|shr) tipo=shr ;;
