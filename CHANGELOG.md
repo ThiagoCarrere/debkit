@@ -63,6 +63,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   procura o `include` pelo caminho exato do sandbox.
 
 ### Adicionado
+- **CI no GitHub** (`.github/workflows/ci.yml`): a cada push, sintaxe e
+  `shellcheck` num Debian 13 e a suíte inteira num Debian 13 novo com
+  systemd, preparado pelo próprio debkit (`dev/ci.sh`, que também roda na
+  VM de desenvolvimento).
 - **Diagnóstico → Auditoria** (Samba → 4 → 4): o que foi feito pelo debkit,
   com filtro por período (últimos N dias ou um dia), por quem foi afetado
   (usuário, grupo, compartilhamento) e por tipo de ação; a mais recente

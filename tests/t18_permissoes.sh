@@ -135,7 +135,7 @@ contem "RC=0" "$(p "debkit_shr_ajustar_conteudo '$T/a' dkt_fa; echo RC=\$?")"
 igual "0 644" "$(stat -c '%g %a' "$T/a/montado/m.txt")" "arquivo do outro disco intocado"
 umount "$T/a/montado"; rmdir "$T/a/montado"
 caso "ajustar: o que não dá para mudar é informado (e auditado)"
-echo x > "$T/a/preso"; chmod 644 "$T/a/preso"; chattr +i "$T/a/preso"
+echo x > "$T/a/preso"; chmod 644 "$T/a/preso"; verdadeiro "chattr +i (preparação do caso)" chattr +i "$T/a/preso"
 saida=$(p "debkit_shr_ajustar_conteudo '$T/a' dkt_fa; echo RC=\$?")
 contem "RC=1" "$saida"; contem "1 item(ns) ainda fora do padrão" "$saida"; contem "Rode de novo" "$saida"
 contem "resultado=falha" "$(LOG)"
@@ -188,7 +188,7 @@ saida=$(trocar dkt-a dkt_fa "debkit_samba_recarregar() { return 1; };")
 contem "RC=1" "$saida"; contem "restaurado do backup" "$saida"
 igual "$md5" "$(md5sum < "$SANDBOX/smb.conf")"; igual "$GB" "$(stat -c %g "$T/a/doc.txt")"
 caso "trocar: conteúdo que não muda é informado, o compartilhamento já fica com o grupo novo"
-echo x > "$T/a/preso"; chattr +i "$T/a/preso"
+echo x > "$T/a/preso"; verdadeiro "chattr +i (preparação do caso)" chattr +i "$T/a/preso"
 saida=$(trocar dkt-a dkt_fa)
 contem "RC=1" "$saida"; contem "agora é do grupo dkt_fa" "$saida"; contem "Rode de novo" "$saida"
 igual "@dkt_fa" "$(param dkt-a 'valid users')"

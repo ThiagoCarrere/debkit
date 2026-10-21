@@ -126,5 +126,18 @@ caso "vmprepara --simular não instala nada"
 : > "$SANDBOX/apt-args"
 contem "(simulação: nada foi feito)" "$(prep --simular)"; igual "" "$(cat "$SANDBOX/apt-args")"
 
+# ── ci.sh (só as verificações; o container de verdade roda no GitHub) ────────
+CI="$REPO/dev/ci.sh"
+caso "ci --ajuda / opção desconhecida"
+contem "Uso: dev/ci.sh" "$(bash "$CI" --ajuda)"
+saida=$(bash "$CI" --xyz 2>&1); contem "opção desconhecida: --xyz" "$saida"; igual 1 "$(bash "$CI" --xyz >/dev/null 2>&1; echo $?)" "código 1"
+caso "ci: sem debootstrap/systemd-nspawn explica o que instalar"
+mkdir -p "$SANDBOX/semci"; for c in bash dirname realpath cat sed md5sum cut mkdir; do ln -sf "$(command -v "$c")" "$SANDBOX/semci/$c"; done
+saida=$(PATH="$SANDBOX/semci" bash "$CI" 2>&1)
+contem "falta o comando debootstrap (apt-get install debootstrap systemd-container)" "$saida"
+caso "ci: o workflow do GitHub roda o dev/ci.sh e o shellcheck"
+wf=$(cat "$REPO/.github/workflows/ci.yml")
+contem "dev/ci.sh --com-rede" "$wf"; contem "shellcheck -x" "$wf"; contem "container: debian:trixie" "$wf"
+
 real_intacto
 resumo

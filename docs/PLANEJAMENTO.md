@@ -525,6 +525,27 @@ Decisão de 21/10/2026 (Thiago), nesta ordem:
 Os textos novos (comandos diretos) vêm antes da tradução, para traduzir uma
 vez só.
 
+**Como ficou a 4.0 (CI):** `.github/workflows/ci.yml`, a cada push na
+`dev`/`main` e em pull requests, com dois trabalhos:
+1. **Sintaxe e shellcheck** num container `debian:trixie`: `bash -n` em
+   todos os scripts (testes também) e `shellcheck -x` em cada arquivo do
+   programa e de `dev/`.
+2. **Suíte num Debian 13 com systemd:** `dev/ci.sh --com-rede` cria um
+   Debian 13 novo (debootstrap), liga-o num container com systemd
+   (`systemd-nspawn`), roda **`./debkit --preparar` de verdade** (instala o
+   Samba pelo apt, como num servidor novo), confere o `--verificar` e roda
+   `tests/run.sh`. Cada falha vira uma anotação no resumo do run.
+O mesmo `dev/ci.sh` roda na VM (sem rede no container, para não brigar pela
+porta 445 do Samba da VM: aí o Samba já vem no sistema e a preparação só
+configura). `--reais` roda também as provas reais dentro do container (o
+Samba e o SSH são os dele), menos a `t04b` (precisa de sessões SSH abertas)
+e a `t05b` (precisa das redes da máquina), que ficam na VM. Prova na VM
+(21/10/2026): suíte normal 42 arquivos sem falha; provas reais 19 de 19.
+Os discos de teste da `t09` usam dispositivos de loop da máquina (ligados
+no container) e as `t18`/`t19` precisam do `chattr` (e2fsprogs): os testes
+agora acusam se o `chattr +i` da preparação do caso falhar, em vez de
+falhar adiante sem motivo claro.
+
 ## 4. O que o debkit gerencia
 
 Decisão de 15/10/2026 (substitui a regra anterior "só gerencia o que ele
@@ -696,7 +717,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 
 ## 11. Situação atual e próximos passos
 
-*Atualizado em 21/10/2026 (Fase 4 decidida).*
+*Atualizado em 21/10/2026 (4.0).*
 
 - Nome decidido: **debkit**; renomeação gsb → debkit feita (arquivos,
   variáveis, funções, grupo `debkit_usuarios`, `/etc/debkit`, testes). As
@@ -755,6 +776,8 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | 3.2 Logins (falhas e último login) | `ac6ee3b` |
 | 3.3 Saúde do Samba (relatório) | `09c0512` |
 | 3.4 Consulta à auditoria | `cb07c7a` |
+| Fase 4 decidida | `3fd3dc7` |
+| 4.0 CI no GitHub | (a preencher) |
 
 **Próximos passos:**
 
@@ -864,7 +887,8 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 30. ✔ 3.4 consulta à auditoria (Samba → 4) Diagnóstico → 4; seção 3.8).
     **Fase 3 concluída.**
 31. ✔ Fase 4 decidida (seção 3.9).
-32. **Próxima tarefa:** 4.0 CI no GitHub.
+32. ✔ 4.0 CI no GitHub (seção 3.9; `dev/ci.sh`).
+33. **Próxima tarefa:** 4.1 rotação do log do debkit.
 
 **VM limpa de novo:** `dev/vmnova.sh` → (reinicia) → `dev/vmprepara.sh` →
 `./debkit --preparar` → testes.
@@ -878,6 +902,7 @@ DEBKIT_TESTE_REAL=1 tests/run.sh t05b_ufw_real.sh    # prova com o ufw real (ins
 DEBKIT_TESTE_REAL=1 tests/run.sh t07b_usuario_real.sh  # login real no Samba e no SSH (ambiente real preparado)
 DEBKIT_TESTE_REAL=1 tests/run.sh t09b_home_real.sh   # [homes] real com disco de teste (smb.conf volta idêntico)
 shellcheck -x debkit lib/*.sh modulos/*.sh           # cada arquivo (o -x sozinho não mostra os avisos dos carregados)
+dev/ci.sh [--reais]                                  # a suíte num Debian 13 novo, em container (como o GitHub)
 ```
 
 O `tests/run.sh` compara uma "impressão digital" do sistema real antes e

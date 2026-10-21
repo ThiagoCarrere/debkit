@@ -16,6 +16,9 @@ de começar; a seção 11 diz onde paramos).
 - VM limpa de novo: `dev/vmnova.sh` (restaura o snapshot "limpa" e reinicia;
   exige tudo commitado e enviado) e, depois, `dev/vmprepara.sh` (ferramentas
   de desenvolvimento). O Samba quem instala é o `./debkit --preparar`.
+- `dev/ci.sh` roda a suíte num Debian 13 novo em container (é o que o
+  GitHub Actions faz a cada push); depois de um push, conferir o resultado
+  do CI (API pública: `/repos/ThiagoCarrere/debkit/actions/runs`).
 
 ## Repositório público: nada de dados reais
 

@@ -1,0 +1,52 @@
+# CI do debkit: a cada push na dev/main (e em pull requests), confere a
+# sintaxe e o shellcheck e roda a suíte normal (sandbox) num Debian 13 novo,
+# com systemd, preparado pelo próprio debkit (dev/ci.sh). As provas reais
+# (DEBKIT_TESTE_REAL=1) continuam na VM de desenvolvimento.
+name: CI
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qualidade:
+    name: Sintaxe e shellcheck (Debian 13)
+    runs-on: ubuntu-24.04
+    container: debian:trixie
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar o shellcheck
+        run: apt-get update -qq && apt-get install -y -qq --no-install-recommends shellcheck
+      - name: bash -n (todos os scripts)
+        run: |
+          for f in debkit lib/*.sh modulos/*.sh dev/*.sh tests/*.sh; do
+            bash -n "$f" || { echo "::error file=$f::erro de sintaxe"; falhou=1; }
+          done
+          exit "${falhou:-0}"
+      - name: shellcheck (programa e scripts de desenvolvimento)
+        # Um arquivo por vez: com vários juntos, o -x não mostra os avisos
+        # dos arquivos carregados
+        run: |
+          shellcheck --version | sed -n 2p
+          for f in debkit lib/*.sh modulos/*.sh dev/*.sh; do
+            shellcheck -x "$f" || { echo "::error file=$f::avisos do shellcheck"; falhou=1; }
+          done
+          exit "${falhou:-0}"
+
+  testes:
+    name: Suíte num Debian 13 com systemd
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar debootstrap e systemd-nspawn
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq debootstrap systemd-container debian-archive-keyring
+      - name: Preparar pelo debkit e rodar a suíte (dev/ci.sh)
+        run: sudo --preserve-env=GITHUB_ACTIONS dev/ci.sh --com-rede

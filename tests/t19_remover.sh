@@ -133,7 +133,7 @@ contem "RC=1" "$saida"; contem "restaurado do backup" "$saida"
 igual "$md5" "$(md5sum < "$SANDBOX/smb.conf")"; igual "0 $GA 2770" "$(stat -c '%u %g %a' "$T/a")"
 nao_contem "RECONECTAR" "$saida"
 caso "remover: a pasta não muda - informado; o compartilhamento já saiu"
-chattr +i "$T/a"
+verdadeiro "chattr +i (preparação do caso)" chattr +i "$T/a"
 saida=$(remover dkt-a)
 contem "RC=1" "$saida"; contem "não foi possível deixar a pasta $T/a só para o root" "$saida"
 nao_contem "[dkt-a]" "$(efetivo)"; contem "RECONECTAR: dkt_r1 dkt_r2" "$saida" "as sessões são refeitas assim mesmo"
