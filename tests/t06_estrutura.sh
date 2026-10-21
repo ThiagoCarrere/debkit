@@ -24,7 +24,7 @@ igual "samba" "$(bash -c "source '$DEBKIT'; echo \"\${DEBKIT_MODULOS[*]}\"")" "m
 
 caso "chamado por um link (como /usr/local/sbin/debkit)"
 mkdir -p "$SANDBOX/bin"; ln -s "$DEBKIT" "$SANDBOX/bin/debkit"
-igual "debkit 0.1.0-dev" "$("$SANDBOX/bin/debkit" --versao 2>&1)" "acha núcleo e módulos pela pasta real"
+igual "debkit 1.0.0" "$("$SANDBOX/bin/debkit" --versao 2>&1)" "acha núcleo e módulos pela pasta real"
 
 # Cópia do programa para mexer nas permissões sem tocar no repositório
 copia() {
@@ -34,10 +34,10 @@ copia() {
 roda_copia() { bash "$SANDBOX/prog/debkit" --versao 2>&1; echo "RC=$?"; }
 
 caso "carregamento seguro: cópia íntegra funciona"
-copia; contem "debkit 0.1.0-dev" "$(roda_copia)"
+copia; contem "debkit 1.0.0" "$(roda_copia)"
 caso "carregamento seguro: núcleo com escrita para outros"
 copia; chmod 646 "$SANDBOX/prog/lib/nucleo.sh"; saida=$(roda_copia)
-contem "nucleo.sh não é seguro" "$saida"; contem "RC=1" "$saida"; nao_contem "debkit 0.1.0-dev" "$saida" "nada executado"
+contem "nucleo.sh não é seguro" "$saida"; contem "RC=1" "$saida"; nao_contem "debkit 1.0.0" "$saida" "nada executado"
 caso "carregamento seguro: módulo com escrita para o grupo"
 copia; chmod 664 "$SANDBOX/prog/modulos/samba.sh"; saida=$(roda_copia)
 contem "samba.sh não é seguro" "$saida"; contem "RC=1" "$saida"

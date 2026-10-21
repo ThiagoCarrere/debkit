@@ -23,8 +23,8 @@ saida=$(sh "$DEBKIT" --versao 2>&1); cod=$?
 contem "precisa do bash" "$saida"; igual 1 "$cod" "código 1"
 
 caso "--versao / -v"
-igual "debkit 0.1.0-dev" "$(bash "$DEBKIT" --versao)"
-igual "debkit 0.1.0-dev" "$(bash "$DEBKIT" -v)"
+igual "debkit 1.0.0" "$(bash "$DEBKIT" --versao)"
+igual "debkit 1.0.0" "$(bash "$DEBKIT" -v)"
 
 caso "--ajuda em pt_BR e en"
 contem "Uso: debkit" "$(bash "$DEBKIT" --ajuda)"
@@ -160,7 +160,7 @@ printf '' | timeout 10 bash "$DEBKIT" >/dev/null 2>&1
 timeout --preserve-status -s INT 2 bash "$DEBKIT" < <(sleep 5) >/dev/null 2>&1; cod=$?
 igual 130 "$cod" "Ctrl+C sai com 130"
 log=$(cat "$SANDBOX/debkit.log")
-igual 3 "$(grep -c ' sessao_inicio v0.1.0-dev' <<< "$log")" "3 inícios"
+igual 3 "$(grep -c ' sessao_inicio v1.0.0' <<< "$log")" "3 inícios"
 contem "sessao_fim motivo=normal" "$log"
 contem "sessao_fim motivo=fim_da_entrada" "$log"
 contem "sessao_fim motivo=interrompida" "$log"

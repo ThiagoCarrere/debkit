@@ -72,7 +72,7 @@ mão dá trabalho e é fácil esquecer um detalhe. O debkit faz por padrão:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  debkit - administração de servidores Debian  v0.1.0-dev
+  debkit - administração de servidores Debian  v1.0.0
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   1) Samba: usuários, grupos e compartilhamentos
 

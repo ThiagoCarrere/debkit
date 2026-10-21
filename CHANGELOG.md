@@ -3,7 +3,11 @@
 Todas as mudanças relevantes do debkit são registradas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
-## [Não lançado]
+## [1.0.0] - 2026-10-21
+
+Primeira versão pública: módulo samba completo (usuários, grupos,
+compartilhamentos, pastas pessoais e diagnóstico), por menu ou comandos
+diretos, em português e inglês, com instalador, desinstalação e CI.
 
 ### Alterado
 - README novo em português e em inglês (`README.en.md`): instalação pelo
