@@ -24,10 +24,11 @@ caso "idioma auto: inglês num sistema em inglês, português num em português"
 sed -i '/^IDIOMA=/d' "$SANDBOX/debkit.conf"
 contem "Usage: debkit" "$(env -u LANGUAGE LANG=en_US.UTF-8 bash "$DEBKIT" --help)"
 contem "Uso: debkit" "$(env -u LANGUAGE LANG=pt_BR.UTF-8 bash "$DEBKIT" --ajuda)"
-contem "Full name" "$(env -u LANGUAGE LANG=C.UTF-8 bash "$DEBKIT" samba user list 2>&1)" "C.UTF-8: inglês"
+# (com ou sem usuários comuns na máquina: a tabela ou o aviso)
+verdadeiro "C.UTF-8: inglês" bash -c "env -u LANGUAGE LANG=C.UTF-8 bash '$DEBKIT' samba user list 2>&1 | grep -qE 'Full name|No regular users'"
 caso "IDIOMA no debkit.conf ganha do sistema"
 echo "IDIOMA=pt_BR" >> "$SANDBOX/debkit.conf"
-contem "Nome completo" "$(env -u LANGUAGE LANG=en_US.UTF-8 bash "$DEBKIT" samba usuario listar 2>&1)"
+verdadeiro "listar em português" bash -c "env -u LANGUAGE LANG=en_US.UTF-8 bash '$DEBKIT' samba usuario listar 2>&1 | grep -qE 'Nome completo|Nenhum usuário comum'"
 contem "Uso: debkit" "$(env -u LANGUAGE LANG=en_US.UTF-8 bash "$DEBKIT" --ajuda)"
 caso "ajuda e instalador em inglês"
 saida=$(DEBKIT_IDIOMA=en bash "$DEBKIT" --help)
