@@ -5,9 +5,13 @@
 # desenvolvimento.
 #
 # Passos: cria o sistema (debootstrap, guardado em cache), copia o
-# repositório (com o que ainda não foi commitado), liga o container, roda
-# "./debkit --preparar" (a preparação de verdade, num servidor limpo),
-# confere "./debkit --verificar" e roda tests/run.sh. Nada disso toca no
+# repositório (com o que ainda não foi commitado) para /usr/local/src/debkit,
+# liga o
+# container, roda "./debkit --preparar --sim" (a preparação de verdade, num
+# servidor limpo), confere "./debkit --verificar", roda tests/run.sh e, por
+# fim, instala de verdade (install.sh --sim: /opt/debkit e o comando
+# debkit), usa o comando instalado e desinstala (debkit --desinstalar
+# --tudo --sim). Nada disso toca no
 # sistema da máquina: usuários, grupos, Samba e SSH são os do container,
 # que é apagado no fim.
 #
@@ -103,12 +107,18 @@ trap limpar EXIT
 info "copiando o sistema e o repositório..."
 cp -a -- "$base" "$raiz" || erro "não foi possível copiar o sistema base"
 echo "$MAQUINA" > "$raiz/etc/hostname"
-mkdir -p -- "$raiz/opt/debkit"
+# O nmbd (NetBIOS, que o debkit não usa) espera rede para subir e atrasa o
+# boot do container sem rede: mascarado
+ln -sf /dev/null "$raiz/etc/systemd/system/nmbd.service"
+# O repositório dentro do container (legível por todos: há testes sem root;
+# o /opt/debkit fica para a instalação de verdade)
+REPO_C=/usr/local/src/debkit
+mkdir -p -- "$raiz$REPO_C"
 # O repositório inteiro (com .git e o que ainda não foi commitado). Lá dentro
 # ele é do root e sem escrita para grupo/outros, como o debkit exige (no
 # GitHub os arquivos são do usuário do runner).
-tar -C "$REPO" -cf - . | tar -C "$raiz/opt/debkit" -xf - || erro "não foi possível copiar o repositório"
-chown -R 0:0 -- "$raiz/opt/debkit" && chmod -R go-w -- "$raiz/opt/debkit"
+tar -C "$REPO" -cf - . | tar -C "$raiz$REPO_C" -xf - || erro "não foi possível copiar o repositório"
+chown -R 0:0 -- "$raiz$REPO_C" && chmod -R go-w -- "$raiz$REPO_C"
 
 rede=(--private-network)
 [ "$com_rede" -eq 1 ] && rede=()
@@ -137,24 +147,40 @@ esac
 
 # Roda um comando no container (como root, na pasta do repositório)
 dentro() {
-    systemd-run -M "$MAQUINA" -q --wait --pipe -p WorkingDirectory=/opt/debkit \
+    systemd-run -M "$MAQUINA" -q --wait --pipe -p WorkingDirectory="$REPO_C" \
         -E LANG=C.UTF-8 -E TERM=dumb -E DEBKIT_TESTE_REAL="${DEBKIT_TESTE_REAL:-}" -- "$@"
 }
 
 saida="$CI_DIR/$MAQUINA.log"
 rc=0
 {
-    echo "━━ preparação (./debkit --preparar) ━━"
-    dentro bash -c 'printf "s\n" | ./debkit --preparar' || rc=1
+    echo "━━ preparação (./debkit --preparar --sim) ━━"
+    dentro "$REPO_C/debkit" --preparar --sim || rc=1
     echo "━━ verificação (./debkit --verificar) ━━"
-    dentro /opt/debkit/debkit --verificar || rc=1
+    dentro "$REPO_C/debkit" --verificar || rc=1
     if [ "$rc" -eq 0 ]; then
         echo "━━ suíte (tests/run.sh) ━━"
-        dentro /opt/debkit/tests/run.sh || rc=1
+        dentro "$REPO_C/tests/run.sh" || rc=1
         if [ "$reais" -eq 1 ]; then
             echo "━━ provas reais (DEBKIT_TESTE_REAL=1) ━━"
             # shellcheck disable=SC2016  # expandido dentro do container
             DEBKIT_TESTE_REAL=1 dentro bash -c 'cd tests && ./run.sh $(ls t*b_*.sh | grep -vE "^t0[45]b_")' || rc=1
+        fi
+        echo "━━ instalação de verdade (install.sh --sim) ━━"
+        if dentro "$REPO_C/install.sh" --sim && dentro /usr/local/sbin/debkit --versao \
+           && dentro bash -lc 'debkit --verificar >/dev/null && debkit samba usuario listar >/dev/null'; then
+            echo "instalação: ok"
+        else
+            echo "instalação: FALHOU"; rc=1
+        fi
+        echo "━━ desinstalação de verdade (debkit --desinstalar --tudo --sim) ━━"
+        # shellcheck disable=SC2016  # expandido dentro do container
+        if dentro bash -lc 'debkit --desinstalar --tudo --sim && [ ! -e /opt/debkit ] && [ ! -e /usr/local/sbin/debkit ] \
+                && [ ! -e /etc/debkit/debkit.conf ] && [ ! -e /var/log/debkit.log ] && ! getent group debkit_usuarios \
+                && ! sshd -T 2>/dev/null | grep -qi "^denygroups.*debkit_usuarios" && [ -f /etc/samba/smb.conf ]'; then
+            echo "desinstalação: ok"
+        else
+            echo "desinstalação: FALHOU"; rc=1
         fi
     fi
     exit "$rc"

@@ -621,6 +621,61 @@ e pergunta outra vez (com `--sim`, segue). Na VM e no container local o
 Samba já estava instalado, por isso só o CI (servidor novo de verdade)
 mostrou.
 
+**Como ficou a 4.3 (`install.sh`):** `sudo ./install.sh [--sim]
+[--simular]`, de dentro do repositório (clonado ou baixado):
+1. **Instalação nova:** copia só o programa (`debkit`, `lib/`, `modulos/`,
+   `docs/`, `install.sh`, LICENSE, README, CHANGELOG e o exemplo de
+   configuração; os testes, o `dev/` e o `.git` não vão) para
+   `/opt/debkit`, tudo do root, pastas 755, arquivos 644, executáveis 755,
+   com a marca `.debkit-instalado` (versão, data, de onde veio), e cria o
+   comando `/usr/local/sbin/debkit` (link).
+2. **Atualização** (a pasta tem a marca): a cópia nova é montada ao lado
+   (`.debkit-novo.*`), conferida (`debkit --versao` da cópia, que carrega
+   tudo) e só então troca de lugar com a antiga, de uma vez; se não
+   funcionar, a antiga fica como estava. Arquivos que não existem mais na
+   versão nova saem.
+3. **Repositório já no lugar** (clonado direto em `/opt/debkit`, como na
+   VM): só confere dono root e tira a escrita de grupo/outros, e cria o
+   comando.
+4. **Recusas** (nada é feito): pasta que existe e não é do debkit,
+   repositório git do debkit em outro lugar ("atualize com git pull"),
+   comando que já existe e não aponta para a instalação, uma pasta dentro
+   da outra.
+5. Um plano e UMA confirmação; no fim, oferece preparar o servidor
+   (`debkit --preparar`; com `--sim`, já prepara). Auditado (`instalar`).
+   As mensagens vêm do catálogo do núcleo (pt/en).
+Achado na 4.3 (corrigido): um módulo com erro de sintaxe era carregado até
+o erro e o debkit seguia sem avisar; agora o `debkit` para ("erro ao
+carregar ... instalação danificada?"). Provas: `t28_instalar.sh` (no
+sandbox), `t28b_instalar_real.sh` (o comando real na VM) e o CI, que
+instala por cópia num Debian 13 novo e usa o comando instalado.
+
+**Como ficou a 4.4 (desinstalação):** `debkit --desinstalar [--tudo]
+[--sim]`. Um plano ("vai remover" e "fica no servidor", com o porquê) e UMA
+confirmação; trava e auditoria como as outras ações.
+
+| | Sem `--tudo` | Com `--tudo` |
+|---|---|---|
+| Comando `/usr/local/sbin/debkit` (se aponta para este debkit) | sai | sai |
+| Programa (só a pasta com a marca do `install.sh`; um repositório clonado fica) | sai | sai |
+| Proteção SSH e grupo `debkit_usuarios` | saem **só com o grupo vazio** | idem |
+| Configuração, log de auditoria (e girados, e a regra da rotação), backups do debkit e os do smb.conf | ficam | saem |
+| Usuários, grupos, compartilhamentos, smb.conf, log de autenticação do Samba e a rotação dele, regras do firewall | ficam | ficam |
+
+Decisão tomada na tarefa (refina a seção 5): a desinstalação **nunca
+desprotege nem desliga** o servidor de arquivos. Com usuários de arquivos
+no grupo de proteção, tirar o `DenyGroups` removeria a barreira do SSH
+para eles (seção 3.2): a proteção fica e o motivo aparece. As configurações do
+Samba feitas pela preparação (`map to guest = never`, sem sincronização da
+senha, log de autenticação) são de segurança e continuam valendo sem o
+debkit; o firewall continua liberando o Samba. Ordem: proteção,
+configuração, backups, comando, programa (pode sair enquanto roda) e, por
+último, o log (a sessão termina antes, para o fim dela não recriar o
+arquivo). Provas: `t29_desinstalar.sh` (sandbox), `t29b_desinstalar_real.sh`
+(na VM: só o comando sai; repositório, proteção e configuração ficam) e o
+CI, que no container instala, usa e desinstala com `--tudo` (o grupo está
+vazio: a proteção sai e o `sshd -T` confirma).
+
 ## 4. O que o debkit gerencia
 
 Decisão de 15/10/2026 (substitui a regra anterior "só gerencia o que ele
@@ -684,9 +739,10 @@ opção de menu **"Verificar e preparar o ambiente"**.
   nftables/iptables: só avisa (não dá para interpretar regras escritas à mão);
 - fora do Debian / sem `apt`: não arrisca — lista os pacotes e explica.
 
-**Desinstalação:** opção que remove tudo o que o debkit colocou no sistema
-(arquivo do SSH, grupo de proteção, configuração), sem mexer nos usuários e
-compartilhamentos.
+**Desinstalação:** `debkit --desinstalar [--tudo]` remove o programa e o
+comando (com `--tudo`, também a configuração, o log e os backups), sem
+mexer nos usuários e compartilhamentos; a proteção SSH só sai se não houver
+usuários de arquivos (detalhes na seção 3.9, tarefa 4.4).
 
 ## 6. Backups
 
@@ -792,7 +848,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 
 ## 11. Situação atual e próximos passos
 
-*Atualizado em 21/10/2026 (4.2).*
+*Atualizado em 21/10/2026 (4.4).*
 
 - Nome decidido: **debkit**; renomeação gsb → debkit feita (arquivos,
   variáveis, funções, grupo `debkit_usuarios`, `/etc/debkit`, testes). As
@@ -854,7 +910,8 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | Fase 4 decidida | `3fd3dc7` |
 | 4.0 CI no GitHub | `ae621bd` |
 | 4.1 Rotação do log do debkit (+ sshd com o SSH parado) | `882cb1f` |
-| 4.2 Comandos diretos | (a preencher) |
+| 4.2 Comandos diretos | `73d9e72` |
+| 4.3 install.sh e 4.4 desinstalação | (a preencher) |
 
 **Próximos passos:**
 
@@ -967,7 +1024,9 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 32. ✔ 4.0 CI no GitHub (seção 3.9; `dev/ci.sh`).
 33. ✔ 4.1 rotação do log do debkit (seção 3.9).
 34. ✔ 4.2 comandos diretos (seção 3.9).
-35. **Próxima tarefa:** 4.3 `install.sh`.
+35. ✔ 4.3 `install.sh` (seção 3.9).
+36. ✔ 4.4 desinstalação (seção 3.9).
+37. **Próxima tarefa:** 4.5 bilíngue pt/en.
 
 **VM limpa de novo:** `dev/vmnova.sh` → (reinicia) → `dev/vmprepara.sh` →
 `./debkit --preparar` → testes.
@@ -1023,7 +1082,8 @@ real e o devolve idêntico). Com a tarefa 3.0: 2011 + 302 (`t21_log_auth.sh` e
 `t22b_sessoes_real.sh`). Com a tarefa 3.2: 2113 + 358 (`t23_logins.sh` e
 `t23b_logins_real.sh`). Com a tarefa 3.3: 2175 + 387 (`t24_saude.sh` e
 `t24b_saude_real.sh`). Com a tarefa 3.4: 2229 + 410 (`t25_auditoria.sh` e
-`t25b_auditoria_real.sh`). Com a 4.0 e a 4.1: 2288 + 410 (`t26_log_rotacao.sh`).
+`t25b_auditoria_real.sh`). Com a 4.0 e a 4.1: 2288 + 410 (`t26_log_rotacao.sh`). Até a 4.4: 2599 + 464
+(`t27` a `t29` e as provas reais `t27b`, `t28b`, `t29b`).
 Os testes também acusam se alguém usar o debkit na VM enquanto rodam (o
 log e a trava reais mudam): não usar o debkit durante a suíte.
 

@@ -182,6 +182,28 @@ declare -A MSG_pt_BR=(
     [erro.root]="Este comando precisa ser executado como root (ex: sudo debkit)."
     [erro.uso]="Opção desconhecida: '%s'. Veja: debkit --ajuda"
     [cli.sim_resposta]="s (--sim)"
+    [desi.titulo]="debkit - desinstalação"
+    [desi.vai]="A desinstalação vai remover:"
+    [desi.fica]="Fica no servidor:"
+    [desi.r_link]="O comando %s"
+    [desi.r_programa]="O programa em %s (instalado pelo install.sh)"
+    [desi.r_protecao]="A proteção SSH (%s) e o grupo %s, que está vazio (nenhum usuário de arquivos)"
+    [desi.r_conf]="A configuração %s"
+    [desi.r_log]="O log de auditoria %s (e os girados) e a regra da rotação dele (%s)"
+    [desi.r_backups]="Os backups do debkit em %s e os do smb.conf em %s"
+    [desi.f_repositorio]="O programa em %s: é um repositório (não foi copiado pelo install.sh); apague-o à mão se quiser"
+    [desi.f_protecao]="A proteção SSH (%s) e o grupo %s: há %d usuário(s) de arquivos; sem ela eles poderiam entrar por SSH"
+    [desi.f_dados]="A configuração (%s), o log de auditoria (%s) e os backups (%s, %s): use --tudo para remover também"
+    [desi.f_usuarios]="Os usuários, grupos e compartilhamentos e o smb.conf (o servidor de arquivos continua funcionando)"
+    [desi.f_firewall]="As regras \"debkit: Samba\" do firewall (se houver): sem elas o Samba seria bloqueado"
+    [desi.pergunta]="Desinstalar?"
+    [desi.cancelado]="Cancelado. Nada foi feito."
+    [desi.nada]="Nada do debkit para remover."
+    [desi.feito]="Removido: %s"
+    [desi.falhou]="Não foi possível remover: %s"
+    [desi.concluido]="debkit desinstalado."
+    [desi.incompleto]="Desinstalação incompleta (veja acima)."
+    [desi.tudo_onde]="--tudo só vale com --desinstalar"
     [inst.titulo]="debkit %s - instalação"
     [inst.ajuda]="Uso: sudo ./install.sh [--sim] [--simular]
 
@@ -304,6 +326,9 @@ Para desinstalar: debkit --desinstalar"
   (sem opção)    abre o menu interativo (precisa ser root)
   --verificar    verifica o ambiente, sem alterar nada (precisa ser root)
   --preparar     verifica e prepara o ambiente (pede confirmação)
+  --desinstalar  remove o programa e o comando (com --tudo: também a
+                 configuração, o log e os backups); usuários e
+                 compartilhamentos ficam
   -h, --ajuda    mostra esta ajuda
   -v, --versao   mostra a versão
 
@@ -329,6 +354,28 @@ declare -A MSG_en=(
     [erro.root]="This command must be run as root (e.g. sudo debkit)."
     [erro.uso]="Unknown option: '%s'. See: debkit --help"
     [cli.sim_resposta]="y (--yes)"
+    [desi.titulo]="debkit - uninstall"
+    [desi.vai]="The uninstall will remove:"
+    [desi.fica]="Stays on the server:"
+    [desi.r_link]="The command %s"
+    [desi.r_programa]="The program in %s (installed by install.sh)"
+    [desi.r_protecao]="The SSH protection (%s) and the group %s, which is empty (no file users)"
+    [desi.r_conf]="The configuration %s"
+    [desi.r_log]="The audit log %s (and the rotated ones) and its rotation rule (%s)"
+    [desi.r_backups]="The debkit backups in %s and the smb.conf ones in %s"
+    [desi.f_repositorio]="The program in %s: it is a repository (not copied by install.sh); delete it by hand if you want"
+    [desi.f_protecao]="The SSH protection (%s) and the group %s: there are %d file user(s); without it they could log in over SSH"
+    [desi.f_dados]="The configuration (%s), the audit log (%s) and the backups (%s, %s): use --all to remove them too"
+    [desi.f_usuarios]="The users, groups and shares and smb.conf (the file server keeps working)"
+    [desi.f_firewall]="The \"debkit: Samba\" firewall rules (if any): without them Samba would be blocked"
+    [desi.pergunta]="Uninstall?"
+    [desi.cancelado]="Cancelled. Nothing was done."
+    [desi.nada]="Nothing from debkit to remove."
+    [desi.feito]="Removed: %s"
+    [desi.falhou]="Could not remove: %s"
+    [desi.concluido]="debkit uninstalled."
+    [desi.incompleto]="Incomplete uninstall (see above)."
+    [desi.tudo_onde]="--all only applies with --uninstall"
     [inst.titulo]="debkit %s - installation"
     [inst.ajuda]="Usage: sudo ./install.sh [--yes] [--dry-run]
 
@@ -451,6 +498,9 @@ To uninstall: debkit --uninstall"
   (no option)    opens the interactive menu (requires root)
   --check        checks the environment without changing anything (requires root)
   --setup        checks and sets up the environment (asks for confirmation)
+  --uninstall    removes the program and the command (with --all: also the
+                 configuration, the log and the backups); users and shares
+                 stay
   -h, --help     shows this help
   -v, --version  shows the version
 
@@ -1829,6 +1879,139 @@ debkit_iniciar_conf() {
     fi
 }
 
+# ════════════════════════════════════════════════════════════════════════════
+# DESINSTALAÇÃO (tarefa 4.4; seção 3.9)
+# ════════════════════════════════════════════════════════════════════════════
+# debkit --desinstalar [--tudo]: tira o programa e o comando. Nunca mexe no
+# que faz o servidor de arquivos funcionar ou protege os usuários: usuários,
+# grupos, compartilhamentos, smb.conf, regras do firewall e, se houver
+# usuários de arquivos, a proteção SSH (sem ela eles entrariam por SSH).
+# Com o grupo de proteção vazio, a proteção sai junto. Sem --tudo, a
+# configuração, o log e os backups ficam (para reinstalar ou consultar);
+# com --tudo, saem também. Um plano, UMA confirmação.
+DEBKIT_INSTALAR_LINK="${DEBKIT_INSTALAR_LINK:-/usr/local/sbin/debkit}"
+DEBKIT_MARCA_INSTALACAO=".debkit-instalado"
+
+# Usuários (membros) do grupo de proteção SSH
+debkit_desinstalar_protegidos() { getent group "$DEBKIT_GRUPO_USUARIOS" | cut -d: -f4 | tr ',' '\n' | sed '/^$/d' | wc -l; }
+
+# shellcheck disable=SC2153  # DEBKIT_DIR vem do programa "debkit"
+debkit_desinstalar() {
+    local tudo="$1" n x falhas=0
+    local -a remover=() ficar=()
+    titulo "$(t desi.titulo)"
+    # O que sai e o que fica
+    if [ -L "$DEBKIT_INSTALAR_LINK" ] && [ "$(readlink -- "$DEBKIT_INSTALAR_LINK")" == "$DEBKIT_DIR/debkit" ]; then
+        remover+=(link)
+    fi
+    if [ -f "$DEBKIT_DIR/$DEBKIT_MARCA_INSTALACAO" ]; then remover+=(programa); else ficar+=("$(t desi.f_repositorio "$DEBKIT_DIR")"); fi
+    if getent group "$DEBKIT_GRUPO_USUARIOS" >/dev/null 2>&1 || { [ -f "$DEBKIT_SSH_DROPIN" ] && grep -qxF "$DEBKIT_SSH_MARCA" "$DEBKIT_SSH_DROPIN"; }; then
+        n=$(debkit_desinstalar_protegidos)
+        if [ "$n" -eq 0 ]; then remover+=(protecao); else ficar+=("$(t desi.f_protecao "$DEBKIT_SSH_DROPIN" "$DEBKIT_GRUPO_USUARIOS" "$n")"); fi
+    fi
+    if [ "$tudo" -eq 1 ]; then
+        [ -e "$DEBKIT_CONF_ARQUIVO" ] && remover+=(conf)
+        { [ -e "$DEBKIT_LOG" ] || [ -e "$DEBKIT_LOG_LOGROTATE" ]; } && remover+=(log)
+        { [ -d "$DEBKIT_BACKUP_DIR" ] || [ -d "${DEBKIT_SMB_BACKUP_DIR:-}" ]; } && remover+=(backups)
+    else
+        ficar+=("$(t desi.f_dados "$DEBKIT_CONF_ARQUIVO" "$DEBKIT_LOG" "$DEBKIT_BACKUP_DIR" "${DEBKIT_SMB_BACKUP_DIR:-—}")")
+    fi
+    ficar+=("$(t desi.f_usuarios)" "$(t desi.f_firewall)")
+    if [ ${#remover[@]} -eq 0 ]; then msg_info "$(t desi.nada)"; return 0; fi
+
+    printf '  %s%s%s\n' "$C_NEGRITO" "$(t desi.vai)" "$C_RESET"
+    for x in "${remover[@]}"; do printf '    • %s\n' "$(debkit_desinstalar_descrever "$x")"; done
+    echo ""
+    printf '  %s%s%s\n' "$C_NEGRITO" "$(t desi.fica)" "$C_RESET"
+    for x in "${ficar[@]}"; do printf '    · %s\n' "$x"; done
+    echo ""
+    if ! confirmar "$(t desi.pergunta)"; then
+        debkit_auditar desinstalar "itens=$(IFS=,; echo "${remover[*]}") resposta=nao"
+        msg_aviso "$(t desi.cancelado)"; return 1
+    fi
+    debkit_auditar desinstalar "itens=$(IFS=,; echo "${remover[*]}") tudo=$tudo resposta=sim"
+
+    # O programa pode sair enquanto roda (o bash já leu o que precisa). O
+    # log sai por último, e a sessão termina antes dele (o fim da sessão
+    # recriaria o arquivo)
+    for x in protecao conf backups link programa log; do
+        [[ " ${remover[*]} " == *" $x "* ]] || continue
+        if [ "$x" == "log" ]; then
+            debkit_auditar sessao_fim "motivo=desinstalado"; DEBKIT_SESSAO_ATIVA=0
+        fi
+        if "debkit_desinstalar_$x"; then
+            msg_ok "$(t desi.feito "$(debkit_desinstalar_descrever "$x")")"
+            [ "$x" != "log" ] && debkit_auditar desinstalar "item=$x resultado=ok"
+        else
+            msg_erro "$(t desi.falhou "$(debkit_desinstalar_descrever "$x")")"
+            [ "$x" != "log" ] && debkit_auditar desinstalar "item=$x resultado=falha"
+            falhas=$((falhas + 1))
+        fi
+    done
+    echo ""
+    if [ "$falhas" -eq 0 ]; then msg_ok "$(t desi.concluido)"; return 0; fi
+    msg_erro "$(t desi.incompleto)"; return 1
+}
+
+debkit_desinstalar_descrever() {
+    case "$1" in
+        link)     t desi.r_link "$DEBKIT_INSTALAR_LINK" ;;
+        programa) t desi.r_programa "$DEBKIT_DIR" ;;
+        protecao) t desi.r_protecao "$DEBKIT_SSH_DROPIN" "$DEBKIT_GRUPO_USUARIOS" ;;
+        conf)     t desi.r_conf "$DEBKIT_CONF_ARQUIVO" ;;
+        log)      t desi.r_log "$DEBKIT_LOG" "$DEBKIT_LOG_LOGROTATE" ;;
+        backups)  t desi.r_backups "$DEBKIT_BACKUP_DIR" "${DEBKIT_SMB_BACKUP_DIR:-—}" ;;
+    esac
+}
+
+debkit_desinstalar_link() { rm -f -- "$DEBKIT_INSTALAR_LINK" && [ ! -e "$DEBKIT_INSTALAR_LINK" ]; }
+
+# O programa: só a pasta com a marca do install.sh (e nunca "/")
+debkit_desinstalar_programa() {
+    [ -f "$DEBKIT_DIR/$DEBKIT_MARCA_INSTALACAO" ] && [ "$DEBKIT_DIR" != "/" ] || return 1
+    rm -rf -- "$DEBKIT_DIR" && [ ! -e "$DEBKIT_DIR" ]
+}
+
+# Proteção SSH (só com o grupo vazio): o arquivo do SSH (backup e recarga,
+# como o desfazer da preparação) e o grupo
+debkit_desinstalar_protecao() {
+    [ "$(debkit_desinstalar_protegidos)" -eq 0 ] || return 1
+    debkit_ssh_remover_protecao || return 1
+    if getent group "$DEBKIT_GRUPO_USUARIOS" >/dev/null 2>&1; then
+        groupdel -- "$DEBKIT_GRUPO_USUARIOS" || return 1
+    fi
+}
+
+# A configuração (e a pasta, se ficar vazia)
+debkit_desinstalar_conf() {
+    rm -f -- "$DEBKIT_CONF_ARQUIVO" || return 1
+    rmdir -- "$(debkit_dir_conf)" 2>/dev/null
+    [ ! -e "$DEBKIT_CONF_ARQUIVO" ]
+}
+
+# O log, os girados (.N e .N.gz) e a regra da rotação
+debkit_desinstalar_log() {
+    local arq
+    for arq in "$DEBKIT_LOG" "$DEBKIT_LOG".[0-9]* "$DEBKIT_LOG_LOGROTATE"; do
+        if [ -f "$arq" ] || [ -L "$arq" ]; then rm -f -- "$arq" || return 1; fi
+    done
+    [ ! -e "$DEBKIT_LOG" ]
+}
+
+# Os backups: a pasta do debkit inteira; na do smb.conf, só os arquivos com
+# o nome dos backups do debkit (e a pasta, se ficar vazia)
+debkit_desinstalar_backups() {
+    local arq
+    if [ -d "$DEBKIT_BACKUP_DIR" ]; then rm -rf -- "$DEBKIT_BACKUP_DIR" || return 1; fi
+    if [ -n "${DEBKIT_SMB_BACKUP_DIR:-}" ] && [ -d "$DEBKIT_SMB_BACKUP_DIR" ]; then
+        for arq in "$DEBKIT_SMB_BACKUP_DIR"/smb.conf.[0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9]-*; do
+            [ -f "$arq" ] && { rm -f -- "$arq" || return 1; }
+        done
+        rmdir -- "$DEBKIT_SMB_BACKUP_DIR" 2>/dev/null
+    fi
+    [ ! -e "$DEBKIT_BACKUP_DIR" ]
+}
+
 # Comandos diretos: começa a "sessão" de um comando que altera algo (como
 # a do menu): trava contra outra execução, auditoria de início/fim e
 # limpeza ao sair. Os comandos que só leem não chamam (como o --verificar).
@@ -1889,14 +2072,15 @@ debkit_modulo_com_comandos() {
 
 main() {
     # Idioma por variável de ambiente tem prioridade (útil em testes)
-    local idioma_env="${DEBKIT_IDIOMA:-}" arg modulo=""
+    local idioma_env="${DEBKIT_IDIOMA:-}" arg modulo="" tudo
     local -a args=()
 
-    # --sim (--yes) vale em qualquer posição
-    DEBKIT_SIM=0; DEBKIT_CLI=0
+    # --sim (--yes) vale em qualquer posição; --tudo (--all), só com --desinstalar
+    DEBKIT_SIM=0; DEBKIT_CLI=0; tudo=0
     for arg in "$@"; do
         case "$arg" in
             --sim|--yes) DEBKIT_SIM=1 ;;
+            --tudo|--all) tudo=1 ;;
             *)           args+=("$arg") ;;
         esac
     done
@@ -1922,8 +2106,11 @@ main() {
         DEBKIT_IDIOMA="$idioma_env"
     fi
 
+    if [ "$tudo" -eq 1 ] && [[ "${1:-}" != --desinstalar && "${1:-}" != --uninstall ]]; then
+        msg_erro "$(t desi.tudo_onde)"; exit 2
+    fi
     case "${1:-}" in
-        --preparar|--setup) ;;
+        --preparar|--setup|--desinstalar|--uninstall) ;;
         ""|--verificar|--check)
             if [ "$DEBKIT_SIM" -eq 1 ]; then msg_erro "$(t cli.sim_onde)"; exit 2; fi ;;
         -*) msg_erro "$(t erro.uso "$1")"; exit 2 ;;
@@ -1962,6 +2149,13 @@ main() {
     debkit_travar || exit 1
     debkit_auditar sessao_inicio "v$DEBKIT_VERSAO${1:+ $1}"
     DEBKIT_SESSAO_ATIVA=1
+
+    # Desinstalação (DEBKIT_DIR vem do programa "debkit")
+    if [ "${1:-}" == "--desinstalar" ] || [ "${1:-}" == "--uninstall" ]; then
+        DEBKIT_CLI=1
+        debkit_desinstalar "$tudo"
+        exit $?
+    fi
 
     # Preparação pela linha de comando
     if [ -n "${1:-}" ]; then

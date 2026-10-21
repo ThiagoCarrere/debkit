@@ -6,12 +6,13 @@ sandbox
 
 # ── Qualidade do código ──────────────────────────────────────────────────────
 caso "sintaxe"
-for arq in "$DEBKIT" "$REPO"/lib/*.sh "$REPO"/modulos/*.sh; do
+for arq in "$DEBKIT" "$REPO"/install.sh "$REPO"/lib/*.sh "$REPO"/modulos/*.sh; do
     verdadeiro "bash -n ${arq#"$REPO"/}" bash -n "$arq"
 done
 caso "shellcheck"
 if command -v shellcheck >/dev/null; then
     verdadeiro "sem avisos (ponto de entrada, núcleo e módulos)" shellcheck -x "$DEBKIT" "$REPO"/lib/*.sh "$REPO"/modulos/*.sh
+    verdadeiro "sem avisos (install.sh)" shellcheck -x "$REPO"/install.sh
 else
     echo "  (shellcheck não instalado: pulado)"
 fi

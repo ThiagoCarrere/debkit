@@ -32,6 +32,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   backup é 600).
 
 ### Corrigido
+- Um módulo com erro de sintaxe era carregado pela metade sem aviso; agora
+  o debkit para e avisa.
 - Num servidor novo, o primeiro `--preparar` instalava o Samba mas deixava
   para uma segunda vez as configurações que dependem dele (`map to guest`,
   log de autenticação). Agora verifica de novo depois de instalar e mostra
@@ -74,6 +76,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   procura o `include` pelo caminho exato do sandbox.
 
 ### Adicionado
+- **Desinstalação** (`debkit --desinstalar [--tudo]`): remove o comando e
+  o programa; com `--tudo`, também a configuração, o log e os backups.
+  Usuários, grupos, compartilhamentos e o smb.conf ficam; a proteção SSH só
+  sai se não houver usuários de arquivos.
+- **Instalador** (`sudo ./install.sh`): instala ou atualiza em
+  `/opt/debkit` com o comando `/usr/local/sbin/debkit` (a pasta nova só
+  entra no lugar da antiga se funcionar); com o repositório já em
+  `/opt/debkit`, só cria o comando. Oferece preparar o servidor no fim.
 - **Comandos diretos** para todas as ações do menu, para scripts e cron:
   `debkit samba <grupo> <ação> [argumentos] [--sim]` (lista:
   `debkit samba --ajuda`). Mesmas validações, resumo e confirmação do menu

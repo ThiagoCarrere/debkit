@@ -72,8 +72,14 @@ debkit_caminho_seguro "$DEBKIT_DIR/modulos" pasta || exit 1
 for _debkit_mod in "$DEBKIT_DIR"/modulos/*.sh; do
     [ -e "$_debkit_mod" ] || [ -L "$_debkit_mod" ] || continue
     debkit_caminho_seguro "$_debkit_mod" arquivo || exit 1
+    # Um módulo com erro (ex: de sintaxe) pararia no meio sem avisar: o
+    # debkit não segue com um módulo carregado pela metade. (Todo módulo
+    # termina com status 0.)
     # shellcheck source=/dev/null  # cada módulo é verificado à parte
-    source "$_debkit_mod"
+    if ! source "$_debkit_mod"; then
+        echo "debkit: erro ao carregar $_debkit_mod (instalação danificada?)" >&2
+        exit 1
+    fi
 done
 unset _debkit_mod
 

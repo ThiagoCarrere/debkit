@@ -24,7 +24,7 @@ jobs:
         run: apt-get update -qq && apt-get install -y -qq --no-install-recommends shellcheck
       - name: bash -n (todos os scripts)
         run: |
-          for f in debkit lib/*.sh modulos/*.sh dev/*.sh tests/*.sh; do
+          for f in debkit install.sh lib/*.sh modulos/*.sh dev/*.sh tests/*.sh; do
             bash -n "$f" || { echo "::error file=$f::erro de sintaxe"; falhou=1; }
           done
           exit "${falhou:-0}"
@@ -33,7 +33,7 @@ jobs:
         # dos arquivos carregados
         run: |
           shellcheck --version | sed -n 2p
-          for f in debkit lib/*.sh modulos/*.sh dev/*.sh; do
+          for f in debkit install.sh lib/*.sh modulos/*.sh dev/*.sh; do
             shellcheck -x "$f" || { echo "::error file=$f::avisos do shellcheck"; falhou=1; }
           done
           exit "${falhou:-0}"
