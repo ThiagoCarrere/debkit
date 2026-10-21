@@ -4030,9 +4030,20 @@ debkit_ler() {
 
 # Lê uma senha sem eco, duas vezes, com SENHA_MIN e o máximo. Até 3
 # tentativas. Retorna 1 se desistir ou fim da entrada.
+# Nos comandos diretos com a entrada padrão fora de um terminal (ex:
+# printf '%s\n' "$SENHA" | debkit samba usuario criar ...): uma linha, sem
+# repetir; fora das regras = erro (não há a quem perguntar de novo).
 debkit_ler_senha() {
     local -n _senha="$1"
     local prompt="$2" s1 s2 _tentativa
+    if [ "${DEBKIT_CLI:-0}" -eq 1 ] && [ ! -t 0 ]; then
+        IFS= read -r s1 || [ -n "$s1" ] || { msg_erro "$(t cli.senha_sem_entrada)"; return 1; }
+        s1="${s1%$'\r'}"
+        if [ "${#s1}" -lt "$DEBKIT_SENHA_MIN" ]; then msg_erro "$(t usr.senha_curta "$DEBKIT_SENHA_MIN")"; return 1; fi
+        if [ "${#s1}" -gt "$DEBKIT_USR_SENHA_MAX" ]; then msg_erro "$(t usr.senha_longa "$DEBKIT_USR_SENHA_MAX")"; return 1; fi
+        _senha="$s1"
+        return 0
+    fi
     for _tentativa in 1 2 3; do
         read -rsp "$prompt" s1 || { echo ""; return 1; }
         echo ""
@@ -4135,34 +4146,39 @@ debkit_samba_tela_criar_usuario() {
             debkit_ler_senha DEBKIT_U_SENHA_LINUX "$(t usr.p_senha_linux)" || { DEBKIT_U_SENHA=""; msg_aviso "$(t usr.cancelado)"; return 1; }
         fi
     fi
-    # Resumo e UMA confirmação
+    DEBKIT_U_NOME="$nome"; DEBKIT_U_GECOS="$gecos"; DEBKIT_U_TIPO="$tipo"; DEBKIT_U_GRUPOS=("${escolhidos[@]}"); DEBKIT_U_HOME="$com_home"
+    DEBKIT_U_MESMA="$mesma"
+    debkit_usuario_confirmar_criar; local rc=$?
+    pausar
+    return "$rc"
+}
+
+# Resumo, UMA confirmação e a criação (tela e comando direto). Entrada: as
+# variáveis DEBKIT_U_* de debkit_usuario_criar (senhas já lidas) e
+# DEBKIT_U_MESMA (1 = a senha do Linux é a mesma do Samba). As senhas são
+# apagadas no fim, aconteça o que acontecer.
+debkit_usuario_confirmar_criar() {
+    local rc
     echo ""
     echo "  $(t usr.titulo_resumo)"
-    echo "    $(t usr.r_login "$nome")"
-    [ -n "$gecos" ] && echo "    $(t usr.r_gecos "$gecos")"
-    if [ "$tipo" == "servidor" ]; then echo "    $(t usr.r_tipo "$(t usr.tipo_servidor)")"; else echo "    $(t usr.r_tipo "$(t usr.tipo_arquivos)")"; fi
-    if [ ${#escolhidos[@]} -gt 0 ]; then
-        local juntos; juntos=$(printf '%s, ' "${escolhidos[@]}")
-        echo "    $(t usr.r_grupos "${juntos%, }")"
-    else
-        echo "    $(t usr.r_grupos "$(t usr.r_nenhum)")"
-    fi
+    echo "    $(t usr.r_login "$DEBKIT_U_NOME")"
+    [ -n "$DEBKIT_U_GECOS" ] && echo "    $(t usr.r_gecos "$DEBKIT_U_GECOS")"
+    if [ "$DEBKIT_U_TIPO" == "servidor" ]; then echo "    $(t usr.r_tipo "$(t usr.tipo_servidor)")"; else echo "    $(t usr.r_tipo "$(t usr.tipo_arquivos)")"; fi
+    echo "    $(t usr.r_grupos "$(debkit_juntar "${DEBKIT_U_GRUPOS[@]}")")"
     echo "    $(t usr.r_senha)"
-    if [ "$tipo" == "servidor" ]; then
-        if [ "$mesma" -eq 1 ]; then echo "    $(t usr.r_senha_linux_mesma)"; else echo "    $(t usr.r_senha_linux_outra)"; fi
+    if [ "$DEBKIT_U_TIPO" == "servidor" ]; then
+        if [ "${DEBKIT_U_MESMA:-1}" -eq 1 ]; then echo "    $(t usr.r_senha_linux_mesma)"; else echo "    $(t usr.r_senha_linux_outra)"; fi
     fi
-    if [ "$com_home" -eq 1 ]; then echo "    $(t home.r_sim "$DEBKIT_HOMES_BASE/$nome")"; else echo "    $(t usr.r_home)"; fi
+    if [ "$DEBKIT_U_HOME" -eq 1 ]; then echo "    $(t home.r_sim "$DEBKIT_HOMES_BASE/$DEBKIT_U_NOME")"; else echo "    $(t usr.r_home)"; fi
     echo ""
     if ! confirmar "$(t usr.p_confirmar)"; then
         DEBKIT_U_SENHA=""; DEBKIT_U_SENHA_LINUX=""
         msg_aviso "$(t usr.cancelado)"
-        pausar; return 1
+        return 1
     fi
-    DEBKIT_U_NOME="$nome"; DEBKIT_U_GECOS="$gecos"; DEBKIT_U_TIPO="$tipo"; DEBKIT_U_GRUPOS=("${escolhidos[@]}"); DEBKIT_U_HOME="$com_home"
-    debkit_usuario_criar; local rc=$?
+    debkit_usuario_criar; rc=$?
     DEBKIT_U_SENHA=""; DEBKIT_U_SENHA_LINUX=""
-    if [ "$rc" -eq 0 ] && [ "$com_home" -eq 1 ]; then echo ""; debkit_samba_oferecer_homes; fi
-    pausar
+    if [ "$rc" -eq 0 ] && [ "$DEBKIT_U_HOME" -eq 1 ]; then echo ""; debkit_samba_oferecer_homes; fi
     return "$rc"
 }
 
@@ -4184,12 +4200,22 @@ debkit_samba_tela_home_existente() {
         fi
         msg_erro "$(t geral.opcao_invalida "$escolha")"
     done
-    if ! debkit_samba_garantir_base; then pausar; return 1; fi
-    if ! confirmar "$(t home.p_confirmar "$DEBKIT_HOMES_BASE/$nome" "$nome")"; then
-        msg_aviso "$(t usr.cancelado)"; pausar; return 1
-    fi
-    if debkit_samba_home_existente "$nome"; then echo ""; debkit_samba_oferecer_homes; fi
+    debkit_samba_confirmar_home "$nome"; local rc=$?
     pausar
+    return "$rc"
+}
+
+# Base pronta, UMA confirmação, a pasta pessoal e o [homes] (tela e comando)
+debkit_samba_confirmar_home() {
+    local nome="$1"
+    debkit_samba_garantir_base || return 1
+    if ! confirmar "$(t home.p_confirmar "$DEBKIT_HOMES_BASE/$nome" "$nome")"; then
+        msg_aviso "$(t usr.cancelado)"; return 1
+    fi
+    debkit_samba_home_existente "$nome" || return 1
+    echo ""
+    debkit_samba_oferecer_homes
+    return 0
 }
 
 # Tela: base das pastas pessoais e [homes]
@@ -4216,8 +4242,8 @@ debkit_samba_tela_pastas_pessoais() {
 
 # Tela: escolhe o usuário, mostra o que será perdido e pede UMA confirmação (s/n)
 debkit_samba_tela_excluir_usuario() {
-    local nome tipo problema destino home n uid rc
-    local -a nomes=() rotulos=() grupos=() usos=() sessoes=()
+    local nome tipo rc
+    local -a nomes=() rotulos=()
     titulo "$(t rmu.titulo)"
     if ! debkit_samba_ambiente_pronto; then msg_erro "$(t usr.ambiente_nao_pronto)"; pausar; return 1; fi
     while IFS='|' read -r nome _ tipo _ _ _ _; do
@@ -4229,7 +4255,17 @@ debkit_samba_tela_excluir_usuario() {
     debkit_numerar "${rotulos[@]}"
     debkit_escolher_um nome "$(t sen.p_usuario)" "${nomes[@]}" || { msg_aviso "$(t usr.cancelado)"; return 1; }
     echo ""
-    if ! problema=$(debkit_usuario_exclusao_problema "$nome"); then msg_erro "$problema"; pausar; return 1; fi
+    debkit_usuario_confirmar_excluir "$nome"; rc=$?
+    pausar
+    return "$rc"
+}
+
+# Recusa o que não pode, mostra o que será perdido, UMA confirmação (s/n) e
+# exclui (tela e comando)
+debkit_usuario_confirmar_excluir() {
+    local nome="$1" problema destino home n uid
+    local -a grupos=() usos=() sessoes=()
+    if ! problema=$(debkit_usuario_exclusao_problema "$nome"); then msg_erro "$problema"; return 1; fi
     IFS=: read -r _ _ uid _ _ home _ < <(getent passwd "$nome")
     mapfile -t grupos < <(id -nG -- "$nome" 2>/dev/null | tr ' ' '\n' | grep -vxF -e "$nome" -e "$DEBKIT_GRUPO_USUARIOS")
     mapfile -t usos < <(debkit_samba_usuario_usos "$nome")
@@ -4253,30 +4289,42 @@ debkit_samba_tela_excluir_usuario() {
     else msg_info "$(t rmu.sem_arquivos)"
     fi
     echo ""
-    if ! confirmar "$(t rmu.p_confirmar "$nome")"; then msg_aviso "$(t usr.cancelado)"; pausar; return 1; fi
-    debkit_usuario_excluir "$nome"; rc=$?
-    pausar
-    return "$rc"
+    if ! confirmar "$(t rmu.p_confirmar "$nome")"; then msg_aviso "$(t usr.cancelado)"; return 1; fi
+    debkit_usuario_excluir "$nome"
 }
 
 # Tela: lista o que está fora do padrão e corrige um a um (s/n em cada)
 debkit_samba_tela_consistencia() {
-    local l tipo nome feitos=0
-    local -a itens=()
     titulo "$(t cns.titulo)"
     if ! debkit_samba_ambiente_pronto; then msg_erro "$(t usr.ambiente_nao_pronto)"; pausar; return 1; fi
+    debkit_samba_corrigir_inconsistencias
+    pausar
+}
+
+# Texto de um item da consistência: debkit_cns_texto <p (problema) | q
+# (pergunta)> <tipo> <login>. Só o "túnel" cita o grupo de proteção (um %s a
+# mais no printf repetiria a frase).
+debkit_cns_texto() {
+    if [ "$2" == "tunel" ]; then t "cns.$1_$2" "$3" "$DEBKIT_GRUPO_USUARIOS"; else t "cns.$1_$2" "$3"; fi
+}
+
+# Lista o que está fora do padrão e corrige um a um (s/n em cada; tela e
+# comando). Retorna 1 se algo ficou sem corrigir.
+debkit_samba_corrigir_inconsistencias() {
+    local l tipo nome feitos=0
+    local -a itens=()
     mapfile -t itens < <(debkit_samba_inconsistencias)
-    if [ ${#itens[@]} -eq 0 ]; then msg_ok "$(t cns.tudo_ok)"; pausar; return 0; fi
+    if [ ${#itens[@]} -eq 0 ]; then msg_ok "$(t cns.tudo_ok)"; return 0; fi
     echo "  $(t cns.encontrados "${#itens[@]}")"
     for l in "${itens[@]}"; do
         IFS='|' read -r tipo nome <<< "$l"
-        echo "    - $(t "cns.p_$tipo" "$nome" "$DEBKIT_GRUPO_USUARIOS")"
+        echo "    - $(debkit_cns_texto p "$tipo" "$nome")"
     done
     for l in "${itens[@]}"; do
         IFS='|' read -r tipo nome <<< "$l"
         echo ""
-        echo "  $(t "cns.p_$tipo" "$nome" "$DEBKIT_GRUPO_USUARIOS")"
-        confirmar "  $(t "cns.q_$tipo" "$nome" "$DEBKIT_GRUPO_USUARIOS")" || { msg_info "$(t cns.pulado)"; continue; }
+        echo "  $(debkit_cns_texto p "$tipo" "$nome")"
+        confirmar "  $(debkit_cns_texto q "$tipo" "$nome")" || { msg_info "$(t cns.pulado)"; continue; }
         if [ "$tipo" == "so_linux" ]; then
             DEBKIT_U_SENHA=""
             debkit_ler_senha DEBKIT_U_SENHA "$(t cns.p_senha "$nome")" || { msg_info "$(t cns.pulado)"; continue; }
@@ -4286,7 +4334,7 @@ debkit_samba_tela_consistencia() {
     done
     echo ""
     msg_info "$(t cns.resumo "$feitos" "${#itens[@]}")"
-    pausar
+    [ "$feitos" -eq ${#itens[@]} ]
 }
 
 # ── Compartilhamentos: telas ────────────────────────────────────────────────
@@ -4299,7 +4347,7 @@ debkit_shr_tela_listar() {
 # Tela: nome, descrição, pasta, o grupo (acesso total), resumo e
 # UMA confirmação
 debkit_shr_tela_criar() {
-    local nome comentario pasta sugestao problema rc grupo cheia
+    local nome comentario pasta sugestao problema rc grupo
     local -a grupos=()
     titulo "$(t shr.titulo_criar)"
     if ! debkit_samba_ambiente_pronto; then msg_erro "$(t usr.ambiente_nao_pronto)"; pausar; return 1; fi
@@ -4331,27 +4379,39 @@ debkit_shr_tela_criar() {
     echo "  $(t grp.titulo_grupos)"
     debkit_numerar "${grupos[@]}"
     debkit_escolher_um grupo "$(t shr.p_grupo)" "${grupos[@]}" || { msg_aviso "$(t usr.cancelado)"; return 1; }
+    DEBKIT_S_NOME="$nome"; DEBKIT_S_COMENTARIO="$comentario"; DEBKIT_S_PASTA="$pasta"
+    DEBKIT_S_GRUPO="$grupo"
+    debkit_shr_confirmar_criar; rc=$?
+    pausar
+    return "$rc"
+}
+
+# Resumo, UMA confirmação e a criação (tela e comando). Entrada: DEBKIT_S_*
+# de debkit_shr_criar. Pasta com conteúdo: depois de criar, oferece ajustar
+# as permissões; nos comandos diretos só com --ajustar (DEBKIT_SHR_AJUSTAR=1).
+debkit_shr_confirmar_criar() {
+    local nome="$DEBKIT_S_NOME" pasta="$DEBKIT_S_PASTA" grupo="$DEBKIT_S_GRUPO" cheia=0 rc
     echo ""
     echo "  $(t usr.titulo_resumo)"
     echo "    $(t shr.r_nome "$nome")"
-    [ -n "$comentario" ] && echo "    $(t shr.r_comentario "$comentario")"
+    [ -n "$DEBKIT_S_COMENTARIO" ] && echo "    $(t shr.r_comentario "$DEBKIT_S_COMENTARIO")"
     if [ -d "$pasta" ]; then echo "    $(t shr.r_pasta_existe "$pasta")"; else echo "    $(t shr.r_pasta_nova "$pasta")"; fi
     echo "    $(t shr.r_grupo "$grupo")"
-    cheia=0
     if [ -d "$pasta" ] && [ -n "$(ls -A -- "$pasta" 2>/dev/null)" ]; then cheia=1; msg_aviso "$(t shr.aviso_conteudo "$pasta")"; fi
     echo ""
-    if ! confirmar "$(t shr.p_confirmar)"; then msg_aviso "$(t usr.cancelado)"; pausar; return 1; fi
-    DEBKIT_S_NOME="$nome"; DEBKIT_S_COMENTARIO="$comentario"; DEBKIT_S_PASTA="$pasta"
-    DEBKIT_S_GRUPO="$grupo"
+    if ! confirmar "$(t shr.p_confirmar)"; then msg_aviso "$(t usr.cancelado)"; return 1; fi
     debkit_shr_criar; rc=$?
     if [ "$rc" -eq 0 ] && [ "$cheia" -eq 1 ]; then
         echo ""
         debkit_shr_mostrar_conteudo "$pasta" "$grupo"
-        if [ "$DEBKIT_SHR_FORA_N" -gt 0 ] && confirmar "$(t shr.p_ajustar_agora "$grupo")"; then
-            debkit_shr_ajustar_conteudo "$pasta" "$grupo" || rc=1
+        if [ "$DEBKIT_SHR_FORA_N" -gt 0 ]; then
+            if [ "${DEBKIT_CLI:-0}" -eq 1 ] && [ "${DEBKIT_SHR_AJUSTAR:-0}" -ne 1 ]; then
+                msg_info "$(t cli.shr_ajustar_depois "$nome")"
+            elif [ "${DEBKIT_CLI:-0}" -eq 1 ] || confirmar "$(t shr.p_ajustar_agora "$grupo")"; then
+                debkit_shr_ajustar_conteudo "$pasta" "$grupo" || rc=1
+            fi
         fi
     fi
-    pausar
     return "$rc"
 }
 
@@ -4405,7 +4465,7 @@ debkit_shr_mostrar_conteudo() {
 # conectado, o conteúdo) e UMA confirmação
 debkit_shr_tela_trocar() {
     local linha nome pasta antigo novo rc g
-    local -a grupos=() perdem=() todos=()
+    local -a grupos=() todos=()
     titulo "$(t shr.trocar)"
     if ! debkit_samba_ambiente_pronto; then msg_erro "$(t usr.ambiente_nao_pronto)"; pausar; return 1; fi
     debkit_shr_escolher linha || { pausar; return 1; }
@@ -4418,6 +4478,17 @@ debkit_shr_tela_trocar() {
     echo "  $(t grp.titulo_grupos)"
     debkit_numerar "${grupos[@]}"
     debkit_escolher_um novo "$(t shr.p_novo_grupo)" "${grupos[@]}" || { msg_aviso "$(t usr.cancelado)"; return 1; }
+    debkit_shr_confirmar_trocar "$nome" "$pasta" "$antigo" "$novo"; rc=$?
+    pausar
+    return "$rc"
+}
+
+# Resumo (quem perde o acesso, quem está conectado, o conteúdo), UMA
+# confirmação e a troca (tela e comando):
+# debkit_shr_confirmar_trocar <nome> <pasta> <grupo atual> <grupo novo>
+debkit_shr_confirmar_trocar() {
+    local nome="$1" pasta="$2" antigo="$3" novo="$4"
+    local -a perdem=()
     echo ""
     echo "  $(t usr.titulo_resumo)"
     echo "    $(t shr.r_nome "$nome")"
@@ -4430,11 +4501,9 @@ debkit_shr_tela_trocar() {
     debkit_shr_mostrar_conteudo "$pasta" "$antigo"
     msg_info "$(t shr.explica_ajuste "$novo")"
     echo ""
-    if ! confirmar "$(t shr.p_confirmar_trocar "$nome" "$novo")"; then msg_aviso "$(t usr.cancelado)"; pausar; return 1; fi
+    if ! confirmar "$(t shr.p_confirmar_trocar "$nome" "$novo")"; then msg_aviso "$(t usr.cancelado)"; return 1; fi
     DEBKIT_S_NOME="$nome"; DEBKIT_S_GRUPO="$novo"
-    debkit_shr_trocar_grupo; rc=$?
-    pausar
-    return "$rc"
+    debkit_shr_trocar_grupo
 }
 
 # Tela: compartilhamento, quanto está fora do padrão e UMA confirmação
@@ -4444,26 +4513,42 @@ debkit_shr_tela_ajustar() {
     if ! debkit_samba_ambiente_pronto; then msg_erro "$(t usr.ambiente_nao_pronto)"; pausar; return 1; fi
     debkit_shr_escolher linha || { pausar; return 1; }
     IFS='|' read -r nome pasta grupo <<< "$linha"
-    echo ""
-    debkit_shr_mostrar_conteudo "$pasta" "$grupo"
-    if [ "$DEBKIT_SHR_FORA_N" -eq 0 ]; then pausar; return 0; fi
-    msg_info "$(t shr.explica_ajuste "$grupo")"
-    echo ""
-    if ! confirmar "$(t shr.p_confirmar_ajustar "$nome")"; then msg_aviso "$(t usr.cancelado)"; pausar; return 1; fi
-    debkit_shr_ajustar_conteudo "$pasta" "$grupo"; rc=$?
+    debkit_shr_confirmar_ajustar "$nome" "$pasta" "$grupo"; rc=$?
     pausar
     return "$rc"
+}
+
+# Quanto está fora do padrão, UMA confirmação e o ajuste (tela e comando)
+debkit_shr_confirmar_ajustar() {
+    local nome="$1" pasta="$2" grupo="$3"
+    echo ""
+    debkit_shr_mostrar_conteudo "$pasta" "$grupo"
+    [ "$DEBKIT_SHR_FORA_N" -eq 0 ] && return 0
+    msg_info "$(t shr.explica_ajuste "$grupo")"
+    echo ""
+    if ! confirmar "$(t shr.p_confirmar_ajustar "$nome")"; then msg_aviso "$(t usr.cancelado)"; return 1; fi
+    debkit_shr_ajustar_conteudo "$pasta" "$grupo"
 }
 
 # Tela: compartilhamento, resumo (pasta que fica, quem perde o acesso, quem
 # está conectado) e UMA confirmação
 debkit_shr_tela_remover() {
     local linha nome pasta esc lei rc
-    local -a afetados=()
     titulo "$(t shr.remover)"
     if ! debkit_samba_ambiente_pronto; then msg_erro "$(t usr.ambiente_nao_pronto)"; pausar; return 1; fi
     debkit_shr_escolher linha dados || { pausar; return 1; }
     IFS='|' read -r nome pasta esc lei _ <<< "$linha"
+    debkit_shr_confirmar_remover "$nome" "$pasta" "$esc" "$lei"; rc=$?
+    pausar
+    return "$rc"
+}
+
+# Resumo (a pasta que fica, quem perde o acesso, quem está conectado), UMA
+# confirmação e a remoção (tela e comando):
+# debkit_shr_confirmar_remover <nome> <pasta> <escrita> <leitura>
+debkit_shr_confirmar_remover() {
+    local nome="$1" pasta="$2" esc="$3" lei="$4"
+    local -a afetados=()
     echo ""
     echo "  $(t usr.titulo_resumo)"
     echo "    $(t shr.r_nome "$nome")"
@@ -4478,18 +4563,16 @@ debkit_shr_tela_remover() {
         debkit_aviso_conectados "${afetados[@]}"
     fi
     echo ""
-    if ! confirmar "$(t shr.p_confirmar_remover "$nome")"; then msg_aviso "$(t usr.cancelado)"; pausar; return 1; fi
+    if ! confirmar "$(t shr.p_confirmar_remover "$nome")"; then msg_aviso "$(t usr.cancelado)"; return 1; fi
     DEBKIT_S_NOME="$nome"
-    debkit_shr_remover; rc=$?
-    pausar
-    return "$rc"
+    debkit_shr_remover
 }
 
 # Tela: compartilhamento fora do padrão, grupo, resumo (quem perde, quem
 # está conectado, as linhas do smb.conf, o conteúdo) e UMA confirmação
 debkit_shr_tela_padronizar() {
     local linha nome pasta esc lei novo rc
-    local -a grupos=() antes=() perdem=()
+    local -a grupos=()
     titulo "$(t shr.padronizar)"
     if ! debkit_samba_ambiente_pronto; then msg_erro "$(t usr.ambiente_nao_pronto)"; pausar; return 1; fi
     debkit_shr_escolher linha padronizaveis || { pausar; return 1; }
@@ -4501,6 +4584,17 @@ debkit_shr_tela_padronizar() {
     echo "  $(t grp.titulo_grupos)"
     debkit_numerar "${grupos[@]}"
     debkit_escolher_um novo "$(t shr.p_grupo_padrao)" "${grupos[@]}" || { msg_aviso "$(t usr.cancelado)"; return 1; }
+    debkit_shr_confirmar_padronizar "$nome" "$pasta" "$esc" "$lei" "$novo"; rc=$?
+    pausar
+    return "$rc"
+}
+
+# Resumo (quem perde, quem está conectado, o conteúdo), UMA confirmação e a
+# padronização (tela e comando):
+# debkit_shr_confirmar_padronizar <nome> <pasta> <escrita> <leitura> <grupo>
+debkit_shr_confirmar_padronizar() {
+    local nome="$1" pasta="$2" esc="$3" lei="$4" novo="$5"
+    local -a antes=() perdem=()
     echo ""
     echo "  $(t usr.titulo_resumo)"
     echo "    $(t shr.r_nome "$nome")"
@@ -4515,22 +4609,32 @@ debkit_shr_tela_padronizar() {
     debkit_shr_mostrar_conteudo "$pasta" "$novo"
     msg_info "$(t shr.explica_ajuste "$novo")"
     echo ""
-    if ! confirmar "$(t shr.p_confirmar_padrao "$nome" "$novo")"; then msg_aviso "$(t usr.cancelado)"; pausar; return 1; fi
+    if ! confirmar "$(t shr.p_confirmar_padrao "$nome" "$novo")"; then msg_aviso "$(t usr.cancelado)"; return 1; fi
     DEBKIT_S_NOME="$nome"; DEBKIT_S_GRUPO="$novo"
-    debkit_shr_padronizar; rc=$?
-    pausar
-    return "$rc"
+    debkit_shr_padronizar
 }
 
 # ── Diagnóstico: telas ──────────────────────────────────────────────────────
 # Tela: tabela das sessões e, se escolher uma, resumo (compartilhamentos,
 # arquivos abertos) e UMA confirmação para desconectar
 debkit_diag_tela_sessoes() {
-    local l pid u ip c n d i=0 wu=7 wm=7 rc escolhido
-    local -a linhas=() pids=() arquivos=()
+    local rc escolhido
     titulo "$(t diag.titulo_sessoes)"
+    if ! debkit_diag_mostrar_sessoes; then pausar; return 0; fi
+    debkit_escolher_um escolhido "$(t diag.p_desconectar)" "${DEBKIT_DIAG_PIDS[@]}" || return 0
+    debkit_diag_confirmar_desconectar "$escolhido"; rc=$?
+    pausar
+    return "$rc"
+}
+
+# Tabela das sessões (numeradas); deixa os PIDs, na ordem, em
+# DEBKIT_DIAG_PIDS. Retorna 1 se não há nenhuma.
+debkit_diag_mostrar_sessoes() {
+    local l pid u ip c n d i=0 wu=7 wm=7
+    local -a linhas=()
+    DEBKIT_DIAG_PIDS=()
     mapfile -t linhas < <(debkit_diag_resumo)
-    if [ ${#linhas[@]} -eq 0 ]; then msg_info "$(t diag.nenhuma)"; pausar; return 0; fi
+    if [ ${#linhas[@]} -eq 0 ]; then msg_info "$(t diag.nenhuma)"; return 1; fi
     for l in "${linhas[@]}"; do
         IFS='|' read -r _ u ip _ _ _ <<< "$l"
         [ "${#u}" -gt "$wu" ] && wu=${#u}; [ "${#ip}" -gt "$wm" ] && wm=${#ip}
@@ -4539,15 +4643,23 @@ debkit_diag_tela_sessoes() {
         "$(debkit_pad "$(t diag.c_desde)" 16)" "$(debkit_pad "$(t diag.c_arquivos)" 8)" "$(t diag.c_compartilhamentos)" "$C_RESET"
     for l in "${linhas[@]}"; do
         IFS='|' read -r pid u ip c n d <<< "$l"
-        i=$((i + 1)); pids+=("$pid")
+        i=$((i + 1)); DEBKIT_DIAG_PIDS+=("$pid")
         printf '  %2d) %s  %s  %s  %s  %s\n' "$i" "$(debkit_pad "$u" "$wu")" "$(debkit_pad "$ip" "$wm")" \
             "$(debkit_pad "${d:-—}" 16)" "$(debkit_pad "$n" 8)" "${c:-—}"
     done
     echo ""
     echo "  $(t diag.total "${#linhas[@]}")"
     echo ""
-    debkit_escolher_um escolhido "$(t diag.p_desconectar)" "${pids[@]}" || return 0
-    l=$(printf '%s\n' "${linhas[@]}" | awk -F'|' -v p="$escolhido" '$1 == p')
+    return 0
+}
+
+# Resumo da sessão (compartilhamentos, arquivos abertos), UMA confirmação e
+# desconecta (tela e comando). A sessão tem de existir agora.
+debkit_diag_confirmar_desconectar() {
+    local escolhido="$1" l pid u ip c n d
+    local -a arquivos=()
+    l=$(debkit_diag_resumo | awk -F'|' -v p="$escolhido" '$1 == p')
+    if [ -z "$l" ]; then msg_erro "$(t diag.sem_sessao "$escolhido")"; return 1; fi
     IFS='|' read -r pid u ip c n d <<< "$l"
     echo ""
     echo "  $(t usr.titulo_resumo)"
@@ -4557,10 +4669,8 @@ debkit_diag_tela_sessoes() {
     [ "$n" -gt 0 ] && msg_aviso "$(t diag.aviso_arquivos "$n" "$(debkit_juntar "${arquivos[@]}")")"
     msg_info "$(t diag.explica)"
     echo ""
-    if ! confirmar "$(t diag.p_confirmar "$u" "$ip")"; then msg_aviso "$(t usr.cancelado)"; pausar; return 1; fi
-    debkit_diag_desconectar "$pid"; rc=$?
-    pausar
-    return "$rc"
+    if ! confirmar "$(t diag.p_confirmar "$u" "$ip")"; then msg_aviso "$(t usr.cancelado)"; return 1; fi
+    debkit_diag_desconectar "$pid"
 }
 
 # Tela: falhas dos últimos DEBKIT_DIAG_DIAS dias (por usuário e máquina) e o
@@ -4628,20 +4738,15 @@ debkit_diag_tela_logins() {
 # Tela: pede o período, quem foi afetado e o tipo; mostra a tabela (as
 # DEBKIT_AUD_MAX mais recentes) e quantas falharam
 debkit_diag_tela_auditoria() {
-    local periodo desde ate="" alvo tipo="" opcao rotulo_p rotulo_t l d quem acao det falha=0 i=0 wq=4 wa=4
-    local -a linhas=() tipos=(usuarios grupos shr sessoes preparacao uso)
+    local periodo alvo tipo="" opcao i=0
+    local -a tipos=(usuarios grupos shr sessoes preparacao uso)
     titulo "$(t diag.titulo_auditoria)"
     if [ ! -s "$DEBKIT_LOG" ]; then msg_info "$(t aud.sem_log "$DEBKIT_LOG")"; pausar; return 0; fi
     while true; do
         debkit_ler periodo "$(t aud.p_periodo "$DEBKIT_AUD_DIAS")" || return 0
         periodo=${periodo// /}
         if [ -z "$periodo" ]; then periodo=$DEBKIT_AUD_DIAS; fi
-        if [[ "$periodo" =~ ^[0-9]{1,4}$ ]] && [ "$periodo" -gt 0 ]; then
-            desde=$(date -d "$((periodo - 1)) days ago" '+%Y-%m-%d'); ate=""; rotulo_p=$(t aud.f_dias "$periodo"); break
-        elif [[ "$periodo" =~ ^([0-9]{2})/([0-9]{2})/([0-9]{4})$ ]] \
-             && desde=$(date -d "${BASH_REMATCH[3]}-${BASH_REMATCH[2]}-${BASH_REMATCH[1]}" '+%Y-%m-%d' 2>/dev/null); then
-            ate=$desde; rotulo_p=$(t aud.f_dia "$periodo"); break
-        fi
+        debkit_aud_periodo "$periodo" && break
         msg_erro "$(t aud.periodo_invalido "$periodo")"
     done
     debkit_ler alvo "$(t aud.p_alvo)" || return 0
@@ -4656,12 +4761,39 @@ debkit_diag_tela_auditoria() {
         if [[ "$opcao" =~ ^[1-9]$ ]] && [ "$opcao" -le ${#tipos[@]} ]; then tipo=${tipos[opcao - 1]}; break; fi
         msg_erro "$(t geral.opcao_invalida "$opcao")"
     done
+    echo ""
+    debkit_aud_mostrar "$DEBKIT_AUD_DESDE" "$DEBKIT_AUD_ATE" "$alvo" "$tipo" "$DEBKIT_AUD_ROTULO"
+    pausar
+    return 0
+}
+
+# Período da auditoria: N (últimos N dias, de 1 a 9999) ou dd/mm/aaaa (um
+# dia). Deixa DEBKIT_AUD_DESDE, DEBKIT_AUD_ATE (vazio = até hoje) e
+# DEBKIT_AUD_ROTULO. Retorna 1 se inválido.
+debkit_aud_periodo() {
+    local periodo="$1"
+    if [[ "$periodo" =~ ^[0-9]{1,4}$ ]] && [ "$((10#$periodo))" -gt 0 ]; then
+        periodo=$((10#$periodo))
+        DEBKIT_AUD_DESDE=$(date -d "$((periodo - 1)) days ago" '+%Y-%m-%d'); DEBKIT_AUD_ATE=""
+        DEBKIT_AUD_ROTULO=$(t aud.f_dias "$periodo")
+    elif [[ "$periodo" =~ ^([0-9]{2})/([0-9]{2})/([0-9]{4})$ ]] \
+         && DEBKIT_AUD_DESDE=$(date -d "${BASH_REMATCH[3]}-${BASH_REMATCH[2]}-${BASH_REMATCH[1]}" '+%Y-%m-%d' 2>/dev/null); then
+        DEBKIT_AUD_ATE=$DEBKIT_AUD_DESDE; DEBKIT_AUD_ROTULO=$(t aud.f_dia "$periodo")
+    else
+        return 1
+    fi
+}
+
+# Tabela da auditoria (tela e comando):
+# debkit_aud_mostrar <desde> <até> <afetado> <tipo> <rótulo do período>
+debkit_aud_mostrar() {
+    local desde="$1" ate="$2" alvo="$3" tipo="$4" rotulo_p="$5" rotulo_t l d quem acao det falha=0 i=0 wq=4 wa=4
+    local -a linhas=()
     rotulo_t=$(t aud.f_todos); [ -n "$tipo" ] && rotulo_t=$(t "aud.t_$tipo")
     mapfile -t linhas < <(debkit_aud_filtrar "$desde" "$ate" "$alvo" "$tipo")
-    echo ""
     echo "  $(t aud.filtro "$rotulo_p${alvo:+, $alvo}, $rotulo_t")"
     echo ""
-    if [ ${#linhas[@]} -eq 0 ]; then msg_info "$(t aud.nenhum)"; pausar; return 0; fi
+    if [ ${#linhas[@]} -eq 0 ]; then msg_info "$(t aud.nenhum)"; return 0; fi
     i=0
     for l in "${linhas[@]}"; do
         i=$((i + 1)); [ "$i" -gt "$DEBKIT_AUD_MAX" ] && break
@@ -4683,7 +4815,6 @@ debkit_diag_tela_auditoria() {
     if [ ${#linhas[@]} -gt "$DEBKIT_AUD_MAX" ]; then echo "  $(t aud.mais "$DEBKIT_AUD_MAX" "${#linhas[@]}")"
     else echo "  $(t aud.total "${#linhas[@]}")"; fi
     [ "$falha" -gt 0 ] && msg_aviso "$(t aud.falhas "$falha")"
-    pausar
     return 0
 }
 
@@ -4713,7 +4844,7 @@ debkit_diag_tela_saude() {
     elif [ "$avisos" -gt 0 ]; then msg_aviso "$(t saude.resumo_avisos "$avisos")"
     else msg_ok "$(t saude.tudo_ok)"; fi
     pausar
-    return 0
+    [ "$erros" -eq 0 ]
 }
 
 # ── Grupos: telas ───────────────────────────────────────────────────────────
@@ -4823,17 +4954,23 @@ debkit_samba_tela_criar_grupo() {
         debkit_numerar "${usuarios[@]}"
         debkit_escolher_varios escolhidos "$(t grp.p_membros)" "${usuarios[@]}" || { msg_aviso "$(t usr.cancelado)"; return 1; }
     fi
-    echo ""
-    echo "  $(t usr.titulo_resumo)"
-    echo "    $(t grp.r_grupo "$nome")"
-    echo "    $(t grp.r_membros "$(debkit_juntar "${escolhidos[@]}")")"
-    debkit_aviso_conectados "${escolhidos[@]}"
-    echo ""
-    if ! confirmar "$(t grp.p_confirmar_criar)"; then msg_aviso "$(t usr.cancelado)"; pausar; return 1; fi
     DEBKIT_G_NOME="$nome"; DEBKIT_G_MEMBROS=("${escolhidos[@]}")
-    debkit_grupo_criar; rc=$?
+    debkit_grupo_confirmar_criar; rc=$?
     pausar
     return "$rc"
+}
+
+# Resumo, UMA confirmação e a criação (tela e comando). Entrada:
+# DEBKIT_G_NOME e DEBKIT_G_MEMBROS de debkit_grupo_criar.
+debkit_grupo_confirmar_criar() {
+    echo ""
+    echo "  $(t usr.titulo_resumo)"
+    echo "    $(t grp.r_grupo "$DEBKIT_G_NOME")"
+    echo "    $(t grp.r_membros "$(debkit_juntar "${DEBKIT_G_MEMBROS[@]}")")"
+    debkit_aviso_conectados "${DEBKIT_G_MEMBROS[@]}"
+    echo ""
+    if ! confirmar "$(t grp.p_confirmar_criar)"; then msg_aviso "$(t usr.cancelado)"; return 1; fi
+    debkit_grupo_criar
 }
 
 # Tela: escolhe o grupo, mostra os membros e adiciona ou tira
@@ -4885,25 +5022,34 @@ debkit_samba_tela_membros() {
     debkit_numerar "${candidatos[@]}"
     debkit_escolher_varios escolhidos "$(t grp.p_usuarios)" "${candidatos[@]}" || { msg_aviso "$(t usr.cancelado)"; return 1; }
     if [ ${#escolhidos[@]} -eq 0 ]; then msg_aviso "$(t usr.cancelado)"; pausar; return 1; fi
-    echo ""
-    debkit_aviso_conectados "${escolhidos[@]}"
-    if [ "$acao" == 1 ]; then
-        DEBKIT_G_ENTRAR=("${escolhidos[@]}")
-        confirmar "$(t grp.p_confirmar_entrar "$(debkit_juntar "${escolhidos[@]}")" "$grupo")" || { msg_aviso "$(t usr.cancelado)"; pausar; return 1; }
-    else
-        DEBKIT_G_SAIR=("${escolhidos[@]}")
-        confirmar "$(t grp.p_confirmar_sair "$(debkit_juntar "${escolhidos[@]}")" "$grupo")" || { msg_aviso "$(t usr.cancelado)"; pausar; return 1; }
-    fi
-    debkit_grupo_alterar_membros "$grupo"; rc=$?
+    if [ "$acao" == 1 ]; then DEBKIT_G_ENTRAR=("${escolhidos[@]}"); else DEBKIT_G_SAIR=("${escolhidos[@]}"); fi
+    debkit_grupo_confirmar_membros "$grupo"; rc=$?
     pausar
     return "$rc"
+}
+
+# Quem está conectado, UMA confirmação e a troca dos membros (tela e
+# comando). Entrada: DEBKIT_G_ENTRAR e DEBKIT_G_SAIR.
+debkit_grupo_confirmar_membros() {
+    local grupo="$1" pergunta
+    echo ""
+    debkit_aviso_conectados "${DEBKIT_G_ENTRAR[@]}" "${DEBKIT_G_SAIR[@]}"
+    if [ ${#DEBKIT_G_SAIR[@]} -eq 0 ]; then
+        pergunta=$(t grp.p_confirmar_entrar "$(debkit_juntar "${DEBKIT_G_ENTRAR[@]}")" "$grupo")
+    elif [ ${#DEBKIT_G_ENTRAR[@]} -eq 0 ]; then
+        pergunta=$(t grp.p_confirmar_sair "$(debkit_juntar "${DEBKIT_G_SAIR[@]}")" "$grupo")
+    else
+        pergunta=$(t grp.p_confirmar_entrar_sair "$(debkit_juntar "${DEBKIT_G_ENTRAR[@]}")" "$(debkit_juntar "${DEBKIT_G_SAIR[@]}")" "$grupo")
+    fi
+    confirmar "$pergunta" || { msg_aviso "$(t usr.cancelado)"; return 1; }
+    debkit_grupo_alterar_membros "$grupo"
 }
 
 # Tela: escolhe o grupo, recusa o principal de alguém e o usado no smb.conf,
 # mostra o que será perdido (membros, arquivos) e pede UMA confirmação (s/n)
 debkit_samba_tela_remover_grupo() {
-    local grupo gid n rc
-    local -a grupos=() membros=() usos=() principais=()
+    local grupo rc
+    local -a grupos=()
     titulo "$(t grp.titulo_remover)"
     if ! debkit_samba_ambiente_pronto; then msg_erro "$(t usr.ambiente_nao_pronto)"; pausar; return 1; fi
     mapfile -t grupos < <(debkit_samba_grupos_comuns)
@@ -4911,14 +5057,25 @@ debkit_samba_tela_remover_grupo() {
     echo "  $(t grp.titulo_grupos)"
     debkit_numerar "${grupos[@]}"
     debkit_escolher_um grupo "$(t grp.p_grupo)" "${grupos[@]}" || { msg_aviso "$(t usr.cancelado)"; return 1; }
+    debkit_grupo_confirmar_remover "$grupo"; rc=$?
+    pausar
+    return "$rc"
+}
+
+# Recusa o grupo principal de alguém e o usado no smb.conf, mostra o que
+# será perdido (membros, arquivos), UMA confirmação (s/n) e remove (tela e
+# comando)
+debkit_grupo_confirmar_remover() {
+    local grupo="$1" gid n
+    local -a membros=() usos=() principais=()
     echo ""
     mapfile -t principais < <(debkit_grupo_principais "$grupo")
     if [ ${#principais[@]} -gt 0 ]; then
-        msg_erro "$(t grp.remover_principal "$grupo" "$(debkit_juntar "${principais[@]}")")"; pausar; return 1
+        msg_erro "$(t grp.remover_principal "$grupo" "$(debkit_juntar "${principais[@]}")")"; return 1
     fi
     mapfile -t usos < <(debkit_samba_grupo_usos "$grupo")
     if [ ${#usos[@]} -gt 0 ]; then
-        msg_erro "$(t grp.remover_usado "$grupo" "$(printf '[%s] ' "${usos[@]}" | sed 's/ $//')")"; pausar; return 1
+        msg_erro "$(t grp.remover_usado "$grupo" "$(printf '[%s] ' "${usos[@]}" | sed 's/ $//')")"; return 1
     fi
     mapfile -t membros < <(debkit_grupo_membros "$grupo")
     gid=$(getent group "$grupo" | cut -d: -f3)
@@ -4938,10 +5095,8 @@ debkit_samba_tela_remover_grupo() {
         msg_info "$(t grp.sem_arquivos)"
     fi
     echo ""
-    if ! confirmar "$(t grp.p_confirmar_remover "$grupo")"; then msg_aviso "$(t usr.cancelado)"; pausar; return 1; fi
-    debkit_grupo_remover "$grupo"; rc=$?
-    pausar
-    return "$rc"
+    if ! confirmar "$(t grp.p_confirmar_remover "$grupo")"; then msg_aviso "$(t usr.cancelado)"; return 1; fi
+    debkit_grupo_remover "$grupo"
 }
 
 # Submenu de grupos
@@ -4967,6 +5122,543 @@ debkit_samba_menu_grupos() {
             *)  msg_erro "$(t geral.opcao_invalida "$opcao")"; pausar ;;
         esac
     done
+}
+
+# ── Comandos diretos (tarefa 4.2; seção 3.9) ───────────────────────────────
+# debkit samba <grupo> <ação> [argumentos] [--sim]: as mesmas ações do menu,
+# com as mesmas validações, o mesmo resumo e a mesma confirmação (que o
+# --sim responde). O menu continua sendo a forma principal. Senhas nunca vão
+# na linha de comando: são perguntadas (terminal) ou lidas da entrada padrão,
+# uma por linha. Os comandos que alteram algo usam a trava e a auditoria de
+# sessão, como o menu; os que só leem, não (como o --verificar).
+# Códigos de saída: 0 certo | 1 recusado, cancelado ou falhou | 2 uso errado.
+MSG_pt_BR+=(
+    [cli.ajuda_samba]="Uso: debkit samba <grupo> <ação> [argumentos] [--sim]
+
+Usuários
+  usuario listar
+  usuario criar <login> [--nome \"Nome Completo\"] [--tipo arquivos|servidor]
+                [--grupos g1,g2] [--pasta-pessoal] [--senha-linux-diferente]
+  usuario senha <login> [--samba | --linux | --ambas]
+  usuario pasta-pessoal <login>
+  usuario excluir <login>
+  usuario conferir [--corrigir]
+
+Grupos
+  grupo listar
+  grupo criar <grupo> [--membros u1,u2]
+  grupo membros <grupo> [--adicionar u1,u2] [--remover u3,u4]
+  grupo remover <grupo>
+
+Compartilhamentos
+  compartilhamento listar
+  compartilhamento criar <nome> --grupo <grupo> [--pasta <pasta>]
+                         [--descricao \"texto\"] [--base <pasta>] [--ajustar]
+  compartilhamento trocar-grupo <nome> <grupo>
+  compartilhamento ajustar <nome>
+  compartilhamento remover <nome>
+  compartilhamento padronizar <nome> <grupo>
+  pastas-pessoais [--base <pasta>]
+
+Diagnóstico
+  diagnostico sessoes
+  diagnostico desconectar <pid>
+  diagnostico logins
+  diagnostico saude
+  diagnostico auditoria [--dias N | --dia dd/mm/aaaa] [--afetado <nome>]
+                        [--tipo usuarios|grupos|compartilhamentos|sessoes|preparacao|uso]
+
+Senhas: perguntadas no terminal (sem eco, duas vezes) ou, num script, lidas
+da entrada padrão, uma por linha (servidor com --senha-linux-diferente: a do
+Samba e depois a do Linux). Ex:
+  printf '%%s\\\\n' \"\$SENHA\" | debkit samba usuario criar ana --nome \"Ana Souza\" --sim
+
+--sim responde \"s\" às confirmações. Saída: 0 certo, 1 recusado/cancelado/falhou,
+2 uso incorreto. \"diagnostico saude\" sai com 1 se houver problema;
+\"usuario conferir\", se houver algo fora do padrão."
+    [cli.desconhecido]="Comando desconhecido: '%s'"
+    [cli.opcao_desconhecida]="Opção desconhecida: '%s'"
+    [cli.falta_valor]="Falta o valor de %s"
+    [cli.nao_pronto]="O ambiente ainda não está preparado. Rode: debkit --preparar"
+    [cli.senha_sem_entrada]="Nenhuma senha na entrada padrão (uma por linha)."
+    [cli.tipo_invalido]="Tipo inválido: '%s' (use arquivos ou servidor)"
+    [cli.grupo_invalido]="'%s' não é um grupo comum (veja: debkit samba grupo listar)"
+    [cli.usuario_invalido]="'%s' não é um usuário comum (veja: debkit samba usuario listar)"
+    [cli.senha_linux_so_servidor]="--senha-linux-diferente só vale para --tipo servidor"
+    [cli.um_alvo]="Use só uma de --samba, --linux e --ambas"
+    [cli.sem_base_homes]="A base das pastas pessoais ainda não foi definida. Defina antes: debkit samba pastas-pessoais --base <pasta> (discos de dados: %s)"
+    [cli.base_ja_definida]="A base das pastas pessoais já é %s (o debkit não a troca)."
+    [cli.sem_pasta_candidato]="%s não é um usuário comum sem pasta pessoal."
+    [cli.sem_base_shr]="A base dos compartilhamentos ainda não foi definida: use --base <pasta> (sugestão: %s) ou --pasta"
+    [cli.falta_grupo]="Falta --grupo <grupo> (o grupo com acesso total)"
+    [cli.shr_nao_gerenciavel]="'%s' não é um compartilhamento no padrão do debkit (veja: debkit samba compartilhamento listar)"
+    [cli.shr_nao_existe]="Compartilhamento '%s' não encontrado (veja: debkit samba compartilhamento listar)"
+    [cli.shr_nao_padronizavel]="'%s' não é um compartilhamento fora do padrão que o debkit pode trazer para o padrão"
+    [cli.mesmo_grupo]="O compartilhamento %s já é do grupo %s."
+    [cli.shr_ajustar_depois]="Para ajustar as permissões: debkit samba compartilhamento ajustar %s (ou crie com --ajustar)"
+    [cli.conferir_corrigir]="Para corrigir: debkit samba usuario conferir --corrigir"
+    [cli.um_periodo]="Use --dias ou --dia, não os dois"
+    [cli.tipo_aud_invalido]="Tipo inválido: '%s' (use usuarios, grupos, compartilhamentos, sessoes, preparacao ou uso)"
+    [cli.membros_atuais]="Grupo %s"
+    [grp.p_confirmar_entrar_sair]="Adicionar %s e remover %s do grupo %s?"
+    [diag.sem_sessao]="Nenhuma sessão do Samba com o PID %s agora (veja: debkit samba diagnostico sessoes)."
+)
+MSG_en+=(
+    [cli.ajuda_samba]="Usage: debkit samba <group> <action> [arguments] [--yes]
+
+Users
+  usuario listar
+  usuario criar <login> [--nome \"Full Name\"] [--tipo arquivos|servidor]
+                [--grupos g1,g2] [--pasta-pessoal] [--senha-linux-diferente]
+  usuario senha <login> [--samba | --linux | --ambas]
+  usuario pasta-pessoal <login>
+  usuario excluir <login>
+  usuario conferir [--corrigir]
+
+Groups
+  grupo listar
+  grupo criar <group> [--membros u1,u2]
+  grupo membros <group> [--adicionar u1,u2] [--remover u3,u4]
+  grupo remover <group>
+
+Shares
+  compartilhamento listar
+  compartilhamento criar <name> --grupo <group> [--pasta <folder>]
+                         [--descricao \"text\"] [--base <folder>] [--ajustar]
+  compartilhamento trocar-grupo <name> <group>
+  compartilhamento ajustar <name>
+  compartilhamento remover <name>
+  compartilhamento padronizar <name> <group>
+  pastas-pessoais [--base <folder>]
+
+Diagnostics
+  diagnostico sessoes
+  diagnostico desconectar <pid>
+  diagnostico logins
+  diagnostico saude
+  diagnostico auditoria [--dias N | --dia dd/mm/yyyy] [--afetado <name>]
+                        [--tipo usuarios|grupos|compartilhamentos|sessoes|preparacao|uso]
+
+Passwords: asked on the terminal (no echo, twice) or, in a script, read from
+standard input, one per line (server with --senha-linux-diferente: the Samba
+one and then the Linux one). E.g.:
+  printf '%%s\\\\n' \"\$PASSWORD\" | debkit samba usuario criar ana --nome \"Ana Souza\" --yes
+
+--yes answers \"y\" to the confirmations. Exit: 0 ok, 1 refused/cancelled/failed,
+2 incorrect usage. \"diagnostico saude\" exits with 1 if there is a problem;
+\"usuario conferir\", if something is out of standard."
+    [cli.desconhecido]="Unknown command: '%s'"
+    [cli.opcao_desconhecida]="Unknown option: '%s'"
+    [cli.falta_valor]="Missing the value of %s"
+    [cli.nao_pronto]="The environment is not set up yet. Run: debkit --setup"
+    [cli.senha_sem_entrada]="No password on standard input (one per line)."
+    [cli.tipo_invalido]="Invalid type: '%s' (use arquivos or servidor)"
+    [cli.grupo_invalido]="'%s' is not a regular group (see: debkit samba grupo listar)"
+    [cli.usuario_invalido]="'%s' is not a regular user (see: debkit samba usuario listar)"
+    [cli.senha_linux_so_servidor]="--senha-linux-diferente only applies to --tipo servidor"
+    [cli.um_alvo]="Use only one of --samba, --linux and --ambas"
+    [cli.sem_base_homes]="The home folders base is not defined yet. Define it first: debkit samba pastas-pessoais --base <folder> (data disks: %s)"
+    [cli.base_ja_definida]="The home folders base is already %s (debkit does not change it)."
+    [cli.sem_pasta_candidato]="%s is not a regular user without a home folder."
+    [cli.sem_base_shr]="The shares base is not defined yet: use --base <folder> (suggestion: %s) or --pasta"
+    [cli.falta_grupo]="Missing --grupo <group> (the group with full access)"
+    [cli.shr_nao_gerenciavel]="'%s' is not a share in the debkit pattern (see: debkit samba compartilhamento listar)"
+    [cli.shr_nao_existe]="Share '%s' not found (see: debkit samba compartilhamento listar)"
+    [cli.shr_nao_padronizavel]="'%s' is not an out-of-pattern share that debkit can bring to the pattern"
+    [cli.mesmo_grupo]="The share %s already belongs to group %s."
+    [cli.shr_ajustar_depois]="To adjust the permissions: debkit samba compartilhamento ajustar %s (or create it with --ajustar)"
+    [cli.conferir_corrigir]="To fix: debkit samba usuario conferir --corrigir"
+    [cli.um_periodo]="Use --dias or --dia, not both"
+    [cli.tipo_aud_invalido]="Invalid type: '%s' (use usuarios, grupos, compartilhamentos, sessoes, preparacao or uso)"
+    [cli.membros_atuais]="Group %s"
+    [grp.p_confirmar_entrar_sair]="Add %s and remove %s from group %s?"
+    [diag.sem_sessao]="No Samba session with PID %s right now (see: debkit samba diagnostico sessoes)."
+)
+
+# Uso errado: mensagem e onde ver a ajuda (retorna 2)
+debkit_samba_cli_uso() { msg_erro "$(t cli.uso "$1" "debkit samba --ajuda")"; return 2; }
+
+# Comando que altera algo: trava e sessão de auditoria (núcleo) e o
+# ambiente preparado
+debkit_samba_cli_alterar() {
+    debkit_cli_sessao "samba $*" || return 1
+    if ! debkit_samba_ambiente_pronto; then msg_erro "$(t cli.nao_pronto)"; return 1; fi
+}
+
+# Lista separada por vírgula -> array (sem itens vazios nem repetidos)
+debkit_samba_cli_lista() {
+    local -n _l="$1"
+    local x
+    local -a partes=()
+    _l=()
+    IFS=',' read -ra partes <<< "$2"
+    for x in "${partes[@]}"; do
+        x="${x//[[:space:]]/}"
+        [ -n "$x" ] || continue
+        [[ " ${_l[*]} " == *" $x "* ]] || _l+=("$x")
+    done
+}
+
+# Cada item tem de estar na saída do comando (um por linha)
+debkit_samba_cli_todos_em() {
+    local msg="$1" fonte="$2" x
+    shift 2
+    for x in "$@"; do
+        "$fonte" | grep -qxF -- "$x" || { msg_erro "$(t "$msg" "$x")"; return 1; }
+    done
+}
+
+# Gancho do núcleo: debkit samba ...
+debkit_samba_comando() {
+    local grupo="${1:-}" acao="${2:-}" f
+    case "$grupo" in
+        ""|-h|--ajuda|--help|ajuda) t cli.ajuda_samba; echo; return 0 ;;
+    esac
+    debkit_ler_login_defs >/dev/null 2>&1
+    if [ "$grupo" == "pastas-pessoais" ]; then
+        shift; debkit_samba_cmd_pastas_pessoais "$@"; return
+    fi
+    f="debkit_samba_cmd_${grupo}_${acao//-/_}"
+    if [[ ! "$grupo$acao" =~ ^[a-z-]+$ ]] || ! declare -F "$f" >/dev/null; then
+        msg_erro "$(t cli.desconhecido "$grupo${acao:+ $acao}")"
+        msg_info "debkit samba --ajuda"
+        return 2
+    fi
+    shift 2
+    "$f" "$@"
+}
+
+# ── Usuários ──
+debkit_samba_cmd_usuario_listar() {
+    debkit_cli_ler "" "" "$@" || return 2
+    [ ${#DEBKIT_ARGS[@]} -eq 0 ] || { debkit_samba_cli_uso "usuario listar"; return 2; }
+    debkit_samba_listar_usuarios
+}
+
+debkit_samba_cmd_usuario_criar() {
+    local nome gecos tipo problema mesma=1 com_home=0
+    local -a grupos=()
+    debkit_cli_ler "nome tipo grupos" "pasta-pessoal senha-linux-diferente" "$@" || return 2
+    [ ${#DEBKIT_ARGS[@]} -eq 1 ] || { debkit_samba_cli_uso "usuario criar <login> [opções]"; return 2; }
+    nome="${DEBKIT_ARGS[0]}"; gecos="${DEBKIT_OPCOES[nome]:-}"; tipo="${DEBKIT_OPCOES[tipo]:-arquivos}"
+    case "$tipo" in arquivos|servidor) ;; *) msg_erro "$(t cli.tipo_invalido "$tipo")"; return 2 ;; esac
+    if [ -n "${DEBKIT_OPCOES[senha-linux-diferente]:-}" ]; then
+        [ "$tipo" == "servidor" ] || { msg_erro "$(t cli.senha_linux_so_servidor)"; return 2; }
+        mesma=0
+    fi
+    debkit_samba_cli_lista grupos "${DEBKIT_OPCOES[grupos]:-}"
+    debkit_samba_cli_alterar usuario criar "$nome" || return 1
+    problema=$(debkit_usuario_gecos_problema "$gecos") || { msg_erro "$problema"; return 1; }
+    problema=$(debkit_usuario_nome_problema "$nome") || { msg_erro "$problema"; return 1; }
+    debkit_samba_cli_todos_em cli.grupo_invalido debkit_samba_grupos_comuns "${grupos[@]}" || return 1
+    if [ -n "${DEBKIT_OPCOES[pasta-pessoal]:-}" ]; then
+        if [ -z "$DEBKIT_HOMES_BASE" ]; then
+            msg_erro "$(t cli.sem_base_homes "$(debkit_samba_discos_dados | paste -sd' ')")"; return 1
+        fi
+        debkit_samba_garantir_base || return 1
+        com_home=1
+    fi
+    [ "$tipo" == "servidor" ] && msg_aviso "$(t usr.aviso_servidor)"
+    DEBKIT_U_SENHA=""; DEBKIT_U_SENHA_LINUX=""
+    debkit_ler_senha DEBKIT_U_SENHA "$(t usr.p_senha_samba)" || return 1
+    if [ "$tipo" == "servidor" ]; then
+        if [ "$mesma" -eq 1 ]; then
+            DEBKIT_U_SENHA_LINUX="$DEBKIT_U_SENHA"
+        else
+            debkit_ler_senha DEBKIT_U_SENHA_LINUX "$(t usr.p_senha_linux)" || { DEBKIT_U_SENHA=""; return 1; }
+        fi
+    fi
+    DEBKIT_U_NOME="$nome"; DEBKIT_U_GECOS="$gecos"; DEBKIT_U_TIPO="$tipo"; DEBKIT_U_GRUPOS=("${grupos[@]}")
+    DEBKIT_U_HOME="$com_home"; DEBKIT_U_MESMA="$mesma"
+    debkit_usuario_confirmar_criar
+}
+
+debkit_samba_cmd_usuario_senha() {
+    local nome tipo alvo="" a prompt rc
+    debkit_cli_ler "" "samba linux ambas" "$@" || return 2
+    [ ${#DEBKIT_ARGS[@]} -eq 1 ] || { debkit_samba_cli_uso "usuario senha <login> [--samba | --linux | --ambas]"; return 2; }
+    for a in samba linux ambas; do
+        if [ -n "${DEBKIT_OPCOES[$a]:-}" ]; then
+            [ -z "$alvo" ] || { msg_erro "$(t cli.um_alvo)"; return 2; }
+            alvo=$a
+        fi
+    done
+    nome="${DEBKIT_ARGS[0]}"
+    debkit_samba_cli_alterar usuario senha "$nome" || return 1
+    debkit_samba_usuarios_comuns | grep -qxF -- "$nome" || { msg_erro "$(t sen.nao_comum "$nome")"; return 1; }
+    tipo=$(debkit_usuario_tipo "$nome")
+    if [ -z "$alvo" ]; then
+        case "$tipo" in
+            servidor) if debkit_samba_conta_existe "$nome"; then alvo=ambas; else alvo=linux; fi ;;
+            admin)    alvo=samba; msg_info "$(t sen.admin_info "$nome")" ;;
+            *)        alvo=samba; msg_info "$(t sen.so_samba_info "$nome" "$(t "lst.t_$tipo")")" ;;
+        esac
+    fi
+    case "$alvo" in samba) prompt="$(t sen.p_nova_samba)" ;; linux) prompt="$(t sen.p_nova_linux)" ;; *) prompt="$(t sen.p_nova_ambas)" ;; esac
+    DEBKIT_U_SENHA=""
+    debkit_ler_senha DEBKIT_U_SENHA "$prompt" || return 1
+    debkit_usuario_trocar_senha "$nome" "$alvo"; rc=$?
+    DEBKIT_U_SENHA=""
+    return "$rc"
+}
+
+debkit_samba_cmd_usuario_pasta_pessoal() {
+    local nome
+    debkit_cli_ler "" "" "$@" || return 2
+    [ ${#DEBKIT_ARGS[@]} -eq 1 ] || { debkit_samba_cli_uso "usuario pasta-pessoal <login>"; return 2; }
+    nome="${DEBKIT_ARGS[0]}"
+    debkit_samba_cli_alterar usuario pasta-pessoal "$nome" || return 1
+    debkit_samba_usuarios_sem_home | grep -qxF -- "$nome" || { msg_erro "$(t cli.sem_pasta_candidato "$nome")"; return 1; }
+    if [ -z "$DEBKIT_HOMES_BASE" ]; then
+        msg_erro "$(t cli.sem_base_homes "$(debkit_samba_discos_dados | paste -sd' ')")"; return 1
+    fi
+    debkit_samba_confirmar_home "$nome"
+}
+
+debkit_samba_cmd_usuario_excluir() {
+    debkit_cli_ler "" "" "$@" || return 2
+    [ ${#DEBKIT_ARGS[@]} -eq 1 ] || { debkit_samba_cli_uso "usuario excluir <login>"; return 2; }
+    debkit_samba_cli_alterar usuario excluir "${DEBKIT_ARGS[0]}" || return 1
+    debkit_usuario_confirmar_excluir "${DEBKIT_ARGS[0]}"
+}
+
+# Sem --corrigir só lista (sai com 1 se houver algo fora do padrão)
+debkit_samba_cmd_usuario_conferir() {
+    local l tipo nome
+    local -a itens=()
+    debkit_cli_ler "" "corrigir" "$@" || return 2
+    [ ${#DEBKIT_ARGS[@]} -eq 0 ] || { debkit_samba_cli_uso "usuario conferir [--corrigir]"; return 2; }
+    if [ -n "${DEBKIT_OPCOES[corrigir]:-}" ]; then
+        debkit_samba_cli_alterar usuario conferir --corrigir || return 1
+        debkit_samba_corrigir_inconsistencias
+        return
+    fi
+    mapfile -t itens < <(debkit_samba_inconsistencias)
+    if [ ${#itens[@]} -eq 0 ]; then msg_ok "$(t cns.tudo_ok)"; return 0; fi
+    echo "  $(t cns.encontrados "${#itens[@]}")"
+    for l in "${itens[@]}"; do
+        IFS='|' read -r tipo nome <<< "$l"
+        echo "    - $(debkit_cns_texto p "$tipo" "$nome")"
+    done
+    echo ""
+    msg_info "$(t cli.conferir_corrigir)"
+    return 1
+}
+
+# ── Grupos ──
+debkit_samba_cmd_grupo_listar() {
+    debkit_cli_ler "" "" "$@" || return 2
+    [ ${#DEBKIT_ARGS[@]} -eq 0 ] || { debkit_samba_cli_uso "grupo listar"; return 2; }
+    debkit_samba_listar_grupos
+}
+
+debkit_samba_cmd_grupo_criar() {
+    local nome problema
+    local -a membros=()
+    debkit_cli_ler "membros" "" "$@" || return 2
+    [ ${#DEBKIT_ARGS[@]} -eq 1 ] || { debkit_samba_cli_uso "grupo criar <grupo> [--membros u1,u2]"; return 2; }
+    nome="${DEBKIT_ARGS[0]}"
+    debkit_samba_cli_lista membros "${DEBKIT_OPCOES[membros]:-}"
+    debkit_samba_cli_alterar grupo criar "$nome" || return 1
+    problema=$(debkit_grupo_nome_problema "$nome") || { msg_erro "$problema"; return 1; }
+    debkit_samba_cli_todos_em cli.usuario_invalido debkit_samba_usuarios_comuns "${membros[@]}" || return 1
+    DEBKIT_G_NOME="$nome"; DEBKIT_G_MEMBROS=("${membros[@]}")
+    debkit_grupo_confirmar_criar
+}
+
+# Sem --adicionar/--remover mostra os membros
+debkit_samba_cmd_grupo_membros() {
+    local grupo
+    local -a entrar=() sair=() principais=() membros=()
+    debkit_cli_ler "adicionar remover" "" "$@" || return 2
+    [ ${#DEBKIT_ARGS[@]} -eq 1 ] || { debkit_samba_cli_uso "grupo membros <grupo> [--adicionar u1,u2] [--remover u3,u4]"; return 2; }
+    grupo="${DEBKIT_ARGS[0]}"
+    debkit_samba_cli_lista entrar "${DEBKIT_OPCOES[adicionar]:-}"
+    debkit_samba_cli_lista sair "${DEBKIT_OPCOES[remover]:-}"
+    if [ ${#entrar[@]} -eq 0 ] && [ ${#sair[@]} -eq 0 ]; then
+        debkit_grupo_gerenciado "$grupo" || { msg_erro "$(t grp.nao_gerenciado "$grupo")"; return 1; }
+        mapfile -t principais < <(debkit_grupo_principais "$grupo")
+        mapfile -t membros < <(debkit_grupo_membros "$grupo")
+        echo "  $(t cli.membros_atuais "$grupo")"
+        echo "    $(t grp.r_membros "$(debkit_juntar "${membros[@]}")")"
+        [ ${#principais[@]} -gt 0 ] && echo "    $(t grp.r_principais "$(debkit_juntar "${principais[@]}")")"
+        return 0
+    fi
+    debkit_samba_cli_alterar grupo membros "$grupo" || return 1
+    debkit_grupo_gerenciado "$grupo" || { msg_erro "$(t grp.nao_gerenciado "$grupo")"; return 1; }
+    DEBKIT_G_ENTRAR=("${entrar[@]}"); DEBKIT_G_SAIR=("${sair[@]}")
+    debkit_grupo_confirmar_membros "$grupo"
+}
+
+debkit_samba_cmd_grupo_remover() {
+    local grupo
+    debkit_cli_ler "" "" "$@" || return 2
+    [ ${#DEBKIT_ARGS[@]} -eq 1 ] || { debkit_samba_cli_uso "grupo remover <grupo>"; return 2; }
+    grupo="${DEBKIT_ARGS[0]}"
+    debkit_samba_cli_alterar grupo remover "$grupo" || return 1
+    debkit_grupo_gerenciado "$grupo" || { msg_erro "$(t grp.nao_gerenciado "$grupo")"; return 1; }
+    debkit_grupo_confirmar_remover "$grupo"
+}
+
+# ── Compartilhamentos ──
+debkit_samba_cmd_compartilhamento_listar() {
+    debkit_cli_ler "" "" "$@" || return 2
+    [ ${#DEBKIT_ARGS[@]} -eq 0 ] || { debkit_samba_cli_uso "compartilhamento listar"; return 2; }
+    debkit_shr_listar
+}
+
+debkit_samba_cmd_compartilhamento_criar() {
+    local nome comentario pasta grupo base problema
+    debkit_cli_ler "grupo pasta descricao base" "ajustar" "$@" || return 2
+    [ ${#DEBKIT_ARGS[@]} -eq 1 ] || { debkit_samba_cli_uso "compartilhamento criar <nome> --grupo <grupo> [opções]"; return 2; }
+    nome="${DEBKIT_ARGS[0]}"; grupo="${DEBKIT_OPCOES[grupo]:-}"; comentario="${DEBKIT_OPCOES[descricao]:-}"
+    [ -n "$grupo" ] || { msg_erro "$(t cli.falta_grupo)"; return 2; }
+    debkit_samba_cli_alterar compartilhamento criar "$nome" || return 1
+    problema=$(debkit_shr_nome_problema "$nome") || { msg_erro "$problema"; return 1; }
+    problema=$(debkit_shr_comentario_problema "$comentario") || { msg_erro "$problema"; return 1; }
+    debkit_samba_cli_todos_em cli.grupo_invalido debkit_samba_grupos_comuns "$grupo" || return 1
+    base="${DEBKIT_OPCOES[base]:-}"
+    if [ -z "$DEBKIT_SHARES_BASE" ] && [ -n "$base" ]; then
+        problema=$(debkit_shr_raiz_problema "$base") || { msg_erro "$problema"; return 1; }
+        confirmar "$(t shr.p_confirma_base "$base")" || { msg_aviso "$(t usr.cancelado)"; return 1; }
+        debkit_shr_definir_base "$base" || return 1
+    elif [ -n "$DEBKIT_SHARES_BASE" ] || [ -z "${DEBKIT_OPCOES[pasta]:-}" ]; then
+        if [ -z "$DEBKIT_SHARES_BASE" ]; then msg_erro "$(t cli.sem_base_shr "$(debkit_shr_sugerir_base)")"; return 1; fi
+        debkit_shr_garantir_base || return 1
+    fi
+    pasta="${DEBKIT_OPCOES[pasta]:-$DEBKIT_SHARES_BASE/$nome}"
+    problema=$(debkit_shr_pasta_problema "$pasta") || { msg_erro "$problema"; return 1; }
+    DEBKIT_S_NOME="$nome"; DEBKIT_S_COMENTARIO="$comentario"; DEBKIT_S_PASTA="$pasta"; DEBKIT_S_GRUPO="$grupo"
+    DEBKIT_SHR_AJUSTAR=0; [ -n "${DEBKIT_OPCOES[ajustar]:-}" ] && DEBKIT_SHR_AJUSTAR=1
+    debkit_shr_confirmar_criar
+}
+
+# Linha (nome|...) do compartilhamento <nome> na fonte (debkit_shr_<fonte>)
+debkit_samba_cli_shr() {
+    local -n _lin="$1"
+    _lin=$("debkit_shr_$2" | awk -F'|' -v n="$3" '$1 == n' | head -1)
+    [ -n "$_lin" ]
+}
+
+debkit_samba_cmd_compartilhamento_trocar_grupo() {
+    local linha nome pasta antigo novo
+    debkit_cli_ler "" "" "$@" || return 2
+    [ ${#DEBKIT_ARGS[@]} -eq 2 ] || { debkit_samba_cli_uso "compartilhamento trocar-grupo <nome> <grupo>"; return 2; }
+    novo="${DEBKIT_ARGS[1]}"
+    debkit_samba_cli_alterar compartilhamento trocar-grupo "${DEBKIT_ARGS[0]}" "$novo" || return 1
+    debkit_samba_cli_shr linha gerenciaveis "${DEBKIT_ARGS[0]}" || { msg_erro "$(t cli.shr_nao_gerenciavel "${DEBKIT_ARGS[0]}")"; return 1; }
+    IFS='|' read -r nome pasta antigo <<< "$linha"
+    [ "$novo" != "$antigo" ] || { msg_erro "$(t cli.mesmo_grupo "$nome" "$novo")"; return 1; }
+    debkit_samba_cli_todos_em cli.grupo_invalido debkit_samba_grupos_comuns "$novo" || return 1
+    debkit_shr_confirmar_trocar "$nome" "$pasta" "$antigo" "$novo"
+}
+
+debkit_samba_cmd_compartilhamento_ajustar() {
+    local linha nome pasta grupo
+    debkit_cli_ler "" "" "$@" || return 2
+    [ ${#DEBKIT_ARGS[@]} -eq 1 ] || { debkit_samba_cli_uso "compartilhamento ajustar <nome>"; return 2; }
+    debkit_samba_cli_alterar compartilhamento ajustar "${DEBKIT_ARGS[0]}" || return 1
+    debkit_samba_cli_shr linha gerenciaveis "${DEBKIT_ARGS[0]}" || { msg_erro "$(t cli.shr_nao_gerenciavel "${DEBKIT_ARGS[0]}")"; return 1; }
+    IFS='|' read -r nome pasta grupo <<< "$linha"
+    debkit_shr_confirmar_ajustar "$nome" "$pasta" "$grupo"
+}
+
+debkit_samba_cmd_compartilhamento_remover() {
+    local linha nome pasta esc lei
+    debkit_cli_ler "" "" "$@" || return 2
+    [ ${#DEBKIT_ARGS[@]} -eq 1 ] || { debkit_samba_cli_uso "compartilhamento remover <nome>"; return 2; }
+    debkit_samba_cli_alterar compartilhamento remover "${DEBKIT_ARGS[0]}" || return 1
+    debkit_samba_cli_shr linha dados "${DEBKIT_ARGS[0]}" || { msg_erro "$(t cli.shr_nao_existe "${DEBKIT_ARGS[0]}")"; return 1; }
+    IFS='|' read -r nome pasta esc lei _ <<< "$linha"
+    debkit_shr_confirmar_remover "$nome" "$pasta" "$esc" "$lei"
+}
+
+debkit_samba_cmd_compartilhamento_padronizar() {
+    local linha nome pasta esc lei novo
+    debkit_cli_ler "" "" "$@" || return 2
+    [ ${#DEBKIT_ARGS[@]} -eq 2 ] || { debkit_samba_cli_uso "compartilhamento padronizar <nome> <grupo>"; return 2; }
+    novo="${DEBKIT_ARGS[1]}"
+    debkit_samba_cli_alterar compartilhamento padronizar "${DEBKIT_ARGS[0]}" "$novo" || return 1
+    debkit_samba_cli_shr linha padronizaveis "${DEBKIT_ARGS[0]}" || { msg_erro "$(t cli.shr_nao_padronizavel "${DEBKIT_ARGS[0]}")"; return 1; }
+    IFS='|' read -r nome pasta esc lei _ <<< "$linha"
+    debkit_samba_cli_todos_em cli.grupo_invalido debkit_samba_grupos_comuns "$novo" || return 1
+    debkit_shr_confirmar_padronizar "$nome" "$pasta" "$esc" "$lei" "$novo"
+}
+
+# Base das pastas pessoais (só a primeira vez) e o [homes]
+debkit_samba_cmd_pastas_pessoais() {
+    local base problema
+    debkit_cli_ler "base" "" "$@" || return 2
+    [ ${#DEBKIT_ARGS[@]} -eq 0 ] || { debkit_samba_cli_uso "pastas-pessoais [--base <pasta>]"; return 2; }
+    base="${DEBKIT_OPCOES[base]:-}"
+    debkit_samba_cli_alterar pastas-pessoais "${base:+--base $base}" || return 1
+    if [ -z "$DEBKIT_HOMES_BASE" ]; then
+        [ -n "$base" ] || { msg_erro "$(t cli.sem_base_homes "$(debkit_samba_discos_dados | paste -sd' ')")"; return 1; }
+        problema=$(debkit_samba_base_problema "$base") || { msg_erro "$problema"; return 1; }
+        confirmar "$(t home.p_confirma_base "$base")" || { msg_aviso "$(t usr.cancelado)"; return 1; }
+        debkit_samba_definir_base "$base" || return 1
+    else
+        if [ -n "$base" ] && [ "$base" != "$DEBKIT_HOMES_BASE" ]; then
+            msg_erro "$(t cli.base_ja_definida "$DEBKIT_HOMES_BASE")"; return 1
+        fi
+        echo "  $(t home.base_atual "$DEBKIT_HOMES_BASE")"
+        if ! problema=$(debkit_samba_base_problema "$DEBKIT_HOMES_BASE"); then
+            msg_erro "$(t home.base_invalida_agora "$DEBKIT_HOMES_BASE" "$problema")"; return 1
+        fi
+    fi
+    echo ""
+    case "$(debkit_samba_homes_estado)" in
+        ok) msg_ok "$(t homes.estado_ok)" ;;
+        *)  debkit_samba_oferecer_homes ;;
+    esac
+}
+
+# ── Diagnóstico ──
+debkit_samba_cmd_diagnostico_sessoes() {
+    debkit_cli_ler "" "" "$@" || return 2
+    [ ${#DEBKIT_ARGS[@]} -eq 0 ] || { debkit_samba_cli_uso "diagnostico sessoes"; return 2; }
+    debkit_diag_mostrar_sessoes
+    return 0
+}
+
+debkit_samba_cmd_diagnostico_desconectar() {
+    debkit_cli_ler "" "" "$@" || return 2
+    if [ ${#DEBKIT_ARGS[@]} -ne 1 ] || [[ ! "${DEBKIT_ARGS[0]}" =~ ^[0-9]+$ ]]; then
+        debkit_samba_cli_uso "diagnostico desconectar <pid>"; return 2
+    fi
+    debkit_samba_cli_alterar diagnostico desconectar "${DEBKIT_ARGS[0]}" || return 1
+    debkit_diag_confirmar_desconectar "${DEBKIT_ARGS[0]}"
+}
+
+debkit_samba_cmd_diagnostico_logins() {
+    debkit_cli_ler "" "" "$@" || return 2
+    [ ${#DEBKIT_ARGS[@]} -eq 0 ] || { debkit_samba_cli_uso "diagnostico logins"; return 2; }
+    debkit_diag_tela_logins
+}
+
+debkit_samba_cmd_diagnostico_saude() {
+    debkit_cli_ler "" "" "$@" || return 2
+    [ ${#DEBKIT_ARGS[@]} -eq 0 ] || { debkit_samba_cli_uso "diagnostico saude"; return 2; }
+    debkit_diag_tela_saude
+}
+
+debkit_samba_cmd_diagnostico_auditoria() {
+    local periodo tipo
+    debkit_cli_ler "dias dia afetado tipo" "" "$@" || return 2
+    [ ${#DEBKIT_ARGS[@]} -eq 0 ] || { debkit_samba_cli_uso "diagnostico auditoria [opções]"; return 2; }
+    if [ -n "${DEBKIT_OPCOES[dias]:-}" ] && [ -n "${DEBKIT_OPCOES[dia]:-}" ]; then msg_erro "$(t cli.um_periodo)"; return 2; fi
+    periodo="${DEBKIT_OPCOES[dia]:-${DEBKIT_OPCOES[dias]:-$DEBKIT_AUD_DIAS}}"
+    if [ -n "${DEBKIT_OPCOES[dias]:-}" ] && [[ ! "$periodo" =~ ^[0-9]+$ ]]; then msg_erro "$(t aud.periodo_invalido "$periodo")"; return 2; fi
+    debkit_aud_periodo "$periodo" || { msg_erro "$(t aud.periodo_invalido "$periodo")"; return 2; }
+    tipo="${DEBKIT_OPCOES[tipo]:-}"
+    case "$tipo" in
+        ""|usuarios|grupos|sessoes|preparacao|uso) ;;
+        compartilhamentos|shr) tipo=shr ;;
+        *) msg_erro "$(t cli.tipo_aud_invalido "$tipo")"; return 2 ;;
+    esac
+    titulo "$(t diag.titulo_auditoria)"
+    if [ ! -s "$DEBKIT_LOG" ]; then msg_info "$(t aud.sem_log "$DEBKIT_LOG")"; return 0; fi
+    debkit_aud_mostrar "$DEBKIT_AUD_DESDE" "$DEBKIT_AUD_ATE" "${DEBKIT_OPCOES[afetado]:-}" "$tipo" "$DEBKIT_AUD_ROTULO"
 }
 
 # ── Menu ────────────────────────────────────────────────────────────────────

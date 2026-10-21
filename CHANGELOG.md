@@ -32,6 +32,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   backup é 600).
 
 ### Corrigido
+- Num servidor novo, o primeiro `--preparar` instalava o Samba mas deixava
+  para uma segunda vez as configurações que dependem dele (`map to guest`,
+  log de autenticação). Agora verifica de novo depois de instalar e mostra
+  o que faltou.
+- Verificar e corrigir contas: as frases dos itens apareciam repetidas na
+  mesma linha.
 - Com o SSH instalado mas parado, a proteção SSH não era aplicada ("a
   configuração do SSH ficou inválida") e a verificação não a via: o
   `sshd -t`/`-T` exige a pasta `/run/sshd`, que só existe com o serviço no
@@ -68,6 +74,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   procura o `include` pelo caminho exato do sandbox.
 
 ### Adicionado
+- **Comandos diretos** para todas as ações do menu, para scripts e cron:
+  `debkit samba <grupo> <ação> [argumentos] [--sim]` (lista:
+  `debkit samba --ajuda`). Mesmas validações, resumo e confirmação do menu
+  (`--sim` responde "s"); senhas pela entrada padrão, nunca na linha de
+  comando; códigos de saída 0/1/2. `debkit --preparar --sim` prepara sem
+  perguntar.
 - **Rotação do log de auditoria** (`/var/log/debkit.log`): a preparação
   cria a regra `/etc/logrotate.d/debkit` (todo mês, 24 meses compactados;
   chave `LOG_LOGROTATE`).

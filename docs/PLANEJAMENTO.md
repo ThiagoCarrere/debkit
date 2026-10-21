@@ -570,6 +570,57 @@ Prova real na VM (21/10/2026): o `--preparar` mostrou só esse item e
 criou a regra; o `logrotate -d` a aceita. Testes: `t26_log_rotacao.sh` (o
 logrotate de verdade gira o log do sandbox e a auditoria lê o girado).
 
+**Como ficou a 4.2 (comandos diretos):** `debkit samba <grupo> <ação>
+[argumentos] [--sim]` (a lista completa: `debkit samba --ajuda`):
+
+| Grupo | Ações |
+|---|---|
+| `usuario` | `listar` · `criar <login> [--nome] [--tipo arquivos\|servidor] [--grupos] [--pasta-pessoal] [--senha-linux-diferente]` · `senha <login> [--samba\|--linux\|--ambas]` · `pasta-pessoal <login>` · `excluir <login>` · `conferir [--corrigir]` |
+| `grupo` | `listar` · `criar <grupo> [--membros]` · `membros <grupo> [--adicionar] [--remover]` · `remover <grupo>` |
+| `compartilhamento` | `listar` · `criar <nome> --grupo <g> [--pasta] [--descricao] [--base] [--ajustar]` · `trocar-grupo <nome> <g>` · `ajustar <nome>` · `remover <nome>` · `padronizar <nome> <g>` |
+| `pastas-pessoais` | `[--base <pasta>]` (a base, só a primeira vez, e o `[homes]`) |
+| `diagnostico` | `sessoes` · `desconectar <pid>` · `logins` · `saude` · `auditoria [--dias N\|--dia dd/mm/aaaa] [--afetado] [--tipo]` |
+
+1. **O menu continua** a forma principal. Cada tela e o comando chamam a
+   mesma função de "resumo + UMA confirmação + ação" (ex:
+   `debkit_usuario_confirmar_criar`, `debkit_shr_confirmar_trocar`): o
+   texto, as validações e o desfazer são os mesmos.
+2. **Confirmação:** a mesma pergunta s/n do menu (lida da entrada padrão);
+   `--sim` responde "s" e a resposta aparece na saída. Num compartilhamento
+   criado numa pasta com conteúdo, o ajuste das permissões só com
+   `--ajustar` (senão o comando diz como ajustar depois).
+3. **Senhas** nunca na linha de comando: no terminal, perguntadas sem eco
+   e duas vezes; fora do terminal (script), uma por linha da entrada
+   padrão (`printf '%s\n' "$SENHA" | debkit samba usuario criar ...`).
+4. **Trava e auditoria:** o que altera abre uma sessão como o menu (trava;
+   `sessao_inicio ... comando: samba usuario criar ana` e `sessao_fim`) e
+   exige o ambiente preparado ("Rode: debkit --preparar"); o que só lê não
+   trava nem grava no log. A base das pastas pessoais e a dos
+   compartilhamentos, na primeira vez, vêm por `--base` (não há a quem
+   perguntar).
+5. **Saída:** 0 certo; 1 recusado, cancelado ou falhou; 2 uso errado.
+   `diagnostico saude` sai com 1 se houver problema e `usuario conferir`
+   (sem `--corrigir`) se houver algo fora do padrão: servem para monitorar.
+6. `debkit --preparar --sim` prepara sem perguntar (ex: num script de
+   instalação).
+Os nomes dos comandos são em português; os em inglês entram na 4.5.
+Achado na 4.2 (corrigido): na tela de Consistência, as frases com um `%s`
+só apareciam repetidas (o grupo de proteção ia como argumento a mais e o
+`printf` repetia a frase); agora o `t` ignora argumentos a mais. Prova real
+(`t27b`): grupo, usuários e compartilhamento criados pelos comandos com
+`--sim`; o membro grava, o de fora é recusado até `grupo membros
+--adicionar`, a senha trocada pelo comando vale e a antiga não; tudo
+removido pelos comandos e o smb.conf real volta idêntico.
+
+**Achado do CI na 4.2 (corrigido):** num servidor novo, sem o Samba, o
+primeiro `--preparar` instalava o Samba mas não avaliava os itens que
+dependem dele (`map to guest`, log de autenticação): ficavam para uma
+segunda preparação (o menu os oferecia na abertura seguinte). Agora, se a
+preparação instalou pacotes, ela verifica de novo e, se faltar algo, mostra
+e pergunta outra vez (com `--sim`, segue). Na VM e no container local o
+Samba já estava instalado, por isso só o CI (servidor novo de verdade)
+mostrou.
+
 ## 4. O que o debkit gerencia
 
 Decisão de 15/10/2026 (substitui a regra anterior "só gerencia o que ele
@@ -741,7 +792,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 
 ## 11. Situação atual e próximos passos
 
-*Atualizado em 21/10/2026 (4.1).*
+*Atualizado em 21/10/2026 (4.2).*
 
 - Nome decidido: **debkit**; renomeação gsb → debkit feita (arquivos,
   variáveis, funções, grupo `debkit_usuarios`, `/etc/debkit`, testes). As
@@ -802,7 +853,8 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | 3.4 Consulta à auditoria | `cb07c7a` |
 | Fase 4 decidida | `3fd3dc7` |
 | 4.0 CI no GitHub | `ae621bd` |
-| 4.1 Rotação do log do debkit (+ sshd com o SSH parado) | (a preencher) |
+| 4.1 Rotação do log do debkit (+ sshd com o SSH parado) | `882cb1f` |
+| 4.2 Comandos diretos | (a preencher) |
 
 **Próximos passos:**
 
@@ -914,7 +966,8 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 31. ✔ Fase 4 decidida (seção 3.9).
 32. ✔ 4.0 CI no GitHub (seção 3.9; `dev/ci.sh`).
 33. ✔ 4.1 rotação do log do debkit (seção 3.9).
-34. **Próxima tarefa:** 4.2 comandos diretos.
+34. ✔ 4.2 comandos diretos (seção 3.9).
+35. **Próxima tarefa:** 4.3 `install.sh`.
 
 **VM limpa de novo:** `dev/vmnova.sh` → (reinicia) → `dev/vmprepara.sh` →
 `./debkit --preparar` → testes.
@@ -927,6 +980,7 @@ DEBKIT_TESTE_REAL=1 tests/run.sh t04b_ssh_real.sh    # prova com o SSH real
 DEBKIT_TESTE_REAL=1 tests/run.sh t05b_ufw_real.sh    # prova com o ufw real (instalado e INATIVO)
 DEBKIT_TESTE_REAL=1 tests/run.sh t07b_usuario_real.sh  # login real no Samba e no SSH (ambiente real preparado)
 DEBKIT_TESTE_REAL=1 tests/run.sh t09b_home_real.sh   # [homes] real com disco de teste (smb.conf volta idêntico)
+DEBKIT_TESTE_REAL=1 tests/run.sh t*b_*.sh            # todas as provas reais
 shellcheck -x debkit lib/*.sh modulos/*.sh           # cada arquivo (o -x sozinho não mostra os avisos dos carregados)
 dev/ci.sh [--reais]                                  # a suíte num Debian 13 novo, em container (como o GitHub)
 ```
@@ -987,6 +1041,13 @@ os arquivos reais do debkit não existam, conferem que não mudaram
   `ufw allow` com o ufw inativo cria tabelas nft vazias);
 - em operações sobre serviços sensíveis (SSH), validar antes de recarregar
   e desfazer só o que a operação realmente fez.
+
+**Cuidado aprendido na tarefa 4.2:** um comando que percorre "todos" (ex:
+`usuario conferir --corrigir`) enxerga, no sandbox, os usuários REAIS da
+máquina (os usuários são do sistema; só a base do Samba e o grupo de
+proteção são do sandbox). Com `--sim` ele "corrigiria" contas reais na base
+e no grupo do sandbox: nada real mudou (conferido), mas o teste agora só
+usa `--corrigir` respondendo "não" a tudo.
 
 **Cuidados aprendidos na tarefa 1.0:**
 

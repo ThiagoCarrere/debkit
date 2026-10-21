@@ -181,6 +181,43 @@ declare -A MSG_pt_BR=(
     [geral.interrompido]="Interrompido. Nada mais foi feito."
     [erro.root]="Este comando precisa ser executado como root (ex: sudo debkit)."
     [erro.uso]="Opção desconhecida: '%s'. Veja: debkit --ajuda"
+    [cli.sim_resposta]="s (--sim)"
+    [inst.titulo]="debkit %s - instalação"
+    [inst.ajuda]="Uso: sudo ./install.sh [--sim] [--simular]
+
+Instala (ou atualiza) o debkit em %s, com o comando %s.
+  --sim        responde \"s\" às perguntas (instala e prepara o servidor)
+  --simular    mostra o que faria, sem fazer nada
+  -h, --ajuda  mostra esta ajuda
+
+A configuração (/etc/debkit), o log e os backups não são tocados.
+Para desinstalar: debkit --desinstalar"
+    [inst.opcao]="Opção desconhecida: '%s' (veja: ./install.sh --ajuda)"
+    [inst.destino_invalido]="Pasta de instalação inválida: '%s' (caminho completo, sem espaços nem ..)"
+    [inst.dentro]="A pasta de instalação %s e a pasta de onde se instala %s não podem estar uma dentro da outra."
+    [inst.destino_git]="%s é um repositório git do debkit: atualize com \"git -C %s pull\" e rode o install.sh de lá."
+    [inst.destino_alheio]="%s já existe e não é uma instalação do debkit: nada foi feito."
+    [inst.link_alheio]="%s já existe e não aponta para %s: nada foi feito."
+    [inst.plano]="O instalador vai:"
+    [inst.p_novo]="Copiar o debkit %s para %s (só o programa: dono root, sem escrita para grupo/outros)"
+    [inst.p_atualizar]="Atualizar %s (de %s para %s); a configuração em %s não muda"
+    [inst.p_no_lugar]="Usar o debkit que já está em %s (conferir que tudo é do root e sem escrita para grupo/outros)"
+    [inst.p_link]="Criar o comando %s (link para %s)"
+    [inst.link_ok]="O comando %s já aponta para esta instalação."
+    [inst.pergunta]="Instalar agora?"
+    [inst.cancelado]="Cancelado. Nada foi feito."
+    [inst.simulacao]="(simulação: nada foi feito)"
+    [inst.falhou]="A instalação falhou: %s. %s ficou como estava."
+    [inst.f_copiar]="não foi possível copiar os arquivos"
+    [inst.f_conferir]="a cópia não funciona (debkit --versao)"
+    [inst.f_trocar]="não foi possível pôr a cópia nova no lugar"
+    [inst.f_permissoes]="não foi possível ajustar dono e permissões"
+    [inst.f_link]="não foi possível criar o comando %s"
+    [inst.ok]="debkit %s instalado em %s. Comando: %s"
+    [inst.p_preparar]="Preparar o servidor agora (debkit --preparar)?"
+    [inst.depois]="Quando quiser: sudo debkit --preparar (ou abra o menu: sudo debkit)"
+    [cli.uso]="Uso incorreto: %s. Veja: %s"
+    [cli.sim_onde]="--sim só vale para --preparar e para os comandos dos módulos"
     [erro.conf]="Configuração inválida em %s:"
     [aviso.conf]="Avisos da configuração %s:"
     [erro.trava]="O debkit já está em uso por outra sessão (PID %s). Tente novamente quando ela terminar."
@@ -236,6 +273,7 @@ declare -A MSG_pt_BR=(
     [prep.recusado]="Nada foi alterado. O debkit vai funcionar de forma limitada até o ambiente ser preparado (menu 9)."
     [prep.nada_a_fazer]="O ambiente já está preparado. Nada a fazer."
     [prep.concluido]="Ambiente preparado com sucesso."
+    [prep.mais_itens]="Com os pacotes instalados, o debkit verificou de novo e falta mais isto:"
     [prep.falhou]="Falhou: %s"
     [prep.desfazendo]="Desfazendo o que o debkit já tinha feito..."
     [prep.mantidos_pacotes]="Os pacotes instalados foram mantidos: %s"
@@ -261,6 +299,7 @@ declare -A MSG_pt_BR=(
     [prep.fw_falhou]="Não foi possível criar a regra no %s (%s)."
     [prep.fw_nao_confirmada]="A liberação do Samba não foi confirmada no firewall."
     [ajuda.texto]="Uso: debkit [opção]
+       debkit <módulo> <comando> [argumentos] [--sim]
 
   (sem opção)    abre o menu interativo (precisa ser root)
   --verificar    verifica o ambiente, sem alterar nada (precisa ser root)
@@ -268,8 +307,12 @@ declare -A MSG_pt_BR=(
   -h, --ajuda    mostra esta ajuda
   -v, --versao   mostra a versão
 
+Comandos diretos (as mesmas ações do menu, para scripts e cron):
+  debkit samba --ajuda    lista os comandos do módulo samba
+  --sim                   responde \"s\" às confirmações (ex: em scripts)
+
 Configuração: %s
-Documentação: docs/PLANEJAMENTO.md"
+Documentação: https://github.com/ThiagoCarrere/debkit"
 )
 
 declare -A MSG_en=(
@@ -285,6 +328,43 @@ declare -A MSG_en=(
     [geral.interrompido]="Interrupted. Nothing else was done."
     [erro.root]="This command must be run as root (e.g. sudo debkit)."
     [erro.uso]="Unknown option: '%s'. See: debkit --help"
+    [cli.sim_resposta]="y (--yes)"
+    [inst.titulo]="debkit %s - installation"
+    [inst.ajuda]="Usage: sudo ./install.sh [--yes] [--dry-run]
+
+Installs (or updates) debkit in %s, with the command %s.
+  --yes        answers \"y\" to the questions (installs and sets up the server)
+  --dry-run    shows what it would do, without doing anything
+  -h, --help   shows this help
+
+The configuration (/etc/debkit), the log and the backups are not touched.
+To uninstall: debkit --uninstall"
+    [inst.opcao]="Unknown option: '%s' (see: ./install.sh --help)"
+    [inst.destino_invalido]="Invalid installation folder: '%s' (full path, no spaces or ..)"
+    [inst.dentro]="The installation folder %s and the folder being installed from %s cannot be one inside the other."
+    [inst.destino_git]="%s is a debkit git repository: update it with \"git -C %s pull\" and run install.sh from there."
+    [inst.destino_alheio]="%s already exists and is not a debkit installation: nothing was done."
+    [inst.link_alheio]="%s already exists and does not point to %s: nothing was done."
+    [inst.plano]="The installer will:"
+    [inst.p_novo]="Copy debkit %s to %s (the program only: owned by root, no write for group/others)"
+    [inst.p_atualizar]="Update %s (from %s to %s); the configuration in %s does not change"
+    [inst.p_no_lugar]="Use the debkit already in %s (check that everything belongs to root, with no write for group/others)"
+    [inst.p_link]="Create the command %s (link to %s)"
+    [inst.link_ok]="The command %s already points to this installation."
+    [inst.pergunta]="Install now?"
+    [inst.cancelado]="Cancelled. Nothing was done."
+    [inst.simulacao]="(dry run: nothing was done)"
+    [inst.falhou]="The installation failed: %s. %s was left as it was."
+    [inst.f_copiar]="could not copy the files"
+    [inst.f_conferir]="the copy does not work (debkit --version)"
+    [inst.f_trocar]="could not put the new copy in place"
+    [inst.f_permissoes]="could not adjust owner and permissions"
+    [inst.f_link]="could not create the command %s"
+    [inst.ok]="debkit %s installed in %s. Command: %s"
+    [inst.p_preparar]="Set up the server now (debkit --setup)?"
+    [inst.depois]="Whenever you want: sudo debkit --setup (or open the menu: sudo debkit)"
+    [cli.uso]="Incorrect usage: %s. See: %s"
+    [cli.sim_onde]="--yes only applies to --setup and to module commands"
     [erro.conf]="Invalid configuration in %s:"
     [aviso.conf]="Configuration warnings in %s:"
     [erro.trava]="debkit is already in use by another session (PID %s). Try again when it finishes."
@@ -340,6 +420,7 @@ declare -A MSG_en=(
     [prep.recusado]="Nothing was changed. debkit will work in a limited way until the environment is set up (menu 9)."
     [prep.nada_a_fazer]="The environment is already set up. Nothing to do."
     [prep.concluido]="Environment set up successfully."
+    [prep.mais_itens]="With the packages installed, debkit checked again and this is still missing:"
     [prep.falhou]="Failed: %s"
     [prep.desfazendo]="Undoing what debkit had already done..."
     [prep.mantidos_pacotes]="The installed packages were kept: %s"
@@ -365,6 +446,7 @@ declare -A MSG_en=(
     [prep.fw_falhou]="Could not create the rule on %s (%s)."
     [prep.fw_nao_confirmada]="The Samba rule could not be confirmed in the firewall."
     [ajuda.texto]="Usage: debkit [option]
+       debkit <module> <command> [arguments] [--yes]
 
   (no option)    opens the interactive menu (requires root)
   --check        checks the environment without changing anything (requires root)
@@ -372,8 +454,12 @@ declare -A MSG_en=(
   -h, --help     shows this help
   -v, --version  shows the version
 
+Direct commands (the same actions as the menu, for scripts and cron):
+  debkit samba --help     lists the commands of the samba module
+  --yes                   answers \"y\" to the confirmations (e.g. in scripts)
+
 Configuration: %s
-Documentation: docs/PLANEJAMENTO.md"
+Documentation: https://github.com/ThiagoCarrere/debkit"
 )
 
 # Imprime a mensagem <chave> formatada com os argumentos (sem quebra de linha)
@@ -387,6 +473,11 @@ t() {
     else
         formato="$chave"
     fi
+    # Argumentos a mais que os "%" do formato fariam o printf repetir a frase
+    # inteira (em outro idioma a frase pode usar menos): sobram, são ignorados
+    local so="${formato//%%/}"
+    so="${so//[^%]/}"
+    [ $# -gt "${#so}" ] && set -- "${@:1:${#so}}"
     # shellcheck disable=SC2059  # o formato vem do catálogo (confiável)
     printf -- "$formato" "$@"
 }
@@ -411,8 +502,10 @@ msg_info()  { printf '%s>>%s %s\n' "$C_CIANO" "$C_RESET" "$*"; }
 msg_aviso() { printf '%s>> [!]%s %s\n' "$C_AMARELO" "$C_RESET" "$*"; }
 msg_erro()  { printf '%s>> [X]%s %s\n' "$C_VERMELHO" "$C_RESET" "$*" >&2; }
 
-# Título de tela: limpa a tela (se for terminal) e mostra o título
+# Título de tela: limpa a tela (se for terminal) e mostra o título. Nos
+# comandos diretos (DEBKIT_CLI=1) não há tela: só o título, sem limpar.
 titulo() {
+    if [ "${DEBKIT_CLI:-0}" -eq 1 ]; then printf '%s%s%s\n\n' "$C_NEGRITO" "$*" "$C_RESET"; return 0; fi
     [ -t 1 ] && clear
     printf '%s%s%s\n' "$C_CIANO" "$DEBKIT_LINHA" "$C_RESET"
     printf '%s  %s%s\n' "$C_NEGRITO" "$*" "$C_RESET"
@@ -423,15 +516,18 @@ titulo() {
 # 5. UTILITÁRIOS
 # ════════════════════════════════════════════════════════════════════════════
 
-# Espera Enter antes de voltar ao menu
+# Espera Enter antes de voltar ao menu (nos comandos diretos não há menu)
 pausar() {
+    [ "${DEBKIT_CLI:-0}" -eq 1 ] && return 0
     echo ""
     read -rp "$(t geral.enter_voltar)" _ || true
 }
 
 # Pergunta sim/não. Retorna 0 só para s/S/y/Y (fim da entrada = não).
+# Com --sim nos comandos diretos (DEBKIT_SIM=1) a resposta é "s" (e aparece).
 confirmar() {
     local resp
+    if [ "${DEBKIT_SIM:-0}" -eq 1 ]; then printf '%s %s: %s\n' "$1" "$(t geral.sim_nao)" "$(t cli.sim_resposta)"; return 0; fi
     read -rp "$1 $(t geral.sim_nao): " resp || return 1
     [[ "$resp" =~ ^[SsYy]$ ]]
 }
@@ -1592,12 +1688,34 @@ debkit_preparar() {
         return 1
     fi
     debkit_auditar preparar "plano=$plano_txt resposta=sim"
-    if debkit_executar_plano; then
-        echo ""
-        msg_ok "$(t prep.concluido)"
-        return 0
+    debkit_executar_plano || return 1
+    # Com pacotes instalados agora, o que depende deles (ex: as configurações
+    # do Samba) só pôde ser avaliado depois: verifica de novo e, se houver
+    # mais o que fazer, mostra e pergunta outra vez
+    if [[ ",$plano_txt," == *",pacotes,"* ]]; then
+        debkit_verificar_ambiente
+        debkit_montar_plano
+        if [ -n "$DEBKIT_PLANO_IMPOSSIVEL" ]; then
+            msg_erro "$DEBKIT_PLANO_IMPOSSIVEL"
+            return 1
+        fi
+        if [ ${#DEBKIT_PLANO[@]} -gt 0 ]; then
+            plano_txt=$(IFS=,; echo "${DEBKIT_PLANO[*]}")
+            echo ""
+            msg_info "$(t prep.mais_itens)"
+            debkit_mostrar_plano
+            if ! confirmar "$(t prep.pergunta)"; then
+                debkit_auditar preparar "plano=$plano_txt resposta=nao"
+                msg_aviso "$(t prep.recusado)"
+                return 1
+            fi
+            debkit_auditar preparar "plano=$plano_txt resposta=sim"
+            debkit_executar_plano || return 1
+        fi
     fi
-    return 1
+    echo ""
+    msg_ok "$(t prep.concluido)"
+    return 0
 }
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -1711,9 +1829,78 @@ debkit_iniciar_conf() {
     fi
 }
 
+# Comandos diretos: começa a "sessão" de um comando que altera algo (como
+# a do menu): trava contra outra execução, auditoria de início/fim e
+# limpeza ao sair. Os comandos que só leem não chamam (como o --verificar).
+debkit_cli_sessao() {
+    trap debkit_ao_sair EXIT
+    trap 'echo; msg_aviso "$(t geral.interrompido)"; DEBKIT_MOTIVO_SAIDA="interrompida"; exit 130' INT TERM
+    debkit_travar || return 1
+    debkit_auditar sessao_inicio "v$DEBKIT_VERSAO comando: $*"
+    DEBKIT_SESSAO_ATIVA=1
+}
+
+# Lê os argumentos de um comando direto:
+#   debkit_cli_ler "<opções com valor>" "<opções sem valor>" "$@"
+# (nomes sem o "--", separados por espaço). "--opcao valor" ou
+# "--opcao=valor"; o resto vai, na ordem, para DEBKIT_ARGS. As opções ficam em
+# DEBKIT_OPCOES[nome] (as sem valor, com 1). Opção desconhecida ou sem valor:
+# mensagem e retorna 1. "--" encerra as opções.
+# shellcheck disable=SC2034  # DEBKIT_OPCOES é lido pelos módulos
+declare -A DEBKIT_OPCOES=()
+DEBKIT_ARGS=()
+# shellcheck disable=SC2034
+debkit_cli_ler() {
+    local com=" $1 " sem=" $2 " a nome
+    shift 2
+    DEBKIT_OPCOES=(); DEBKIT_ARGS=()
+    while [ $# -gt 0 ]; do
+        a="$1"; shift
+        case "$a" in
+            --) DEBKIT_ARGS+=("$@"); break ;;
+            --?*=*)
+                nome="${a%%=*}"; nome="${nome#--}"
+                if [[ "$com" != *" $nome "* ]]; then msg_erro "$(t cli.opcao_desconhecida "${a%%=*}")"; return 1; fi
+                DEBKIT_OPCOES[$nome]="${a#*=}" ;;
+            --?*)
+                nome="${a#--}"
+                if [[ "$com" == *" $nome "* ]]; then
+                    if [ $# -eq 0 ]; then msg_erro "$(t cli.falta_valor "$a")"; return 1; fi
+                    DEBKIT_OPCOES[$nome]="$1"; shift
+                elif [[ "$sem" == *" $nome "* ]]; then
+                    DEBKIT_OPCOES[$nome]=1
+                else
+                    msg_erro "$(t cli.opcao_desconhecida "$a")"; return 1
+                fi ;;
+            -?*) msg_erro "$(t cli.opcao_desconhecida "$a")"; return 1 ;;
+            *)   DEBKIT_ARGS+=("$a") ;;
+        esac
+    done
+}
+
+# Módulo com comandos diretos (gancho debkit_<nome>_comando)?
+debkit_modulo_com_comandos() {
+    local m
+    for m in "${DEBKIT_MODULOS[@]}"; do
+        [ "$m" == "$1" ] && declare -F "debkit_${m}_comando" >/dev/null && return 0
+    done
+    return 1
+}
+
 main() {
     # Idioma por variável de ambiente tem prioridade (útil em testes)
-    local idioma_env="${DEBKIT_IDIOMA:-}"
+    local idioma_env="${DEBKIT_IDIOMA:-}" arg modulo=""
+    local -a args=()
+
+    # --sim (--yes) vale em qualquer posição
+    DEBKIT_SIM=0; DEBKIT_CLI=0
+    for arg in "$@"; do
+        case "$arg" in
+            --sim|--yes) DEBKIT_SIM=1 ;;
+            *)           args+=("$arg") ;;
+        esac
+    done
+    set -- "${args[@]}"
 
     # Ajuda e versão funcionam mesmo com a configuração com erro (é
     # justamente quando o administrador mais precisa delas)
@@ -1736,13 +1923,30 @@ main() {
     fi
 
     case "${1:-}" in
-        ""|--verificar|--check|--preparar|--setup) ;;
-        *) msg_erro "$(t erro.uso "$1")"; exit 2 ;;
+        --preparar|--setup) ;;
+        ""|--verificar|--check)
+            if [ "$DEBKIT_SIM" -eq 1 ]; then msg_erro "$(t cli.sim_onde)"; exit 2; fi ;;
+        -*) msg_erro "$(t erro.uso "$1")"; exit 2 ;;
+        *)  if debkit_modulo_com_comandos "$1"; then modulo="$1"; shift
+            else msg_erro "$(t erro.uso "$1")"; exit 2; fi ;;
     esac
+
+    # Comandos diretos de um módulo (a ajuda dele não precisa de root)
+    if [ -n "$modulo" ]; then
+        DEBKIT_CLI=1
+        case "${1:-}" in
+            ""|-h|--ajuda|--help) "debkit_${modulo}_comando" --ajuda; exit $? ;;
+        esac
+    fi
 
     if [ "$EUID" -ne 0 ]; then
         msg_erro "$(t erro.root)"
         exit 1
+    fi
+
+    if [ -n "$modulo" ]; then
+        "debkit_${modulo}_comando" "$@"
+        exit $?
     fi
 
     # Verificação do ambiente (somente leitura: sem trava nem auditoria)

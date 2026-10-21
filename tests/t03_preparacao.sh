@@ -160,6 +160,28 @@ caso "pacotes: falha não desfaz nada que não foi feito e para o plano"
 rm -f "$SANDBOX/instalado"
 saida=$(FAKE_INSTALL_RC=100 g "$APT debkit_verificar_ambiente >/dev/null; DEBKIT_PLANO=(pacotes dir_conf); debkit_executar_plano")
 verdadeiro "dir_conf não executado" test ! -e "$SANDBOX/etc/debkit"
+# Fluxo do debkit_preparar com pacotes: o que depende deles só se avalia
+# depois (achado do CI: num servidor novo as configurações do Samba ficavam
+# para uma segunda preparação). Verificação, plano e execução simulados.
+FLUXO="debkit_verificar_ambiente() { :; }; N=0
+       debkit_montar_plano() { N=\$((N + 1)); DEBKIT_PLANO_IMPOSSIVEL=''; if [ \$N -eq 1 ]; then DEBKIT_PLANO=(pacotes dir_conf); else DEBKIT_PLANO=(\${SEGUNDO:-}); fi; }
+       debkit_executar_plano() { echo \"EXEC=\${DEBKIT_PLANO[*]}\"; }
+       debkit_descrever_acao() { echo \"item \$1\"; };"
+caso "preparar com pacotes: verifica de novo e mostra o que faltou (outra pergunta)"
+saida=$(printf 's\ns\n' | SEGUNDO=samba_sem_convidado g "$FLUXO debkit_preparar; echo RC=\$?")
+contem "EXEC=pacotes dir_conf" "$saida"; contem "Com os pacotes instalados, o debkit verificou de novo" "$saida"
+contem "item samba_sem_convidado" "$saida"; contem "EXEC=samba_sem_convidado" "$saida"; contem "RC=0" "$saida"
+contem "plano=samba_sem_convidado resposta=sim" "$(cat "$SANDBOX/debkit.log")"
+caso "preparar com pacotes: segunda pergunta respondida n"
+saida=$(printf 's\nn\n' | SEGUNDO=samba_sem_convidado g "$FLUXO debkit_preparar; echo RC=\$?")
+nao_contem "EXEC=samba_sem_convidado" "$saida"; contem "Nada foi alterado" "$saida"; contem "RC=1" "$saida"
+caso "preparar com pacotes: nada mais a fazer = uma pergunta só"
+saida=$(printf 's\n' | SEGUNDO="" g "$FLUXO debkit_preparar; echo RC=\$?")
+nao_contem "verificou de novo" "$saida"; contem "Ambiente preparado com sucesso" "$saida"; contem "RC=0" "$saida"
+caso "preparar sem pacotes: não verifica de novo"
+saida=$(printf 's\n' | SEGUNDO=samba_sem_convidado g "${FLUXO/pacotes dir_conf/dir_conf} debkit_preparar; echo RC=\$?")
+nao_contem "verificou de novo" "$saida"; contem "RC=0" "$saida"
+
 caso "linha de comando real do apt-get é válida (simulação -s)"
 verdadeiro "apt-get -s aceita as opções" env DEBIAN_FRONTEND=noninteractive apt-get -s -o DPkg::Lock::Timeout=120 \
     -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold install -y --no-install-recommends samba samba-common-bin
