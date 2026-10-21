@@ -6,6 +6,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 ## [Não lançado]
 
 ### Alterado
+- README novo em português e em inglês (`README.en.md`): instalação pelo
+  `install.sh`, comandos diretos, idioma e o CI.
 - Remover um grupo usado no `smb.conf` agora é recusado (antes era só um
   aviso): troque o grupo do compartilhamento ou remova-o antes.
 - **Menu do Samba em submenus:** 1) Usuários (listar, criar, trocar senha,

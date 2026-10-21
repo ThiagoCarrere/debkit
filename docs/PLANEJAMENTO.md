@@ -698,6 +698,16 @@ mesmas e que toda chave citada no código existe). O que mudou:
    sandbox); `t30_ingles.sh` percorre o menu e as telas só de leitura em
    inglês e confere que não sobra português.
 
+**Como ficou a 4.6 (README e versão 1.0):** `README.md` (pt) e
+`README.en.md` (en), com link de um para o outro: o selo do CI (da `main`),
+a instalação pelo `install.sh` (atualizar, verificar, desinstalar),
+exemplos de comandos diretos, o idioma, a qualidade (suíte, provas reais e
+CI) e o roteiro com a Fase 4 concluída. O aviso "em desenvolvimento" virou
+uma nota ("teste antes numa VM"). **Falta só o lançamento, que é decisão do
+Thiago:** a versão no código (`DEBKIT_VERSAO`, hoje `0.1.0-dev`) e no
+CHANGELOG (a seção "Não lançado" vira "[1.0.0] - data"), a `main` recebe a
+`dev` (fast-forward) e a tag `v1.0.0`.
+
 ## 4. O que o debkit gerencia
 
 Decisão de 15/10/2026 (substitui a regra anterior "só gerencia o que ele
@@ -834,7 +844,7 @@ debkit/
 | 1. Usuários e grupos | 1.0 reestruturar ✔ (núcleo + módulo `samba.sh`; tirar `include`/`SHARES_CONF`/`PREFIXO_GRUPO`; faixas do `login.defs`; backup do `smb.conf` em `conf-bkp` com rotação) · 1.1 criar usuário ✔ (tipos, nome completo, grupos; sem home) · 1.1b pasta pessoal ✔ (base no disco de dados, na criação ou depois, `[homes]`) · listar ✔ · trocar senha ✔ · grupos ✔ (criar, remover, entrar/sair) · menu em submenus ✔ · excluir usuário ✔ · consistência Linux x Samba ✔ · ~~desativar/reativar~~ (adiado, 3.4) |
 | 2. Compartilhamentos | decisões na seção 3.7 · 2.0 `map to guest = never` ✔ · 2.1 criar + listar ✔ · 2.2 grupo e permissões (trocar o grupo, ajustar o conteúdo) ✔ · 2.3 remover ✔ · 2.4 os já existentes ✔ |
 | 3. Diagnóstico | decisões na seção 3.8 · 3.0 log de autenticação ✔ · 3.1 sessões ativas ✔ · 3.2 logins (falhas e sucessos) ✔ · 3.3 saúde do Samba ✔ · 3.4 consulta à auditoria ✔ |
-| 4. Publicação | decisões na seção 3.9 · 4.0 CI · 4.1 rotação do log · 4.2 comandos diretos · 4.3 `install.sh` · 4.4 desinstalação · 4.5 bilíngue pt/en · 4.6 README e versão 1.0 |
+| 4. Publicação | decisões na seção 3.9 · 4.0 CI ✔ · 4.1 rotação do log ✔ · 4.2 comandos diretos ✔ · 4.3 `install.sh` ✔ · 4.4 desinstalação ✔ · 4.5 bilíngue pt/en ✔ · 4.6 README ✔ e versão 1.0 (lançamento com o Thiago) |
 
 ## 9. Forma de trabalho
 
@@ -870,7 +880,7 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 
 ## 11. Situação atual e próximos passos
 
-*Atualizado em 21/10/2026 (4.5).*
+*Atualizado em 21/10/2026 (Fase 4 concluída).*
 
 - Nome decidido: **debkit**; renomeação gsb → debkit feita (arquivos,
   variáveis, funções, grupo `debkit_usuarios`, `/etc/debkit`, testes). As
@@ -934,7 +944,8 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 | 4.1 Rotação do log do debkit (+ sshd com o SSH parado) | `882cb1f` |
 | 4.2 Comandos diretos | `73d9e72` |
 | 4.3 install.sh e 4.4 desinstalação | `9f1390e` |
-| 4.5 Bilíngue pt/en | (a preencher) |
+| 4.5 Bilíngue pt/en | `4398959` |
+| 4.6 README (pt e en) | (a preencher) |
 
 **Próximos passos:**
 
@@ -1050,7 +1061,8 @@ interno, hoje `samba_wireguard.sh`). Lições já aprendidas lá e que valem aqu
 35. ✔ 4.3 `install.sh` (seção 3.9).
 36. ✔ 4.4 desinstalação (seção 3.9).
 37. ✔ 4.5 bilíngue pt/en (seção 3.9).
-38. **Próxima tarefa:** 4.6 README e versão 1.0.
+38. ✔ 4.6 README (pt e en). **Fase 4 concluída** (falta só o lançamento).
+39. **Próxima tarefa:** lançamento da 1.0.0 quando o Thiago confirmar (versão, CHANGELOG, `main` e tag; seção 3.9, tarefa 4.6).
 
 **VM limpa de novo:** `dev/vmnova.sh` → (reinicia) → `dev/vmprepara.sh` →
 `./debkit --preparar` → testes.
@@ -1107,7 +1119,8 @@ real e o devolve idêntico). Com a tarefa 3.0: 2011 + 302 (`t21_log_auth.sh` e
 `t23b_logins_real.sh`). Com a tarefa 3.3: 2175 + 387 (`t24_saude.sh` e
 `t24b_saude_real.sh`). Com a tarefa 3.4: 2229 + 410 (`t25_auditoria.sh` e
 `t25b_auditoria_real.sh`). Com a 4.0 e a 4.1: 2288 + 410 (`t26_log_rotacao.sh`). Até a 4.4: 2599 + 464
-(`t27` a `t29` e as provas reais `t27b`, `t28b`, `t29b`).
+(`t27` a `t29` e as provas reais `t27b`, `t28b`, `t29b`). Fim da Fase 4: 2658 + 465
+(`t30_ingles.sh`), todas passando na VM, e o CI verde no GitHub.
 Os testes também acusam se alguém usar o debkit na VM enquanto rodam (o
 log e a trava reais mudam): não usar o debkit durante a suíte.
 

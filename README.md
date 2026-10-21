@@ -2,13 +2,15 @@
 
 # debkit
 
-**Administração segura de servidores Debian, por menu — começando por um servidor de arquivos Samba.**
+**Administração segura de servidores Debian, por menu ou por comandos — começando por um servidor de arquivos Samba.**
+
+🇧🇷 Português · 🇬🇧 [English](README.en.md)
 
 ![Debian 12/13](https://img.shields.io/badge/Debian-12%20%7C%2013-A81D33?logo=debian&logoColor=white)
 ![Bash](https://img.shields.io/badge/feito%20em-Bash-4EAA25?logo=gnubash&logoColor=white)
 ![Samba](https://img.shields.io/badge/Samba-standalone%20%2B%20tdbsam-1E73BE)
 ![Licença MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue)
-![Status](https://img.shields.io/badge/status-em%20desenvolvimento-orange)
+[![CI](https://github.com/ThiagoCarrere/debkit/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ThiagoCarrere/debkit/actions/workflows/ci.yml)
 
 </div>
 
@@ -22,10 +24,9 @@ e **desfaz** se algo der errado no meio.
 O primeiro módulo, **samba**, gerencia um servidor de arquivos completo:
 usuários, grupos, pastas pessoais, compartilhamentos e permissões.
 
-> [!WARNING]
-> **Em desenvolvimento — ainda não use em produção.**
-> Fases 0 (fundação), 1 (usuários e grupos) e 2 (compartilhamentos)
-> concluídas. Veja o [roteiro](#roteiro).
+> [!NOTE]
+> Fases 0 a 4 concluídas (veja o [roteiro](#roteiro)). Como em qualquer
+> ferramenta que mexe no servidor, teste antes numa máquina virtual.
 
 ## Por que o debkit
 
@@ -58,6 +59,10 @@ mão dá trabalho e é fácil esquecer um detalhe. O debkit faz por padrão:
   o plano antes.
 - 💾 **Rastreável** — backup automático (com rotação) antes de qualquer
   alteração e log de auditoria: quem fez o quê e quando.
+- ⌨️ **Menu ou comandos** — tudo o que o menu faz também existe como
+  comando direto, para scripts e cron, com as mesmas validações e
+  confirmações (`--sim` responde por você).
+- 🌐 **Português e inglês** — fala a língua do sistema.
 - 🔍 **Avisa o que você não veria** — ao remover um grupo ou excluir um
   usuário, mostra quem perde acesso, onde ele é usado no `smb.conf` e
   quantos arquivos ficam no disco (o número do usuário/grupo pode ser
@@ -125,38 +130,70 @@ Listar usuários (exemplo com dados fictícios):
 | **Grupos** | criar, listar, adicionar/remover membros com efeito imediato, remover |
 | **Pastas pessoais** | no disco de dados (backup junto com o resto), na criação ou depois, e o compartilhamento `[homes]` |
 | **Diagnóstico** | sessões ativas (quem está conectado, de qual máquina, arquivos abertos) e desconectar uma sessão; logins (falhas com o motivo e último login de cada usuário); relatório de saúde (serviço, porta, disco, alertas); consulta à auditoria (por período, afetado e tipo) |
+| **Comandos diretos** | todas as ações do menu por linha de comando (`debkit samba <grupo> <ação>`), senhas pela entrada padrão, saída 0/1/2 para scripts |
+| **Instalação** | `install.sh` (instala, atualiza trocando a pasta de uma vez só se a nova funcionar) e `debkit --desinstalar` (usuários e compartilhamentos ficam) |
 | **Compartilhamentos** | listar (inclusive os feitos à mão, com alertas), criar vinculado a um grupo, cujos membros têm acesso total (pasta em `/mnt` ou `/srv`), trocar o grupo, ajustar as permissões do conteúdo, remover (os arquivos ficam no disco) e trazer os feitos à mão para o padrão |
 
-## Instalação (para testar)
-
-> Use numa **máquina virtual de testes**. O instalador (`install.sh`) vem
-> na Fase 4.
+## Instalação
 
 ```bash
-sudo git clone https://github.com/ThiagoCarrere/debkit.git /opt/debkit
-sudo chown -R root:root /opt/debkit && sudo chmod -R go-w /opt/debkit
-
-cd /opt/debkit
-sudo ./debkit --verificar   # verifica o ambiente, sem alterar nada
-sudo ./debkit --preparar    # mostra o plano e prepara o servidor
-sudo ./debkit               # menu
+git clone https://github.com/ThiagoCarrere/debkit.git
+cd debkit
+sudo ./install.sh        # instala em /opt/debkit e cria o comando "debkit"
+sudo debkit              # menu: na primeira vez, prepara o servidor
 ```
 
-Os arquivos do programa precisam pertencer ao root e não ter escrita para
-grupo/outros: o debkit roda como root e se recusa a carregar código que
-outra pessoa possa alterar. A configuração fica em
-`/etc/debkit/debkit.conf` (modelo comentado em
-[`debkit.conf.exemplo`](debkit.conf.exemplo)).
+O instalador copia só o programa para `/opt/debkit` (dono root, sem
+escrita para grupo/outros: o debkit se recusa a carregar código que outra
+pessoa possa alterar), cria o comando `/usr/local/sbin/debkit` e oferece
+preparar o servidor. Se você clonar direto em `/opt/debkit`, ele só cria o
+comando. A configuração fica em `/etc/debkit/debkit.conf` (modelo comentado
+em [`debkit.conf.exemplo`](debkit.conf.exemplo)).
+
+- **Atualizar:** `git pull` e `sudo ./install.sh` de novo (a versão nova só
+  entra no lugar se funcionar).
+- **Verificar sem alterar nada:** `sudo debkit --verificar`.
+- **Desinstalar:** `sudo debkit --desinstalar` tira o programa e o comando;
+  com `--tudo`, também a configuração, o log e os backups. Usuários, grupos,
+  compartilhamentos e o `smb.conf` ficam, e a proteção SSH só sai se não
+  houver usuários de arquivos.
+
+## Comandos diretos
+
+As mesmas ações do menu, para scripts e cron (lista completa:
+`debkit samba --ajuda`):
+
+```bash
+sudo debkit samba usuario listar
+printf '%s\n' "$SENHA" | sudo debkit samba usuario criar ana --nome "Ana Souza" --grupos financeiro --sim
+sudo debkit samba grupo membros financeiro --adicionar pedro --sim
+sudo debkit samba compartilhamento criar financeiro --grupo financeiro --sim
+sudo debkit samba diagnostico saude          # sai com 1 se houver problema
+sudo debkit samba diagnostico auditoria --dias 7 --tipo usuarios
+```
+
+Senhas nunca vão na linha de comando: são perguntadas (sem eco) ou lidas da
+entrada padrão. Sem `--sim`, o comando mostra o resumo e pergunta, como no
+menu. Saída: 0 certo, 1 recusado/cancelado/falhou, 2 uso incorreto.
+
+## Idioma
+
+Português ou inglês, pelo idioma do sistema (`LANG`/`LANGUAGE`). Para
+fixar: `IDIOMA=pt_BR` ou `IDIOMA=en` no `debkit.conf`. Os comandos aceitam
+os nomes nas duas línguas (`debkit samba user create ...`).
 
 ## Qualidade
 
-- **Mais de 1.400 verificações automáticas** num sandbox: log,
+- **Mais de 2.600 verificações automáticas** num sandbox: log,
   configuração, `smb.conf`, base de senhas do Samba e pacotes ficam
   isolados. Uma trava compara o sistema real antes e depois de cada
   arquivo de teste e reprova qualquer vazamento.
-- **Provas reais** (`DEBKIT_TESTE_REAL=1`), com Samba, SSH e ufw de
-  verdade: login, túnel SSH recusado, acesso por grupo, sessão aberta
-  perdendo o acesso na hora.
+- **Provas reais** (`DEBKIT_TESTE_REAL=1`; mais de 450 verificações), com
+  Samba, SSH e ufw de verdade: login, túnel SSH recusado, acesso por
+  grupo, sessão aberta perdendo o acesso na hora.
+- **CI a cada push:** num Debian 13 novo (container com systemd), o próprio
+  debkit prepara o servidor (instala o Samba), a suíte inteira roda e o
+  debkit é instalado, usado e desinstalado de verdade.
 - `shellcheck` sem avisos.
 
 ```bash
@@ -172,7 +209,7 @@ sudo DEBKIT_TESTE_REAL=1 tests/run.sh t13b_grupos_real.sh   # uma prova real
 | 1. Usuários e grupos | usuários, pastas pessoais, grupos, consistência Linux x Samba | ✅ |
 | 2. Compartilhamentos | criar, listar, permissões de pasta, remover, os já existentes | ✅ |
 | 3. Diagnóstico | falhas de login, sessões ativas, saúde do Samba, auditoria | ✅ |
-| 4. Publicação | comandos diretos, instalador e desinstalação, inglês, CI | ⏳ |
+| 4. Publicação | CI, rotação do log, comandos diretos, instalador e desinstalação, português e inglês | ✅ |
 
 As decisões e o porquê de cada uma estão no
 [planejamento](docs/PLANEJAMENTO.md); as mudanças, no
@@ -180,13 +217,14 @@ As decisões e o porquê de cada uma estão no
 
 ## Desenvolvimento
 
-Tudo é escrito e testado numa VM Debian 13 com snapshot. Dois scripts em
-[`dev/`](dev/) (recusam máquina que não é virtual):
+Tudo é escrito e testado numa VM Debian 13 com snapshot. Scripts em
+[`dev/`](dev/) (os da VM recusam máquina que não é virtual):
 
 ```bash
 sudo dev/vmnova.sh --simular   # mostra o snapshot e o comando, sem fazer nada
 sudo dev/vmnova.sh             # volta ao snapshot "limpa" do Timeshift e REINICIA
 sudo dev/vmprepara.sh          # depois: instala shellcheck, smbclient e ufw (inativo)
+sudo dev/ci.sh                 # a suíte num Debian 13 novo, em container (como o CI)
 ```
 
 Estrutura: `debkit` (ponto de entrada), `lib/nucleo.sh` (núcleo comum) e
